@@ -19,9 +19,11 @@ How to use it:
   2. Select the objects you want, or leave nothing selected to offer every class.
   3. Run this command and set each class's plane type and strategy.
 
-⚠️ The ArrayCalc plane types are REVERSE-ENGINEERED from one sample file, not from d&b
-documentation. The numeric code is shown next to each name because that is what is
-actually written to the file. Check a converted venue in ArrayCalc before trusting it.
+⚠️ The ArrayCalc plane type names are only PARTLY confirmed. "Positioning area" (5) is
+ArrayCalc's own word and "Listening" (1) is near-certain; "Surface" (2) and "Stage" (4)
+are still deductions from one sample venue. The numeric code is shown next to each name
+because that is what is actually written to the file. Check a converted venue in
+ArrayCalc before trusting it.
 """
 
 import os

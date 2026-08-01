@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
-import { boundaryLoops, convexHull, dropCollinear, isConvex, minAreaRect, simplifyClosed, toFaces } from './polygon.ts'
+import { boundaryLoops, convexHull, dropCollinear, isConvex, levelAlignedRect, minAreaRect, simplifyClosed, toFaces } from './polygon.ts'
 import { applyTransform, boundsOf, guessUnits } from './transform.ts'
 import { planeBasis, toPlane2D } from './vec.ts'
 import { DEFAULT_CONVERT, convertNode } from './convert.ts'
 import { PlaneType, Shape } from '../dbacv/types.ts'
+import { canonicalQuad } from '../dbacv/quad.ts'
 import type { ImportedNode } from '../import/types.ts'
 
 /** A w x d rectangle in the z = h plane, as two triangles. */
@@ -363,5 +364,84 @@ describe('convertNode', () => {
   it('handles an empty node without throwing', () => {
     const r = convertNode(node([]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(0)
+  })
+})
+
+describe('quadsSplit stat', () => {
+  it('counts a sheared quad that had to become two triangles', () => {
+    // A parallelogram. Its outline is four corners, so it is one face — but it is not a
+    // symmetric trapezoid, so it cannot be an ArrayCalc quad and has to be split. The
+    // count is what explains an object total that exceeds the region count; without it
+    // the number looks arbitrary in the UI.
+    const p = [[0, 0], [4, 0], [5, 3], [1, 3]]
+    const tris = [
+      p[0][0], p[0][1], 0, p[1][0], p[1][1], 0, p[2][0], p[2][1], 0,
+      p[0][0], p[0][1], 0, p[2][0], p[2][1], 0, p[3][0], p[3][1], 0,
+    ]
+    const r = convertNode(node(tris), PlaneType.Listening, DEFAULT_CONVERT)
+    expect(r.stats.regionsFound).toBe(1)
+    expect(r.stats.quadsSplit).toBe(1)
+    expect(r.stats.objectsOut).toBe(2)
+    expect(r.objects.every((o) => o.shape === Shape.Triangle)).toBe(true)
+  })
+
+  it('is zero when every face is a clean rectangle', () => {
+    const r = convertNode(node(quadXY(10, 5)), PlaneType.Listening, DEFAULT_CONVERT)
+    expect(r.stats.quadsSplit).toBe(0)
+    expect(r.stats.objectsOut).toBe(1)
+  })
+})
+
+describe('levelAlignedRect', () => {
+  const V = (x: number, y: number, z: number) => ({ x, y, z })
+
+  it('gives a rectangle with two LEVEL edges on a tilted plane', () => {
+    // A raked deck: rises 1 m over 4 m of depth.
+    const pts = [V(0, 0, 0), V(4, 0, 1), V(4, 3, 1), V(0, 3, 0)]
+    const n = { x: -1 / Math.sqrt(17), y: 0, z: 4 / Math.sqrt(17) }
+    const r = levelAlignedRect(pts, n)!
+    expect(r).not.toBeNull()
+    // At least one pair of opposite edges must be level, or it cannot be a quad.
+    const level = (a: typeof r[0], b: typeof r[0]) => Math.abs(a.z - b.z) < 1e-9
+    expect(level(r[0], r[1]) || level(r[1], r[2])).toBe(true)
+  })
+
+  it('produces a rectangle that IS writable as an ArrayCalc quad', () => {
+    const pts = [V(0, 0, 0), V(4, 0, 1), V(4, 3, 1), V(0, 3, 0)]
+    const n = { x: -1 / Math.sqrt(17), y: 0, z: 4 / Math.sqrt(17) }
+    expect(canonicalQuad(levelAlignedRect(pts, n)!)).not.toBeNull()
+  })
+
+  it('declines a horizontal plane, where minAreaRect is already better', () => {
+    const pts = [V(0, 0, 0), V(4, 0, 0), V(4, 3, 0), V(0, 3, 0)]
+    expect(levelAlignedRect(pts, V(0, 0, 1))).toBeNull()
+  })
+
+  it('encloses every input point', () => {
+    const pts = [V(0, 0, 0), V(4, 0, 1), V(4, 3, 1), V(0, 3, 0), V(2, 1.5, 0.5)]
+    const n = { x: -1 / Math.sqrt(17), y: 0, z: 4 / Math.sqrt(17) }
+    const r = levelAlignedRect(pts, n)!
+    const xs = r.map((p) => p.x)
+    const ys = r.map((p) => p.y)
+    for (const p of pts) {
+      expect(p.x).toBeGreaterThanOrEqual(Math.min(...xs) - 1e-9)
+      expect(p.x).toBeLessThanOrEqual(Math.max(...xs) + 1e-9)
+      expect(p.y).toBeGreaterThanOrEqual(Math.min(...ys) - 1e-9)
+      expect(p.y).toBeLessThanOrEqual(Math.max(...ys) + 1e-9)
+    }
+  })
+
+  it('rect fit on a raked deck emits ONE quad, not two triangles', () => {
+    // The regression this was written for: a min-area rectangle on a tilted plane comes
+    // out diagonal, has no level edge, and gets split.
+    const tris = [
+      0, 0, 0, 8, 0, 2, 8, 5, 2,
+      0, 0, 0, 8, 5, 2, 0, 5, 0,
+    ]
+    const r = convertNode(node(tris), PlaneType.Listening, { ...DEFAULT_CONVERT, fit: 'rect' })
+    expect(r.stats.regionsFound).toBe(1)
+    expect(r.stats.quadsSplit).toBe(0)
+    expect(r.objects).toHaveLength(1)
+    expect(r.objects[0].shape).toBe(Shape.Quad)
   })
 })

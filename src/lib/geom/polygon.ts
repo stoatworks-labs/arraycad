@@ -12,9 +12,16 @@ import type { Region, WeldedMesh } from './planarize.ts'
 import {
   type Basis,
   type Vec3,
+  add,
+  cross,
+  dot,
   fromPlane2D,
+  len,
+  normalize,
   planeBasis,
+  scale,
   signedArea2,
+  sub,
   toPlane2D,
 } from './vec.ts'
 
@@ -190,6 +197,52 @@ export function minAreaRect(poly: Pt2[]): Pt2[] {
     }
   }
   return best ?? poly
+}
+
+/**
+ * A bounding rectangle in the plane whose edges are LEVEL, returned in world space.
+ *
+ * `minAreaRect` finds the tightest rectangle, but in an arbitrary in-plane basis — so on a
+ * tilted surface it usually comes out diagonal, with no horizontal edge. ArrayCalc's quad
+ * frame requires two level edges, so such a rectangle cannot be written as a quad and gets
+ * split into two triangles. On a raked seating deck that is both wasteful and wrong-looking.
+ *
+ * Aligning the rectangle to the plane's own horizontal direction fixes it by construction:
+ * two edges run along the level line, the other two straight up the slope. That is also
+ * exactly how a person would draw a seating block — width across, depth up the rake.
+ *
+ * Returns null for a horizontal plane, where every direction is level and `minAreaRect`
+ * is already both tighter and canonical.
+ */
+export function levelAlignedRect(worldPts: Vec3[], normal: Vec3): Vec3[] | null {
+  if (worldPts.length < 3) return null
+  const n = normalize(normal)
+
+  // The level direction in the plane: perpendicular to both the normal and vertical.
+  const h = cross(n, { x: 0, y: 0, z: 1 })
+  const hLen = len(h)
+  // A near-horizontal plane has no distinguished level direction.
+  if (hLen < 1e-6) return null
+  const u = scale(h, 1 / hLen)
+  const v = cross(n, u) // in-plane, up the slope
+
+  const o = worldPts[0]
+  let minU = Infinity
+  let maxU = -Infinity
+  let minV = Infinity
+  let maxV = -Infinity
+  for (const p of worldPts) {
+    const d = sub(p, o)
+    const a = dot(d, u)
+    const b = dot(d, v)
+    if (a < minU) minU = a
+    if (a > maxU) maxU = a
+    if (b < minV) minV = b
+    if (b > maxV) maxV = b
+  }
+
+  const at = (a: number, b: number): Vec3 => add(o, add(scale(u, a), scale(v, b)))
+  return [at(minU, minV), at(maxU, minV), at(maxU, maxV), at(minU, maxV)]
 }
 
 /** Monotone chain convex hull. */

@@ -14,9 +14,14 @@ names — and use them to decide what each object is.
 
 **This plug-in has never been run inside Vectorworks.**
 
-Everything that can be verified without Vectorworks has been, and is covered by 75 tests:
+Everything that can be verified without Vectorworks has been, and is covered by 80 tests:
 the `.dbacv` writer reproduces a real ArrayCalc export **byte for byte**, and the geometry
 engine gives the same answers as the browser tool on the same cases.
+
+The `.dbacv` half is more than unit-tested: diagnostic venues written by this code were
+opened in ArrayCalc 12.8.2 and exported again, and **every object came back untouched**.
+So what this plug-in writes is known-good; what is unproven is only how it *reads*
+Vectorworks.
 
 What is *not* verified is `arraycad/vwbridge.py`, the one module that calls Vectorworks.
 Its function names were read out of the Vectorworks 2025 application binary, so they exist
@@ -123,7 +128,7 @@ on what actually responds to a call.
 
 ## Tests
 
-75 tests, none of which need Vectorworks:
+80 tests, none of which need Vectorworks:
 
 ```bash
 python3 vectorworks/tests/run_all.py
@@ -149,5 +154,5 @@ arraycad/
   geom.py               weld, coplanar merge, outline, box detection, top face
   export.py             the per-class strategy logic. No `vs` — fully testable
   vwbridge.py           THE ONLY MODULE THAT TOUCHES VECTORWORKS
-tests/                  75 tests, no Vectorworks needed
+tests/                  80 tests, no Vectorworks needed
 ```

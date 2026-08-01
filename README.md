@@ -56,7 +56,7 @@ a seating solid, or collapse a lighting bridge to a single ArrayCalc box instead
 quads.
 
 ⚠️ **It has never been run inside Vectorworks.** Everything testable without Vectorworks
-is tested (75 tests, including the same byte-exact format check), but the one module that
+is tested (80 tests, including the same byte-exact format check), but the one module that
 calls the Vectorworks API is unverified. Run its probe script first. See
 [vectorworks/README.md](vectorworks/README.md).
 
@@ -70,9 +70,11 @@ calls the Vectorworks API is unverified. Run its probe script first. See
    against a dimension you know.
 3. **Set the datum.** ArrayCalc wants the audience towards **+X**, Y symmetric about zero,
    Z up. Use heading, offset and the mirror toggle; the drawn axes show which way is which.
-4. **Choose a fit.** *Rectangle* collapses each region to its smallest enclosing rectangle
-   — one quad each, and usually what you want for seating. *Follow outline* is faithful
-   but a ragged CAD outline turns into many objects.
+4. **Choose a fit.** *Rectangle* collapses each region to one rectangle, aligned to the
+   level direction of its own plane so it is always writable as a single ArrayCalc quad —
+   one object per region, and usually what you want for seating. *Follow outline* is
+   faithful, but a ragged CAD outline turns into many objects, and any face that is not a
+   symmetric trapezoid has to be split into two triangles.
 5. **Watch the object count.** If it is in the hundreds, raise the merge tolerances, raise
    the minimum area, or switch to rectangle fit.
 

@@ -65,9 +65,6 @@ export enum PlaneType {
   PositioningArea = 5,
 }
 
-/** Back-compat alias: this was called Audience before ArrayCalc named it "Listening". */
-export const AudiencePlaneType = PlaneType.Listening
-
 export const PLANE_TYPES: { code: PlaneType; label: string; verified: boolean; hint: string }[] = [
   {
     code: PlaneType.None,

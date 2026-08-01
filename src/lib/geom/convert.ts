@@ -23,6 +23,7 @@ import {
   type Pt2,
   boundaryLoops,
   dropCollinear,
+  levelAlignedRect,
   minAreaRect,
   simplifyClosed,
   toFaces,
@@ -34,7 +35,7 @@ import { planeBasis, toPlane2D } from './vec.ts'
 export type FitMode =
   /** Keep the outline, decomposed into quads and triangles. Faithful, more objects. */
   | 'exact'
-  /** Replace the outline with its minimum-area enclosing rectangle. One quad, always. */
+  /** Replace the outline with a level-aligned bounding rectangle. One quad per region. */
   | 'rect'
 
 export interface ConvertOptions {
@@ -139,6 +140,14 @@ export interface ConvertStats {
   regionsFound: number
   objectsOut: number
   regionsDropped: number
+  /**
+   * Faces that could not be written as an ArrayCalc quad and became two triangles each.
+   *
+   * Worth showing: it is the single reason an object count comes out higher than the
+   * region count, and the fix is usually to switch to rectangle fit. Without it the
+   * number looks arbitrary.
+   */
+  quadsSplit: number
 }
 
 export interface ConvertResult {
@@ -154,7 +163,7 @@ export function convertNode(
   opts: ConvertOptions,
 ): { objects: RoomObject[]; stats: ConvertStats; warnings: string[] } {
   const warnings: string[] = []
-  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0 }
+  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0, quadsSplit: 0 }
 
   const positions = applyTransform(node.positions, opts.transform)
   stats.trianglesIn = positions.length / 9
@@ -199,7 +208,15 @@ export function convertNode(
     let holes: Pt2[][] = []
 
     if (opts.fit === 'rect' || mustBeRectangular) {
-      outer = minAreaRect(outer)
+      // Prefer a rectangle aligned to the plane's level direction: it is guaranteed to be
+      // writable as a single ArrayCalc quad, whereas the tightest rectangle on a tilted
+      // plane is usually diagonal and has to be split into two triangles. Falls back to
+      // the min-area rectangle on a horizontal plane, where every direction is level.
+      const levelled = levelAlignedRect(
+        loops[0].map((i) => mesh.vertices[i]),
+        region.plane.normal,
+      )
+      outer = levelled ? levelled.map((p) => toPlane2D(p, basis)) : minAreaRect(outer)
       // A rectangle has no interior to preserve, so holes go with it. Deliberate: 'rect'
       // is the "give me the coverage area, not the joinery" mode.
       if (loops.length > 1) {
@@ -215,7 +232,9 @@ export function convertNode(
     if (outer.length < 3) continue
 
     for (const face of toFaces(outer, holes, basis)) {
-      for (const obj of faceToObjects(face.points, `${node.name} ${order}`, planeType, order)) {
+      const made = faceToObjects(face.points, `${node.name} ${order}`, planeType, order)
+      if (face.points.length === 4 && made.length === 2) stats.quadsSplit++
+      for (const obj of made) {
         objects.push(obj)
         order++
       }
@@ -236,7 +255,7 @@ export function convertNodes(
 ): ConvertResult {
   const objects: RoomObject[] = []
   const warnings: string[] = []
-  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0 }
+  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0, quadsSplit: 0 }
   let groupOrder = 101
 
   for (const entry of nodes) {
@@ -246,6 +265,7 @@ export function convertNodes(
     stats.regionsFound += r.stats.regionsFound
     stats.objectsOut += r.stats.objectsOut
     stats.regionsDropped += r.stats.regionsDropped
+    stats.quadsSplit += r.stats.quadsSplit
     warnings.push(...r.warnings)
 
     if (r.objects.length === 0) continue

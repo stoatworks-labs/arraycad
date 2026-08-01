@@ -15,7 +15,12 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from arraycad.dbacv import PLANE_LISTENING, SHAPE_BOX, RoomObject  # noqa: E402
+from arraycad.dbacv import (  # noqa: E402
+    PLANE_LISTENING,
+    SHAPE_BOX,
+    RoomObject,
+    canonical_quad,
+)
 from arraycad.geom import (  # noqa: E402
     Basis,
     as_box,
@@ -23,6 +28,7 @@ from arraycad.geom import (  # noqa: E402
     convex_hull,
     drop_collinear,
     fan_quads,
+    level_aligned_rect,
     find_coplanar_regions,
     min_area_rect,
     region_polygon,
@@ -280,3 +286,35 @@ class TestFaces(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
+
+
+class TestLevelAlignedRect(unittest.TestCase):
+    """Mirrors the TypeScript cases in src/lib/geom/geom.test.ts."""
+
+    TILT_N = (-1.0 / math.sqrt(17), 0.0, 4.0 / math.sqrt(17))
+    RAKED = [(0, 0, 0), (4, 0, 1), (4, 3, 1), (0, 3, 0)]
+
+    def test_two_edges_are_level_on_a_tilted_plane(self):
+        r = level_aligned_rect(self.RAKED, self.TILT_N)
+        self.assertIsNotNone(r)
+        level = lambda a, b: abs(a[2] - b[2]) < 1e-9
+        self.assertTrue(level(r[0], r[1]) or level(r[1], r[2]))
+
+    def test_the_result_is_writable_as_an_arraycalc_quad(self):
+        r = level_aligned_rect(self.RAKED, self.TILT_N)
+        self.assertIsNotNone(canonical_quad(r))
+
+    def test_declines_a_horizontal_plane(self):
+        flat = [(0, 0, 0), (4, 0, 0), (4, 3, 0), (0, 3, 0)]
+        self.assertIsNone(level_aligned_rect(flat, (0.0, 0.0, 1.0)))
+
+    def test_encloses_every_input_point(self):
+        pts = self.RAKED + [(2, 1.5, 0.5)]
+        r = level_aligned_rect(pts, self.TILT_N)
+        xs = [p[0] for p in r]
+        ys = [p[1] for p in r]
+        for p in pts:
+            self.assertGreaterEqual(p[0], min(xs) - 1e-9)
+            self.assertLessEqual(p[0], max(xs) + 1e-9)
+            self.assertGreaterEqual(p[1], min(ys) - 1e-9)
+            self.assertLessEqual(p[1], max(ys) + 1e-9)

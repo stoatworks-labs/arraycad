@@ -416,6 +416,51 @@ def simplify_closed(poly, tol):
     return merged if len(merged) >= 3 else pts
 
 
+def level_aligned_rect(world_pts, normal):
+    # type: (Sequence[Vec3], Vec3) -> Optional[List[Vec3]]
+    """A bounding rectangle in the plane whose edges are LEVEL, in world space.
+
+    `min_area_rect` finds the tightest rectangle, but in an arbitrary in-plane basis — so
+    on a tilted surface it usually comes out diagonal, with no horizontal edge. ArrayCalc's
+    quad frame requires two level edges, so such a rectangle cannot be written as a quad
+    and gets split into two triangles. On a raked seating deck that is both wasteful and
+    wrong-looking.
+
+    Aligning to the plane's own horizontal direction fixes it by construction: two edges
+    run along the level line, the other two straight up the slope — which is also how a
+    person would draw a seating block, width across and depth up the rake.
+
+    Returns None for a horizontal plane, where every direction is level and
+    `min_area_rect` is already both tighter and canonical.
+    """
+    pts = list(world_pts)
+    if len(pts) < 3:
+        return None
+    n = normalize(normal)
+
+    # The level direction in the plane: perpendicular to both the normal and vertical.
+    h = cross(n, (0.0, 0.0, 1.0))
+    h_len = length(h)
+    if h_len < 1e-6:  # near-horizontal plane, no distinguished level direction
+        return None
+    u = (h[0] / h_len, h[1] / h_len, h[2] / h_len)
+    v = cross(n, u)  # in-plane, up the slope
+
+    o = pts[0]
+    us = [dot(sub(p, o), u) for p in pts]
+    vs = [dot(sub(p, o), v) for p in pts]
+
+    def at(a, b):
+        return (o[0] + u[0] * a + v[0] * b, o[1] + u[1] * a + v[1] * b, o[2] + u[2] * a + v[2] * b)
+
+    return [
+        at(min(us), min(vs)),
+        at(max(us), min(vs)),
+        at(max(us), max(vs)),
+        at(min(us), max(vs)),
+    ]
+
+
 def convex_hull(pts):
     # type: (Sequence[Pt2]) -> List[Pt2]
     if len(pts) < 3:
@@ -485,6 +530,15 @@ def region_polygon(region, mesh, simplify_tol=DEFAULT_SIMPLIFY, rectangle=False)
     if not loops:
         return []
     basis = Basis(region.normal, region.point)
+
+    if rectangle:
+        # Prefer a rectangle aligned to the plane's level direction: it is guaranteed to
+        # be writable as a single ArrayCalc quad, whereas the tightest rectangle on a
+        # tilted plane is usually diagonal and has to be split into two triangles.
+        levelled = level_aligned_rect([mesh.vertices[i] for i in loops[0]], region.normal)
+        if levelled is not None:
+            return levelled
+
     poly = [basis.to2d(mesh.vertices[i]) for i in loops[0]]
     poly = simplify_closed(drop_collinear(poly, simplify_tol), simplify_tol)
     if rectangle:

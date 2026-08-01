@@ -271,6 +271,13 @@ export default function App() {
               value={running ? '…' : (result?.stats.objectsOut ?? 0).toLocaleString()}
               tone={(result?.stats.objectsOut ?? 0) > 300 ? 'warn' : 'ok'}
             />
+            {(result?.stats.quadsSplit ?? 0) > 0 && (
+              <Stat
+                label="split into triangles"
+                value={(result?.stats.quadsSplit ?? 0).toLocaleString()}
+                tone="warn"
+              />
+            )}
           </div>
         </main>
 
@@ -393,9 +400,17 @@ export default function App() {
             </Field>
             <p className="hint">
               {settings.fit === 'rect'
-                ? 'Every region collapses to its smallest enclosing rectangle — one quad each. Usually what you want for seating blocks.'
+                ? 'Every region becomes one rectangle, aligned to the level direction of its own plane so it is always writable as a single ArrayCalc quad. Usually what you want for seating blocks.'
                 : 'Outlines are kept and split into quads and triangles. Faithful, but a ragged CAD outline makes many objects.'}
             </p>
+            {(result?.stats.quadsSplit ?? 0) > 0 && (
+              <p className="hint warn-text">
+                {result!.stats.quadsSplit} face(s) could not be written as an ArrayCalc quad
+                and became two triangles each. ArrayCalc quads must be symmetric trapezoids
+                with level edges; anything else has to be split. Rectangle fit avoids most
+                of it.
+              </p>
+            )}
 
             <Field label="Merge angle" hint="How far a triangle's normal may sit from the region's.">
               <NumberInput

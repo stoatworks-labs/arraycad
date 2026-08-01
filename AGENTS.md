@@ -40,7 +40,7 @@ docs/dbacv-format.md    everything known about the format, and what is not known
 ```
 
 **`src/lib/` is pure and three-free** (except `import/mesh.ts`, which needs the loaders).
-The whole conversion runs in node, which is why 127 tests can cover it without a browser.
+The whole conversion runs in node, which is why 151 tests can cover it without a browser.
 
 ## 3. The one thing to understand
 
@@ -176,7 +176,7 @@ a named diagnostic rather than wrong geometry. Do not "tidy" that wrapping away.
 
 ## 7. Testing
 
-127 TypeScript tests plus 75 Python tests, none of which need a browser or Vectorworks.
+151 TypeScript tests plus 80 Python tests, none of which need a browser or Vectorworks.
 
 The ones that matter most:
 
