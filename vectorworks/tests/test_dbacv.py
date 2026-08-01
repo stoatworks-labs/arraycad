@@ -12,7 +12,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from arraycad.dbacv import (  # noqa: E402
-    PLANE_AUDIENCE,
+    PLANE_LISTENING,
     PLANE_SURFACE,
     SHAPE_ARC,
     SHAPE_BOX,
@@ -158,7 +158,7 @@ class TestConstruction(unittest.TestCase):
         # The bug the ArrayCalc round trip caught: a centroid origin round-trips fine
         # through our own reader and is silently collapsed to zero depth on import.
         o = RoomObject.from_face(
-            "Deck", [(0, 0, 0), (10, 0, 0), (10, 6, 0), (0, 6, 0)], PLANE_AUDIENCE
+            "Deck", [(0, 0, 0), (10, 0, 0), (10, 6, 0), (0, 6, 0)], PLANE_LISTENING
         )
         self.assertEqual(o.shape, SHAPE_QUAD)
         self.assertAlmostEqual(o.points[0][0], 0.0)  # near edge at local x = 0
@@ -177,8 +177,8 @@ class TestConstruction(unittest.TestCase):
 
     def test_a_quad_that_cannot_be_canonical_becomes_two_triangles(self):
         sheared = [(0, 0, 0), (4, 0, 0), (5, 3, 0), (1, 3, 0)]
-        self.assertIsNone(RoomObject.from_face("X", sheared, PLANE_AUDIENCE))
-        got = RoomObject.faces_for("X", sheared, PLANE_AUDIENCE)
+        self.assertIsNone(RoomObject.from_face("X", sheared, PLANE_LISTENING))
+        got = RoomObject.faces_for("X", sheared, PLANE_LISTENING)
         self.assertEqual(len(got), 2)
         self.assertTrue(all(o.shape == SHAPE_TRIANGLE for o in got))
 
@@ -197,10 +197,10 @@ class TestConstruction(unittest.TestCase):
         self.assertEqual(o.listener_height, 0.01)
 
     def test_rejects_a_face_that_is_not_a_tri_or_quad(self):
-        self.assertIsNone(RoomObject.from_face("X", [(0, 0, 0), (1, 0, 0)], PLANE_AUDIENCE))
+        self.assertIsNone(RoomObject.from_face("X", [(0, 0, 0), (1, 0, 0)], PLANE_LISTENING))
         self.assertIsNone(
             RoomObject.from_face(
-                "X", [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0), (0, 0.5, 0)], PLANE_AUDIENCE
+                "X", [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0), (0, 0.5, 0)], PLANE_LISTENING
             )
         )
 
@@ -221,7 +221,7 @@ class TestConstruction(unittest.TestCase):
                         RoomObject.from_face(
                             "Row {}".format(i),
                             [(0, i, 0), (10, i, 0), (10, i + 1, 0.2), (0, i + 1, 0.2)],
-                            PLANE_AUDIENCE,
+                            PLANE_LISTENING,
                             order_index=i,
                         )
                         for i in range(3)
@@ -243,7 +243,7 @@ class TestConstruction(unittest.TestCase):
                     "G",
                     children=[
                         RoomObject.from_face(
-                            "F", [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)], PLANE_AUDIENCE
+                            "F", [(0, 0, 0), (1, 0, 0), (1, 1, 0), (0, 1, 0)], PLANE_LISTENING
                         )
                     ],
                 )

@@ -25,28 +25,28 @@ const node = (positions: number[], name = 'n'): ImportedNode => ({
 
 describe('degenerate input', () => {
   it('converts an empty node to nothing', () => {
-    expect(convertNode(node([]), PlaneType.Audience, DEFAULT_CONVERT).objects).toHaveLength(0)
+    expect(convertNode(node([]), PlaneType.Listening, DEFAULT_CONVERT).objects).toHaveLength(0)
   })
 
   it('survives a lone degenerate triangle', () => {
-    const r = convertNode(node([0, 0, 0, 0, 0, 0, 0, 0, 0]), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node([0, 0, 0, 0, 0, 0, 0, 0, 0]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(0)
   })
 
   it('survives a triangle stream with a trailing partial triangle', () => {
     // 1.5 triangles: the loop must stop at the last complete one rather than read past.
-    const r = convertNode(node([0, 0, 0, 4, 0, 0, 4, 3, 0, 9, 9]), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node([0, 0, 0, 4, 0, 0, 4, 3, 0, 9, 9]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(1)
   })
 
   it('survives all-collinear geometry that encloses no area', () => {
-    const r = convertNode(node([0, 0, 0, 1, 0, 0, 2, 0, 0]), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node([0, 0, 0, 1, 0, 0, 2, 0, 0]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(0)
   })
 
   it('does not emit a group for a single object', () => {
     const r = convertNodes(
-      [{ node: node([0, 0, 0, 10, 0, 0, 10, 5, 0]), planeType: PlaneType.Audience, include: true, name: 'One' }],
+      [{ node: node([0, 0, 0, 10, 0, 0, 10, 5, 0]), planeType: PlaneType.Listening, include: true, name: 'One' }],
       DEFAULT_CONVERT,
     )
     expect(r.objects).toHaveLength(1)
@@ -56,7 +56,7 @@ describe('degenerate input', () => {
 
   it('emits nothing at all when everything is excluded', () => {
     const r = convertNodes(
-      [{ node: node([0, 0, 0, 10, 0, 0, 10, 5, 0]), planeType: PlaneType.Audience, include: false, name: 'x' }],
+      [{ node: node([0, 0, 0, 10, 0, 0, 10, 5, 0]), planeType: PlaneType.Listening, include: false, name: 'x' }],
       DEFAULT_CONVERT,
     )
     expect(r.objects).toHaveLength(0)

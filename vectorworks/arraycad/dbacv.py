@@ -24,39 +24,46 @@ SHAPE_BOX = 4
 SHAPE_GROUP = 5
 SHAPE_TRIANGLE = 6
 
-# ⚠️ INFERRED from one sample file, not from d&b documentation. See the format doc.
+# Partly verified against ArrayCalc, partly still inferred. See ../../docs/dbacv-format.md.
+#   0  VERIFIED groups-only — on a real object ArrayCalc silently changes it to 1
+#   1  "Listening" — the only type that keeps a user-set ListenerHeight
+#   2  inferred: surface / obstacle. ListenerHeight is forced to 0.01
+#   3  VERIFIED to exist and be preserved, but its name is unknown
+#   4  inferred: stage
+#   5  VERIFIED "Positioning area" — MUST be rectangular
 PLANE_NONE = 0
-PLANE_AUDIENCE = 1
+PLANE_LISTENING = 1
 PLANE_SURFACE = 2
+PLANE_TYPE3 = 3
 PLANE_STAGE = 4
-PLANE_SOUNDSCAPE = 5
+PLANE_POSITIONING = 5
 
 PLANE_TYPE_NAMES = {
-    PLANE_NONE: "None / group",
-    PLANE_AUDIENCE: "Audience",
+    PLANE_NONE: "None / group (groups only)",
+    PLANE_LISTENING: "Listening",
     PLANE_SURFACE: "Surface",
-    3: "Type 3 (unknown)",
+    PLANE_TYPE3: "Type 3 (name unknown)",
     PLANE_STAGE: "Stage",
-    PLANE_SOUNDSCAPE: "Soundscape",
+    PLANE_POSITIONING: "Positioning area (must be rectangular)",
 }
 
 DEFAULT_LISTENER_HEIGHT = {
     PLANE_NONE: 1.2,
-    PLANE_AUDIENCE: 1.2,
+    PLANE_LISTENING: 1.2,
     PLANE_SURFACE: 0.01,
-    3: 1.2,
+    PLANE_TYPE3: 1.2,
     PLANE_STAGE: 0.01,
-    PLANE_SOUNDSCAPE: 0.01,
+    PLANE_POSITIONING: 0.01,
 }
 
 # Sampled from the fixture so exports look native in ArrayCalc's own list.
 PLANE_COLOURS = {
     PLANE_NONE: 0xFFFFFFFF,
-    PLANE_AUDIENCE: 0xFFE8DCDA,
+    PLANE_LISTENING: 0xFFE8DCDA,
     PLANE_SURFACE: 0xFFA1E0AA,
-    3: 0xFFCCCCCC,
+    PLANE_TYPE3: 0xFFCCCCCC,
     PLANE_STAGE: 0xFFC8B4E0,
-    PLANE_SOUNDSCAPE: 0xFF00C0AE,
+    PLANE_POSITIONING: 0xFF00C0AE,
 }
 
 # Every object in the fixture carries this same PrintColor.
@@ -242,7 +249,7 @@ class RoomObject(object):
         self,
         name,
         shape=SHAPE_QUAD,
-        plane_type=PLANE_AUDIENCE,
+        plane_type=PLANE_LISTENING,
         points=None,
         origin=(0.0, 0.0, 0.0),
         rotation=(0.0, 0.0, 0.0),
@@ -586,7 +593,7 @@ def parse_dbacv(xml_text):
         o = RoomObject(
             el.get("Name", "Unnamed"),
             shape=shape,
-            plane_type=int(el.get("PlaneType", PLANE_AUDIENCE)),
+            plane_type=int(el.get("PlaneType", PLANE_LISTENING)),
             points=points,
             origin=vec(el, "Origin", (0.0, 0.0, 0.0)),
             rotation=vec(el, "Rotation", (0.0, 0.0, 0.0)),

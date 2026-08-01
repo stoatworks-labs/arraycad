@@ -21,11 +21,11 @@ const nextId = () => `ifc${++seq}`
  * walking surface, and only a person looking at it can say which.
  */
 const TYPE_SUGGESTIONS: { match: RegExp; planeType: PlaneType }[] = [
-  { match: /IFCSLAB|IFCFLOOR/i, planeType: PlaneType.Audience },
+  { match: /IFCSLAB|IFCFLOOR/i, planeType: PlaneType.Listening },
   { match: /IFCCOVERING|IFCROOF|IFCCEILING/i, planeType: PlaneType.Surface },
   { match: /IFCWALL|IFCCURTAINWALL|IFCRAILING|IFCBEAM|IFCCOLUMN|IFCPLATE/i, planeType: PlaneType.Surface },
   { match: /IFCSTAIR|IFCRAMP/i, planeType: PlaneType.Surface },
-  { match: /IFCFURNI|IFCCHAIR|IFCSEAT/i, planeType: PlaneType.Audience },
+  { match: /IFCFURNI|IFCCHAIR|IFCSEAT/i, planeType: PlaneType.Listening },
 ]
 
 function suggestFor(typeName: string): PlaneType | undefined {

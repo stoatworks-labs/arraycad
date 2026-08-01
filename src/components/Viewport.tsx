@@ -21,11 +21,11 @@ export type CameraPreset = 'iso' | 'plan' | 'section' | 'front'
 
 const PLANE_HEX: Record<number, number> = {
   [PlaneType.None]: 0x8899aa,
-  [PlaneType.Audience]: 0xf0a04b,
+  [PlaneType.Listening]: 0xf0a04b,
   [PlaneType.Surface]: 0x5ec98a,
-  [PlaneType.Unknown3]: 0x999999,
+  [PlaneType.Type3]: 0x999999,
   [PlaneType.Stage]: 0xb07be0,
-  [PlaneType.Soundscape]: 0x00c0ae,
+  [PlaneType.PositioningArea]: 0x00c0ae,
 }
 
 interface Props {

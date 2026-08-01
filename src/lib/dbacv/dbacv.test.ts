@@ -87,7 +87,7 @@ describe('parse', () => {
     const ss = venue.objects[0]
     expect(ss.name).toBe('SOUNDSCAPE')
     expect(ss.shape).toBe(Shape.Quad)
-    expect(ss.planeType).toBe(PlaneType.Soundscape)
+    expect(ss.planeType).toBe(PlaneType.PositioningArea)
     expect(ss.points).toHaveLength(4)
     expect(ss.origin).toEqual({ x: -9.6, y: 0, z: 1.6 })
     expect(ss.points[1]).toEqual({ x: 9.6, y: 5.405, z: 0 })

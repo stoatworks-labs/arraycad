@@ -11,6 +11,24 @@ Do A first. If A fails there is no point in B.
 
 ---
 
+## Round 2 (after the first round trip)
+
+Round 1 found that **every quad was written in the wrong local frame** and ArrayCalc
+silently collapsed each one to zero depth. That is fixed, and both files are regenerated.
+
+**The single thing to check in A: do the rectangles come back as rectangles?** If A01,
+A10–A13, A20–A22 are still 4 × 3 m planes after a save-and-export, the format is settled.
+
+Round 1 also answered these, so they need no further checking: `%.17g` numbers,
+`ParentVenueObjectId`, colours, `ListenerHeight` behaviour, and that triangles, boxes and
+arcs all survive untouched.
+
+**Probe B has never been run** and is where the remaining unknowns are. Its group tests
+were themselves broken in round 1 (hand-written points, same bug), so they would have told
+us nothing. They are now built the same way as everything else.
+
+---
+
 ## The procedure
 
 1. Open the file in ArrayCalc.
@@ -91,7 +109,8 @@ Only open this if A worked.
 | B10 | Group with `Rotation z=45`. Does the bar point **north-east**? If it points along +X, group rotation does **not** compose and this project's assumption is wrong |
 | B20 | Group with `Scaling 2`. Does the 2 × 2 m square become **4 × 4 m**? |
 | B30 | A group inside a group, each with a translation. Do they stack? Also: does a group containing only ONE object survive, or does ArrayCalc dissolve it? |
-| B40 | A quad with all four corners at different heights — genuinely not a plane. Accepted, or corrected? |
+| B40 | A quad with `Rotation x=30`. **Is a tilted plane honoured?** No quad in the reference venue rotates about X or Y, so the converter currently refuses to and splits every sideways-tilted plane into two triangles. If this one comes back tilted, that fallback can go |
+| B41 | A flat control right beside B40, so "did it tilt" is answerable by eye |
 
 ---
 

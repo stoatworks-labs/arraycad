@@ -58,7 +58,7 @@ export function seedDecisions(scene: ImportedScene): Decisions {
   for (const n of flattenNodes(scene.nodes)) {
     out[n.id] = {
       include: n.positions.length > 0,
-      planeType: n.suggestedPlaneType ?? PlaneType.Audience,
+      planeType: n.suggestedPlaneType ?? PlaneType.Listening,
       name: n.name,
     }
   }
@@ -140,7 +140,7 @@ export function useConversion(
         const d = debouncedDecisions[n.id]
         return {
           node: n,
-          planeType: d?.planeType ?? PlaneType.Audience,
+          planeType: d?.planeType ?? PlaneType.Listening,
           include: d?.include ?? false,
           name: d?.name ?? n.name,
         }

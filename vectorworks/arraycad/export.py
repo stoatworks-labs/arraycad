@@ -23,7 +23,7 @@ from __future__ import annotations
 from typing import Dict, List, Optional, Sequence, Tuple
 
 from .dbacv import (
-    PLANE_AUDIENCE,
+    PLANE_LISTENING,
     PLANE_STAGE,
     RoomObject,
     VenueFile,
@@ -64,7 +64,7 @@ class SourceObject(object):
 class ClassRule(object):
     """What to do with everything in one Vectorworks class."""
 
-    def __init__(self, plane_type=PLANE_AUDIENCE, strategy=STRATEGY_AUTO, rectangle=False, include=True):
+    def __init__(self, plane_type=PLANE_LISTENING, strategy=STRATEGY_AUTO, rectangle=False, include=True):
         # type: (int, str, bool, bool) -> None
         self.plane_type = plane_type
         self.strategy = strategy
@@ -131,7 +131,7 @@ def convert_source(source, rule, options, order_start=1):
     found = len(regions)
 
     if strategy == STRATEGY_AUTO:
-        strategy = STRATEGY_TOP if rule.plane_type in (PLANE_AUDIENCE, PLANE_STAGE) else STRATEGY_FACES
+        strategy = STRATEGY_TOP if rule.plane_type in (PLANE_LISTENING, PLANE_STAGE) else STRATEGY_FACES
 
     if strategy == STRATEGY_TOP:
         horizontal = up_facing(regions)

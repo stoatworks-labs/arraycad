@@ -58,11 +58,11 @@ export const DEFAULT_CONVERT: ConvertOptions = {
 /** ArrayCalc's own palette, sampled from the fixture, so exports look native. */
 export const PLANE_COLOURS: Record<number, string> = {
   [PlaneType.None]: '#ffffff',
-  [PlaneType.Audience]: '#e8dcda',
+  [PlaneType.Listening]: '#e8dcda',
   [PlaneType.Surface]: '#a1e0aa',
-  [PlaneType.Unknown3]: '#cccccc',
+  [PlaneType.Type3]: '#cccccc',
   [PlaneType.Stage]: '#c8b4e0',
-  [PlaneType.Soundscape]: '#00c0ae',
+  [PlaneType.PositioningArea]: '#00c0ae',
 }
 
 let seq = 0

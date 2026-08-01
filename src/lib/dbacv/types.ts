@@ -51,52 +51,65 @@ export enum Shape {
  * rather than silently misleading. Correct these once checked against ArrayCalc.
  */
 export enum PlaneType {
-  /** Observed only on groups. */
+  /** VERIFIED groups-only: written on a real object, ArrayCalc coerces it to 1. */
   None = 0,
-  /** Inferred: audience / listening plane. Where ArrayCalc computes coverage. */
-  Audience = 1,
+  /** "Listening" — the only type that keeps a user-set ListenerHeight. */
+  Listening = 1,
   /** Inferred: acoustic surface or obstacle — ceiling, wall, rail, bridge. */
   Surface = 2,
-  /** Not observed in the sample. Meaning unknown. */
-  Unknown3 = 3,
+  /** VERIFIED to exist and be preserved, but its name is unknown. */
+  Type3 = 3,
   /** Inferred: stage / structure. */
   Stage = 4,
-  /** Inferred: Soundscape (En-Scene/En-Space) system plane. */
-  Soundscape = 5,
+  /** VERIFIED "Positioning area" — must be RECTANGULAR or ArrayCalc offers to transform it. */
+  PositioningArea = 5,
 }
 
+/** Back-compat alias: this was called Audience before ArrayCalc named it "Listening". */
+export const AudiencePlaneType = PlaneType.Listening
+
 export const PLANE_TYPES: { code: PlaneType; label: string; verified: boolean; hint: string }[] = [
-  { code: PlaneType.None, label: 'None / group', verified: false, hint: 'Only seen on groups.' },
   {
-    code: PlaneType.Audience,
-    label: 'Audience',
+    code: PlaneType.None,
+    label: 'None / group',
+    verified: true,
+    hint: 'Groups only — on a real object ArrayCalc silently changes it to Listening.',
+  },
+  {
+    code: PlaneType.Listening,
+    label: 'Listening',
     verified: false,
-    hint: 'Seating and standing areas. Coverage is computed here.',
+    hint: 'Seating and standing areas. The only type with a settable listener height.',
   },
   {
     code: PlaneType.Surface,
     label: 'Surface',
     verified: false,
-    hint: 'Ceilings, walls, rails, bridges — geometry that is not listened to.',
+    hint: 'Ceilings, walls, rails, bridges. Listener height is forced to 0.01 m.',
   },
-  { code: PlaneType.Unknown3, label: 'Type 3', verified: false, hint: 'Not seen in any sample.' },
+  {
+    code: PlaneType.Type3,
+    label: 'Type 3',
+    verified: false,
+    hint: 'A real type ArrayCalc accepts and preserves, but its name is not known.',
+  },
   { code: PlaneType.Stage, label: 'Stage', verified: false, hint: 'Stage deck, proscenium.' },
   {
-    code: PlaneType.Soundscape,
-    label: 'Soundscape',
-    verified: false,
-    hint: 'The En-Scene/En-Space object plane.',
+    code: PlaneType.PositioningArea,
+    label: 'Positioning area',
+    verified: true,
+    hint: 'The Soundscape plane. MUST be rectangular — use the Rectangle fit for this one.',
   },
 ]
 
 /** Default ListenerHeight in metres, by inferred plane type. Matches the sample. */
 export const DEFAULT_LISTENER_HEIGHT: Record<number, number> = {
   [PlaneType.None]: 1.2,
-  [PlaneType.Audience]: 1.2,
+  [PlaneType.Listening]: 1.2,
   [PlaneType.Surface]: 0.01,
-  [PlaneType.Unknown3]: 1.2,
+  [PlaneType.Type3]: 1.2,
   [PlaneType.Stage]: 0.01,
-  [PlaneType.Soundscape]: 0.01,
+  [PlaneType.PositioningArea]: 0.01,
 }
 
 /** Attributes unique to Shape.Arc. All present-or-all-absent in the sample. */

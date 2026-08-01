@@ -22,14 +22,15 @@ checked by looking at it in ArrayCalc rather than by measuring.
     python3 scripts/make_probe_venue.py [output_dir]
 """
 
+import math
 import os
 import sys
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "vectorworks"))
 
 from arraycad.dbacv import (  # noqa: E402
-    PLANE_AUDIENCE,
-    PLANE_SOUNDSCAPE,
+    PLANE_LISTENING,
+    PLANE_POSITIONING,
     PLANE_STAGE,
     PLANE_SURFACE,
     SHAPE_ARC,
@@ -39,7 +40,7 @@ from arraycad.dbacv import (  # noqa: E402
 )
 
 
-def quad(name, x0, y0, x1, y1, z=0.0, plane_type=PLANE_AUDIENCE, rake=0.0, order=1):
+def quad(name, x0, y0, x1, y1, z=0.0, plane_type=PLANE_LISTENING, rake=0.0, order=1):
     """An axis-aligned quad. `rake` lifts the two far-X corners, as ArrayCalc rakes seating."""
     pts = [
         (x0, y0, z),
@@ -48,6 +49,34 @@ def quad(name, x0, y0, x1, y1, z=0.0, plane_type=PLANE_AUDIENCE, rake=0.0, order
         (x0, y1, z),
     ]
     return RoomObject.from_face(name, pts, plane_type, order)
+
+
+def bar(name, cx, cy, heading_deg, length, width, plane_type=PLANE_LISTENING, order=1, z=0.0):
+    """A long thin rectangle starting at (cx,cy) and running along `heading_deg`.
+
+    Built from WORLD points and canonicalised, never by hand. Hand-written points are how
+    the first probe wasted a round trip: every one of them violated ArrayCalc's local
+    frame and came back flattened, so the questions they were asking went unanswered.
+    """
+    a = math.radians(heading_deg)
+    dx, dy = math.cos(a), math.sin(a)
+    px, py = -dy * width / 2.0, dx * width / 2.0
+    near_l = (cx + px, cy + py, z)
+    near_r = (cx - px, cy - py, z)
+    far_l = (cx + px + dx * length, cy + py + dy * length, z)
+    far_r = (cx - px + dx * length, cy - py + dy * length, z)
+    return RoomObject.from_face(name, [near_l, far_l, far_r, near_r], plane_type, order)
+
+
+def square(name, cx, cy, size, plane_type=PLANE_LISTENING, order=1, z=0.0):
+    """A square centred on (cx, cy), from world points."""
+    h = size / 2.0
+    return RoomObject.from_face(
+        name,
+        [(cx - h, cy - h, z), (cx + h, cy - h, z), (cx + h, cy + h, z), (cx - h, cy + h, z)],
+        plane_type,
+        order,
+    )
 
 
 def box(name, x0, y0, z0, x1, y1, z1, plane_type=PLANE_SURFACE, order=1):
@@ -75,7 +104,7 @@ def build_a():
         RoomObject.from_face(
             "A03 TRI 4x3 at y8..11 z0",
             [(0.0, 8.0, 0.0), (4.0, 8.0, 0.0), (0.0, 11.0, 0.0)],
-            PLANE_AUDIENCE,
+            PLANE_LISTENING,
         )
     )
     add(box("A04 BOX 4x3x1.5 at y4..7 z0..1.5", 0, 4, 0, 4, 7, 1.5))
@@ -86,7 +115,7 @@ def build_a():
     arc = RoomObject(
         "A05 ARC r10-14 sweep0-45 rise0-1 at origin(0,0,0)",
         shape=SHAPE_ARC,
-        plane_type=PLANE_AUDIENCE,
+        plane_type=PLANE_LISTENING,
         origin=(0.0, 0.0, 0.0),
         arc={
             "inner_radius_a": 10.0,
@@ -102,28 +131,24 @@ def build_a():
     add(arc)
 
     # --- Object rotation (observed: the sample has Shape=1 with Rotation z=-90) ------
-    rot = quad("A06 QUAD rot z45 - should point NE in plan", 0, 0, 6, 0.5, 0.0)
-    rot.origin = (10.0, 16.0, 0.0)
-    rot.points = [(0.0, -0.25, 0.0), (6.0, -0.25, 0.0), (6.0, 0.25, 0.0), (0.0, 0.25, 0.0)]
-    rot.rotation = (0.0, 0.0, 45.0)
-    add(rot)
+    add(bar("A06 BAR 6x0.5 from (10,16) heading 45 - should point NE", 10, 16, 45, 6, 0.5))
 
     # --- PlaneType probe ----------------------------------------------------
     # Identical geometry, only PlaneType differs. Whatever ArrayCalc calls these in its
     # own UI is the answer this whole project is missing.
     for i, (code, label) in enumerate(
         [
-            (PLANE_AUDIENCE, "PT1"),
+            (PLANE_LISTENING, "PT1"),
             (PLANE_SURFACE, "PT2"),
             (PLANE_STAGE, "PT4"),
-            (PLANE_SOUNDSCAPE, "PT5"),
+            (PLANE_POSITIONING, "PT5"),
         ]
     ):
         y = 12 - i * 4
         add(quad("A1{} {} - what does ArrayCalc call this".format(i, label), 8, y, 12, y + 3, 0.0, code))
 
     # --- ListenerHeight: independent, or derived from PlaneType? ------------
-    lh1 = quad("A20 PT1 with ListenerHeight 0.77 - kept or reset to 1.2", 16, 16, 20, 19, 0.0, PLANE_AUDIENCE)
+    lh1 = quad("A20 PT1 with ListenerHeight 0.77 - kept or reset to 1.2", 16, 16, 20, 19, 0.0, PLANE_LISTENING)
     lh1.listener_height = 0.77
     add(lh1)
 
@@ -145,13 +170,13 @@ def build_a():
         RoomObject.from_face(
             "A30a child local(0,0) - should sit at world (2,-8)",
             [(0.0, -1.5, 0.0), (4.0, -1.5, 0.0), (4.0, 1.5, 0.0), (0.0, 1.5, 0.0)],
-            PLANE_AUDIENCE,
+            PLANE_LISTENING,
             31,
         ),
         RoomObject.from_face(
             "A30b child local(0,-4) - should sit at world (2,-12)",
             [(0.0, -5.5, 0.0), (4.0, -5.5, 0.0), (4.0, -2.5, 0.0), (0.0, -2.5, 0.0)],
-            PLANE_AUDIENCE,
+            PLANE_LISTENING,
             32,
         ),
     ]
@@ -179,57 +204,43 @@ def build_b():
     add(quad("B02 PlaneType 3 - NEVER SEEN, what is it", 0, 12, 4, 15, 0.0, 3))
 
     # --- Group rotation: THE untested inference ------------------------------
-    # A 6 m bar. If group rotation composes onto children it points NE in plan; if the
-    # group transform is ignored it points due +X. Unmistakable either way.
-    bar = RoomObject(
-        "B10a bar local +X - points NE if group rot composes",
-        plane_type=PLANE_SURFACE,
-        origin=(0.0, 0.0, 0.0),
-        points=[(0.0, -0.25, 0.0), (6.0, -0.25, 0.0), (6.0, 0.25, 0.0), (0.0, 0.25, 0.0)],
-        order_index=11,
+    # A 6 m bar lying along the group's local +X. If group rotation composes onto its
+    # children it points NE in plan; if the group transform is ignored it points due +X.
+    # Unmistakable either way — but ONLY if the bar itself survives, which is why it is
+    # canonicalised rather than hand-written.
+    g_rot = RoomObject.group(
+        "B10 GROUP rot z45 at (10,8,0)",
+        101,
+        [
+            bar("B10a bar along group +X - points NE if group rot composes", 0, 0, 0, 6, 0.5, PLANE_SURFACE, 11),
+            square("B10b marker at group local (6,0) - moves too if origins rotate", 6, 0, 1.0, PLANE_STAGE, 12),
+        ],
     )
-    marker = RoomObject(
-        "B10b marker at local(6,0) - lands NE too if origins rotate",
-        plane_type=PLANE_STAGE,
-        origin=(6.0, 0.0, 0.0),
-        points=[(-0.5, -0.5, 0.0), (0.5, -0.5, 0.0), (0.5, 0.5, 0.0), (-0.5, 0.5, 0.0)],
-        order_index=12,
-    )
-    g_rot = RoomObject.group("B10 GROUP rot z45 at (10,8,0)", 101, [bar, marker])
     g_rot.origin = (10.0, 8.0, 0.0)
     g_rot.rotation = (0.0, 0.0, 45.0)
     n[0] += 1
     objects.append(g_rot)
 
     # --- Group scaling -------------------------------------------------------
-    small = RoomObject(
-        "B20a 2x2 square - becomes 4x4 if group scale 2 composes",
-        plane_type=PLANE_AUDIENCE,
-        origin=(0.0, 0.0, 0.0),
-        points=[(-1.0, -1.0, 0.0), (1.0, -1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, 1.0, 0.0)],
-        order_index=21,
+    g_scale = RoomObject.group(
+        "B20 GROUP scaling 2x at (10,-4,0)",
+        102,
+        [
+            square("B20a 2x2 square - becomes 4x4 if group scale composes", 0, 0, 2.0, PLANE_LISTENING, 21),
+            square("B20b 2x2 square at group local (6,0)", 6, 0, 2.0, PLANE_SURFACE, 22),
+        ],
     )
-    ref = RoomObject(
-        "B20b 2x2 reference, same group",
-        plane_type=PLANE_SURFACE,
-        origin=(6.0, 0.0, 0.0),
-        points=[(-1.0, -1.0, 0.0), (1.0, -1.0, 0.0), (1.0, 1.0, 0.0), (-1.0, 1.0, 0.0)],
-        order_index=22,
-    )
-    g_scale = RoomObject.group("B20 GROUP scaling 2x at (10,-4,0)", 102, [small, ref])
     g_scale.origin = (10.0, -4.0, 0.0)
     g_scale.scaling = (2.0, 2.0, 2.0)
     n[0] += 1
     objects.append(g_scale)
 
     # --- Nested groups -------------------------------------------------------
-    inner_child = RoomObject.from_face(
-        "B30a inner child - two levels of translation should stack",
-        [(-1.5, -1.5, 0.0), (1.5, -1.5, 0.0), (1.5, 1.5, 0.0), (-1.5, 1.5, 0.0)],
-        PLANE_AUDIENCE,
-        31,
+    inner = RoomObject.group(
+        "B30-inner GROUP origin(0,-4,0)",
+        103,
+        [square("B30a inner child - two translations should stack", 0, 0, 3.0, PLANE_LISTENING, 31)],
     )
-    inner = RoomObject.group("B30-inner GROUP origin(0,-4,0)", 103, [inner_child])
     inner.origin = (0.0, -4.0, 0.0)
     # A group of one is unusual; the sample never has one. Worth knowing if it survives.
     outer = RoomObject.group("B30 GROUP origin(10,-12,0) containing a group", 104, [inner])
@@ -237,17 +248,17 @@ def build_b():
     n[0] += 1
     objects.append(outer)
 
-    # --- Non-planar quad taken further --------------------------------------
-    # The sample rakes by 0.4 m. This one warps all four corners to different heights,
-    # which is geometrically not a plane at all.
-    warp = RoomObject(
-        "B40 QUAD fully warped, no two corners level",
-        plane_type=PLANE_AUDIENCE,
-        origin=(20.0, 8.0, 0.0),
-        points=[(0.0, 0.0, 0.0), (4.0, 0.0, 0.5), (4.0, 3.0, 1.5), (0.0, 3.0, 0.4)],
-        order_index=41,
-    )
-    add(warp)
+    # --- Rotation about X: can a plane be tilted without splitting it? -------
+    # No quad in the reference venue rotates about X or Y, so the converter refuses to
+    # use it and splits any sideways-tilted plane into two triangles. If ArrayCalc
+    # honours an X rotation, that fallback can go and tilted planes stay single objects.
+    tilt = square("B40 QUAD with Rotation x=30 - is a tilted plane honoured", 0, 0, 4.0, PLANE_LISTENING, 41)
+    tilt.origin = (20.0, 8.0, 2.0)
+    tilt.rotation = (30.0, 0.0, 0.0)
+    add(tilt)
+
+    # A flat control right beside it, so "did it tilt" is answerable by eye.
+    add(square("B41 QUAD flat control beside B40", 20, 2, 4.0, PLANE_LISTENING, 42))
 
     return objects
 

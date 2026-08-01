@@ -15,7 +15,7 @@ import unittest
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
-from arraycad.dbacv import PLANE_AUDIENCE, SHAPE_BOX, RoomObject  # noqa: E402
+from arraycad.dbacv import PLANE_LISTENING, SHAPE_BOX, RoomObject  # noqa: E402
 from arraycad.geom import (  # noqa: E402
     Basis,
     as_box,
@@ -221,7 +221,7 @@ class TestVenueSpecific(unittest.TestCase):
 
     def test_as_box_makes_one_room_object_not_six(self):
         bottom, top = as_box(box_tris(4, 3, 2))
-        o = RoomObject.from_box("Bridge", bottom, top, PLANE_AUDIENCE)
+        o = RoomObject.from_box("Bridge", bottom, top, PLANE_LISTENING)
         self.assertEqual(o.shape, SHAPE_BOX)
         self.assertEqual(len(o.points), 8)
 
@@ -268,7 +268,7 @@ class TestFaces(unittest.TestCase):
             (math.cos(i * math.pi / 3) * 5, math.sin(i * math.pi / 3) * 5, 0) for i in range(6)
         ]
         for f in fan_quads(hexagon):
-            self.assertIsNotNone(RoomObject.from_face("f", f, PLANE_AUDIENCE))
+            self.assertIsNotNone(RoomObject.from_face("f", f, PLANE_LISTENING))
 
     def test_triangulate_polygon_round_trips_through_the_region_finder(self):
         poly = [(0, 0, 0), (10, 0, 0), (10, 6, 0), (0, 6, 0)]

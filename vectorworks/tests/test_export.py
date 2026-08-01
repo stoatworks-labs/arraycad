@@ -13,7 +13,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from arraycad.dbacv import (  # noqa: E402
-    PLANE_AUDIENCE,
+    PLANE_LISTENING,
     PLANE_STAGE,
     PLANE_SURFACE,
     SHAPE_BOX,
@@ -77,7 +77,7 @@ class TestStrategies(unittest.TestCase):
         # and identical |normal.z|, so picking "the largest horizontal face" returned
         # the FLOOR of the seating block. Height is the only thing that means "top".
         src = SourceObject("STALLS", box_tris(20, 12, 1.5), "Seating")
-        objs, _, _ = convert_source(src, ClassRule(PLANE_AUDIENCE, STRATEGY_TOP), Options())
+        objs, _, _ = convert_source(src, ClassRule(PLANE_LISTENING, STRATEGY_TOP), Options())
         self.assertEqual(len(objs), 1)
         world_z = [p[2] + objs[0].origin[2] for p in objs[0].points]
         for z in world_z:
@@ -93,7 +93,7 @@ class TestStrategies(unittest.TestCase):
                 step[j + 1] += i * 2  # move each step back in y
             tris.extend(step)
         src = SourceObject("Stepped", tris, "Seating")
-        objs, _, warnings = convert_source(src, ClassRule(PLANE_AUDIENCE, STRATEGY_TOP), Options())
+        objs, _, warnings = convert_source(src, ClassRule(PLANE_LISTENING, STRATEGY_TOP), Options())
         self.assertEqual(len(objs), 1)
         self.assertTrue(
             any("stepped seating" in w for w in warnings),
@@ -113,7 +113,7 @@ class TestStrategies(unittest.TestCase):
             if abs(tris[i + 2] - 2.0) < 1e-9 and tris[i + 1] > 4:
                 tris[i + 2] = 3.0
         src = SourceObject("Raked stalls", tris, "Seating")
-        objs, _, _ = convert_source(src, ClassRule(PLANE_AUDIENCE), Options())
+        objs, _, _ = convert_source(src, ClassRule(PLANE_LISTENING), Options())
         self.assertEqual(len(objs), 1)
         zs = [p[2] + objs[0].origin[2] for p in objs[0].points]
         self.assertGreater(max(zs), 2.5)
@@ -137,16 +137,16 @@ class TestStrategies(unittest.TestCase):
     def test_top_strategy_falls_back_and_warns_with_no_upward_face(self):
         wall = [0, 0, 0, 10, 0, 0, 10, 0, 5, 0, 0, 0, 10, 0, 5, 0, 0, 5]
         src = SourceObject("Wall", wall, "Walls")
-        objs, _, warnings = convert_source(src, ClassRule(PLANE_AUDIENCE, STRATEGY_TOP), Options())
+        objs, _, warnings = convert_source(src, ClassRule(PLANE_LISTENING, STRATEGY_TOP), Options())
         self.assertTrue(any("no upward-facing surface" in w for w in warnings))
         self.assertGreater(len(objs), 0)
 
     def test_rectangle_fit_collapses_a_ragged_outline(self):
         tris = quad_xy(10, 5) + [10, 0, 0, 12, 2.5, 0, 10, 5, 0]
         src = SourceObject("Ragged", tris, "Seating")
-        plain, _, _ = convert_source(src, ClassRule(PLANE_AUDIENCE, STRATEGY_FACES), Options())
+        plain, _, _ = convert_source(src, ClassRule(PLANE_LISTENING, STRATEGY_FACES), Options())
         rect, _, _ = convert_source(
-            src, ClassRule(PLANE_AUDIENCE, STRATEGY_FACES, rectangle=True), Options()
+            src, ClassRule(PLANE_LISTENING, STRATEGY_FACES, rectangle=True), Options()
         )
         self.assertEqual(len(rect), 1)
         self.assertEqual(rect[0].shape, SHAPE_QUAD)
@@ -178,7 +178,7 @@ class TestRun(unittest.TestCase):
 
     def rules(self):
         return {
-            "Seating": ClassRule(PLANE_AUDIENCE, STRATEGY_TOP),
+            "Seating": ClassRule(PLANE_LISTENING, STRATEGY_TOP),
             "Staging": ClassRule(PLANE_STAGE, STRATEGY_TOP),
             "Rigging": ClassRule(PLANE_SURFACE, STRATEGY_BOX),
             "Lighting": ClassRule(include=False),
@@ -194,7 +194,7 @@ class TestRun(unittest.TestCase):
     def test_plane_types_follow_the_class_rules(self):
         result = run(self.sources(), self.rules())
         by_name = dict((o.name, o) for o in result.objects)
-        self.assertEqual(by_name["STALLS"].plane_type, PLANE_AUDIENCE)
+        self.assertEqual(by_name["STALLS"].plane_type, PLANE_LISTENING)
         self.assertEqual(by_name["STAGE"].plane_type, PLANE_STAGE)
         self.assertEqual(by_name["BRIDGE"].plane_type, PLANE_SURFACE)
         self.assertEqual(by_name["STALLS"].listener_height, 1.2)

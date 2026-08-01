@@ -13,11 +13,11 @@ import type { Decisions } from '../state.ts'
 
 const PLANE_DOT: Record<number, string> = {
   [PlaneType.None]: '#8899aa',
-  [PlaneType.Audience]: '#f0a04b',
+  [PlaneType.Listening]: '#f0a04b',
   [PlaneType.Surface]: '#5ec98a',
-  [PlaneType.Unknown3]: '#999999',
+  [PlaneType.Type3]: '#999999',
   [PlaneType.Stage]: '#b07be0',
-  [PlaneType.Soundscape]: '#00c0ae',
+  [PlaneType.PositioningArea]: '#00c0ae',
 }
 
 interface Props {

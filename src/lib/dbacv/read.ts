@@ -91,7 +91,7 @@ function readRoomObject(el: Element): RoomObject {
     id: makeId(),
     name: el.getAttribute('Name') ?? 'Unnamed',
     shape,
-    planeType: num(el, 'PlaneType', PlaneType.Audience) as PlaneType,
+    planeType: num(el, 'PlaneType', PlaneType.Listening) as PlaneType,
     listenerHeight: num(el, 'ListenerHeight', 1.2),
     ...(lhRaw !== null && !lhFinite ? { listenerHeightRaw: lhRaw } : {}),
     enabled: bool(el, 'Enabled', true),

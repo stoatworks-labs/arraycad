@@ -69,7 +69,7 @@ function extent(pts: { x: number; y: number; z: number }[]) {
   return { x: on('x'), y: on('y'), z: on('z') }
 }
 
-function convertAll(nodes: ImportedNode[], planeType = PlaneType.Audience, opts = DEFAULT_CONVERT) {
+function convertAll(nodes: ImportedNode[], planeType = PlaneType.Listening, opts = DEFAULT_CONVERT) {
   const leaves = flattenNodes(nodes).filter((n) => n.positions.length > 0)
   return convertNodes(
     leaves.map((n) => ({
@@ -133,7 +133,7 @@ describe('venue -> planes -> venue', () => {
     const walk = (os: typeof reparsed.objects) => {
       for (const o of os) {
         if (o.shape !== Shape.Group) {
-          if (o.planeType === PlaneType.Audience) expect(o.listenerHeight).toBe(1.2)
+          if (o.planeType === PlaneType.Listening) expect(o.listenerHeight).toBe(1.2)
           if (o.planeType === PlaneType.Surface) expect(o.listenerHeight).toBe(0.01)
         }
         walk(o.children)
@@ -162,7 +162,7 @@ describe('venue -> planes -> venue', () => {
     const half = convertNodes(
       leaves.map((n, i) => ({
         node: n,
-        planeType: PlaneType.Audience,
+        planeType: PlaneType.Listening,
         include: i % 2 === 0,
         name: n.name,
       })),
@@ -173,7 +173,7 @@ describe('venue -> planes -> venue', () => {
   })
 
   it('rectangle fit never emits more objects than following the outline', () => {
-    const rect = convertAll(scene.nodes, PlaneType.Audience, { ...DEFAULT_CONVERT, fit: 'rect' })
+    const rect = convertAll(scene.nodes, PlaneType.Listening, { ...DEFAULT_CONVERT, fit: 'rect' })
     expect(rect.stats.objectsOut).toBeLessThanOrEqual(result.stats.objectsOut)
     // One region becomes one canonical quad, or two triangles when the rectangle has no
     // level edge for ArrayCalc's local frame to sit on — a rectangle on a compound

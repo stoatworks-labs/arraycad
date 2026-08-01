@@ -272,7 +272,7 @@ describe('transform', () => {
 
 describe('convertNode', () => {
   it('turns a flat rectangle into a single quad RoomObject', () => {
-    const r = convertNode(node(quadXY(10, 5)), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node(quadXY(10, 5)), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(1)
     expect(r.objects[0].shape).toBe(Shape.Quad)
     expect(r.objects[0].points).toHaveLength(4)
@@ -282,7 +282,7 @@ describe('convertNode', () => {
   it('puts a quad in ArrayCalc’s canonical frame, NOT around the centroid', () => {
     // This was the bug the ArrayCalc round trip caught. A centroid origin round-trips
     // fine through our own reader and is silently collapsed to zero depth on import.
-    const r = convertNode(node(quadXY(10, 6)), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node(quadXY(10, 6)), PlaneType.Listening, DEFAULT_CONVERT)
     const o = r.objects[0]
     expect(o.shape).toBe(Shape.Quad)
     expect(o.points[0].x).toBe(0)
@@ -314,15 +314,15 @@ describe('convertNode', () => {
   it('rect fit collapses a ragged outline to exactly one quad', () => {
     // A rectangle with a jagged edge: exact fit needs several faces, rect fit needs one.
     const tris = [...quadXY(10, 5), 10, 0, 0, 12, 2.5, 0, 10, 5, 0]
-    const exact = convertNode(node(tris), PlaneType.Audience, DEFAULT_CONVERT)
-    const rect = convertNode(node(tris), PlaneType.Audience, { ...DEFAULT_CONVERT, fit: 'rect' })
+    const exact = convertNode(node(tris), PlaneType.Listening, DEFAULT_CONVERT)
+    const rect = convertNode(node(tris), PlaneType.Listening, { ...DEFAULT_CONVERT, fit: 'rect' })
     expect(rect.objects).toHaveLength(1)
     expect(rect.objects[0].shape).toBe(Shape.Quad)
     expect(exact.objects.length).toBeGreaterThanOrEqual(1)
   })
 
   it('assigns the listener height that matches the plane type', () => {
-    const aud = convertNode(node(quadXY(4, 4)), PlaneType.Audience, DEFAULT_CONVERT)
+    const aud = convertNode(node(quadXY(4, 4)), PlaneType.Listening, DEFAULT_CONVERT)
     const srf = convertNode(node(quadXY(4, 4)), PlaneType.Surface, DEFAULT_CONVERT)
     expect(aud.objects[0].listenerHeight).toBe(1.2)
     expect(srf.objects[0].listenerHeight).toBe(0.01)
@@ -338,7 +338,7 @@ describe('convertNode', () => {
   })
 
   it('handles an empty node without throwing', () => {
-    const r = convertNode(node([]), PlaneType.Audience, DEFAULT_CONVERT)
+    const r = convertNode(node([]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(0)
   })
 })

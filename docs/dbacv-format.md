@@ -87,8 +87,22 @@ Child elements, in order: `Origin`, `Rotation`, `Scaling`, then `P1`…`Pn`, eac
 **A `Shape=1` quad must be written in ArrayCalc's own local frame.** This was confirmed
 the hard way: a probe venue was written with quads whose origin was the centroid and whose
 points were spread symmetrically around it — the obvious encoding, which round-trips
-perfectly through this project's own reader. **ArrayCalc 12.8.2 imported every one of them
-and collapsed it to zero depth.** A 4 × 3 m plane became a 3 m line. No error was shown.
+perfectly through this project's own reader. **ArrayCalc 12.8.2 collapsed them to zero
+depth.** A 4 × 3 m plane became a 3 m line, with no error shown.
+
+**And it does not fail consistently, which is worse.** A second probe showed a
+non-canonical quad survives untouched until something makes ArrayCalc re-write it:
+
+| Situation | Non-canonical quad |
+|---|---|
+| Top level, nothing touches it | **survives** |
+| Under a group with identity transform | **survives** |
+| Under a group with a rotation or a scale | **destroyed** |
+| After a plane-type "transform the plane" dialog | **destroyed** |
+| Genuinely warped (no two corners level) | **destroyed** |
+
+So a file can import looking perfect and lose its geometry later, when the user groups
+something or changes a plane type. Writing canonical is the only safe option.
 
 The real form, matching all 26 quads in the reference venue and reproduced exactly by
 `canonicalQuad()`:
@@ -145,10 +159,10 @@ So **`PlaneType 5` is a "Positioning area"** and one of the other types is calle
 
 | Code | Status | Meaning | Evidence |
 |---|---|---|---|
-| 0 | inferred | none / group | Only ever on groups. |
+| 0 | **VERIFIED groups-only** | none / group | Written on a real object, ArrayCalc **silently coerces it to 1**. Valid only on groups. |
 | 1 | **strongly supported** | **Listening** | All the seating blocks. The ONLY type that keeps a user-set `ListenerHeight` (see §5a). |
 | 2 | inferred | Surface / obstacle | Ceilings, rails, bridges. `ListenerHeight` forced to 0.01. |
-| 3 | **unknown** | — | Not present in any sample. Still untested. |
+| 3 | **VERIFIED to exist** | **name unknown** | Never appears in the reference venue, but a probe wrote it and ArrayCalc **kept it as 3**, geometry intact. It is a real type; what it is called is still unknown. |
 | 4 | inferred | Stage | `STAGE`, `STAGE - FRONT`, the three `PROS -` objects. `ListenerHeight` forced to 0.01. |
 | 5 | **VERIFIED** | **Positioning area** | Named by ArrayCalc's own dialog. Must be a **rectangle**. En-Scene teal `#00C0AE`. |
 
@@ -233,8 +247,22 @@ and exported. Results:
 | Do `Shape=2` arcs survive? | **Yes, byte-identical.** |
 | Do centroid-framed quads survive? | **NO — every one collapsed to zero depth.** See §4. |
 
-Still open, pending a second probe: what `PlaneType 3` is, whether group **rotation** and
-**scaling** compose onto children, and whether a group containing a single object survives.
+### A second probe (untested constructs) added:
+
+| Question | Answer |
+|---|---|
+| Is `PlaneType 0` valid on a real object? | **No** — silently coerced to 1. Groups only. |
+| Does `PlaneType 3` exist? | **Yes.** Written and returned as 3, geometry intact. Name still unknown. |
+| Are group `Origin`/`Rotation`/`Scaling` preserved? | **Yes, all three, unchanged.** |
+| Are group transforms baked into children? | **No.** Children stay in group-local coordinates, so the hierarchy is real. |
+| Does a group containing ONE object survive? | **Yes** — not dissolved. |
+| Do nested groups survive? | **Yes.** |
+| Does the DXF export carry venue geometry? | **No.** It is device-only; with no loudspeakers placed the ENTITIES section is empty. |
+
+Still open: whether group rotation and scaling are actually *applied* to children when
+ArrayCalc draws them. The transforms are preserved as a hierarchy and children of a
+transformed group are demonstrably re-processed on import, which is strong circumstantial
+evidence, but only looking at the screen settles it.
 
 ## 9. What this project does NOT know
 
