@@ -1,0 +1,25 @@
+# Cloudflare deployment for Venue Forge.
+#
+# A static-assets-only Worker: no server code. The fleet does NOT use Cloudflare
+# Pages — `pages_build_output_dir` fails here with "Could not detect a directory
+# containing static files", which reads like a missing build step and is really
+# the wrong config key. Same shape as blend-calc, pixel-peeker and aspect-calc.
+#
+# Build command in the Cloudflare project:
+#
+#   npm ci && npm run build
+#
+# `public/_headers` is copied into dist/ by Vite and carries the CSP and the
+# immutable-cache rule for hashed assets; the assets runtime honours it.
+#
+# The CSP here needs 'wasm-unsafe-eval' that the other fleet SPAs do not: web-ifc
+# instantiates a WebAssembly module for IFC parsing. Without it IFC import fails
+# with a CSP violation and nothing else does, so it looks like an IFC bug.
+#
+# `name` must match the Cloudflare project.
+
+name = "venue-forge"
+compatibility_date = "2026-07-30"
+
+[assets]
+directory = "./dist"

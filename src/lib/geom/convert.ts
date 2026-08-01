@@ -1,0 +1,231 @@
+/**
+ * The conversion pipeline: imported nodes -> ArrayCalc RoomObjects.
+ *
+ *   transform -> weld -> coplanar regions -> boundary -> simplify -> faces -> RoomObjects
+ *
+ * Each imported node becomes one ArrayCalc group holding the planes recovered from it, so
+ * the CAD object tree survives into the venue file and the user's pruning decisions map
+ * onto names they recognise.
+ */
+
+import {
+  type RoomObject,
+  type Vec3,
+  DEFAULT_LISTENER_HEIGHT,
+  PlaneType,
+  Shape,
+  cssToArgb,
+} from '../dbacv/types.ts'
+import type { ImportedNode } from '../import/types.ts'
+import { type PlanarizeOptions, DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
+import {
+  type Pt2,
+  boundaryLoops,
+  dropCollinear,
+  minAreaRect,
+  simplifyClosed,
+  toFaces,
+} from './polygon.ts'
+import { type TransformOptions, applyTransform } from './transform.ts'
+import { planeBasis, toPlane2D } from './vec.ts'
+
+/** How a region's outline is turned into ArrayCalc geometry. */
+export type FitMode =
+  /** Keep the outline, decomposed into quads and triangles. Faithful, more objects. */
+  | 'exact'
+  /** Replace the outline with its minimum-area enclosing rectangle. One quad, always. */
+  | 'rect'
+
+export interface ConvertOptions {
+  transform: TransformOptions
+  planarize: PlanarizeOptions
+  /** Metres. Douglas-Peucker tolerance on the recovered outline. */
+  simplifyTolerance: number
+  fit: FitMode
+  /** Cap on RoomObjects emitted per node, largest regions first. 0 means no cap. */
+  maxObjectsPerNode: number
+}
+
+export const DEFAULT_CONVERT: ConvertOptions = {
+  transform: { unitsPerMetre: 1, upAxis: 'z', headingDeg: 0, offset: { x: 0, y: 0, z: 0 }, flipX: false },
+  planarize: DEFAULT_PLANARIZE,
+  simplifyTolerance: 0.05,
+  fit: 'exact',
+  maxObjectsPerNode: 0,
+}
+
+/** ArrayCalc's own palette, sampled from the fixture, so exports look native. */
+export const PLANE_COLOURS: Record<number, string> = {
+  [PlaneType.None]: '#ffffff',
+  [PlaneType.Audience]: '#e8dcda',
+  [PlaneType.Surface]: '#a1e0aa',
+  [PlaneType.Unknown3]: '#cccccc',
+  [PlaneType.Stage]: '#c8b4e0',
+  [PlaneType.Soundscape]: '#00c0ae',
+}
+
+let seq = 0
+const nextId = () => `gen${++seq}`
+
+function baseObject(name: string, planeType: PlaneType, orderIndex: number): RoomObject {
+  return {
+    id: nextId(),
+    name,
+    shape: Shape.Quad,
+    planeType,
+    listenerHeight: DEFAULT_LISTENER_HEIGHT[planeType] ?? 1.2,
+    enabled: true,
+    locked: false,
+    transparent: false,
+    color: cssToArgb(PLANE_COLOURS[planeType] ?? '#cccccc'),
+    // The fixture uses this same orange for PrintColor on every single object.
+    printColor: 4294945280,
+    orderIndex,
+    origin: { x: 0, y: 0, z: 0 },
+    rotation: { x: 0, y: 0, z: 0 },
+    scaling: { x: 1, y: 1, z: 1 },
+    points: [],
+    children: [],
+  }
+}
+
+/**
+ * Build one RoomObject from a face's world-space points.
+ *
+ * Origin is the face centroid and Rotation is left at zero, with the points carried as
+ * world-minus-origin offsets. ArrayCalc's own files do use non-zero Rotation, but it is
+ * not required: the sample proves points need not even be planar (seating is raked by
+ * pushing P2/P3 up in z), so an axis-aligned local frame is always expressible. Solving
+ * for a rotation that the file does not need would only add a way to be subtly wrong.
+ */
+function faceToObject(points: Vec3[], name: string, planeType: PlaneType, order: number): RoomObject | null {
+  if (points.length !== 3 && points.length !== 4) return null
+  const o = baseObject(name, planeType, order)
+  const cx = points.reduce((s, p) => s + p.x, 0) / points.length
+  const cy = points.reduce((s, p) => s + p.y, 0) / points.length
+  const cz = points.reduce((s, p) => s + p.z, 0) / points.length
+  o.origin = { x: cx, y: cy, z: cz }
+  o.shape = points.length === 3 ? Shape.Triangle : Shape.Quad
+  o.points = points.map((p) => ({ x: p.x - cx, y: p.y - cy, z: p.z - cz }))
+  return o
+}
+
+export interface ConvertStats {
+  trianglesIn: number
+  regionsFound: number
+  objectsOut: number
+  regionsDropped: number
+}
+
+export interface ConvertResult {
+  objects: RoomObject[]
+  stats: ConvertStats
+  warnings: string[]
+}
+
+/** Convert a single imported node's triangle soup into RoomObjects. */
+export function convertNode(
+  node: ImportedNode,
+  planeType: PlaneType,
+  opts: ConvertOptions,
+): { objects: RoomObject[]; stats: ConvertStats; warnings: string[] } {
+  const warnings: string[] = []
+  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0 }
+
+  const positions = applyTransform(node.positions, opts.transform)
+  stats.trianglesIn = positions.length / 9
+  if (stats.trianglesIn === 0) return { objects: [], stats, warnings }
+
+  const mesh = weld(positions, opts.planarize.weldTolerance)
+  let regions = findCoplanarRegions(mesh, opts.planarize)
+  stats.regionsFound = regions.length
+
+  if (opts.maxObjectsPerNode > 0 && regions.length > opts.maxObjectsPerNode) {
+    stats.regionsDropped = regions.length - opts.maxObjectsPerNode
+    // findCoplanarRegions already sorted largest-first, so this keeps the biggest surfaces.
+    regions = regions.slice(0, opts.maxObjectsPerNode)
+  }
+
+  const objects: RoomObject[] = []
+  let order = 1
+
+  for (const region of regions) {
+    const loops = boundaryLoops(region, mesh)
+    if (loops.length === 0) {
+      warnings.push(`"${node.name}": a region had no closed outline and was skipped.`)
+      continue
+    }
+
+    const basis = planeBasis(region.plane)
+    const to2 = (loop: number[]): Pt2[] => loop.map((i) => toPlane2D(mesh.vertices[i], basis))
+
+    let outer = simplifyClosed(dropCollinear(to2(loops[0]), opts.simplifyTolerance), opts.simplifyTolerance)
+    let holes: Pt2[][] = []
+
+    if (opts.fit === 'rect') {
+      outer = minAreaRect(outer)
+      // A rectangle has no interior to preserve, so holes go with it. Deliberate: 'rect'
+      // is the "give me the coverage area, not the joinery" mode.
+      if (loops.length > 1) {
+        warnings.push(`"${node.name}": ${loops.length - 1} hole(s) discarded by rectangle fit.`)
+      }
+    } else {
+      holes = loops
+        .slice(1)
+        .map((l) => simplifyClosed(dropCollinear(to2(l), opts.simplifyTolerance), opts.simplifyTolerance))
+        .filter((h) => h.length >= 3)
+    }
+
+    if (outer.length < 3) continue
+
+    for (const face of toFaces(outer, holes, basis)) {
+      const obj = faceToObject(face.points, `${node.name} ${order}`, planeType, order)
+      if (obj) {
+        objects.push(obj)
+        order++
+      }
+    }
+  }
+
+  stats.objectsOut = objects.length
+  return { objects, stats, warnings }
+}
+
+/**
+ * Convert a whole selection. Each node with geometry becomes a group; a node that yields a
+ * single object is emitted loose, since a group of one is just noise in ArrayCalc's list.
+ */
+export function convertNodes(
+  nodes: { node: ImportedNode; planeType: PlaneType; include: boolean; name: string }[],
+  opts: ConvertOptions,
+): ConvertResult {
+  const objects: RoomObject[] = []
+  const warnings: string[] = []
+  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0 }
+  let groupOrder = 101
+
+  for (const entry of nodes) {
+    if (!entry.include) continue
+    const r = convertNode(entry.node, entry.planeType, opts)
+    stats.trianglesIn += r.stats.trianglesIn
+    stats.regionsFound += r.stats.regionsFound
+    stats.objectsOut += r.stats.objectsOut
+    stats.regionsDropped += r.stats.regionsDropped
+    warnings.push(...r.warnings)
+
+    if (r.objects.length === 0) continue
+    if (r.objects.length === 1) {
+      r.objects[0].name = entry.name
+      objects.push(r.objects[0])
+      continue
+    }
+
+    const group = baseObject(entry.name, PlaneType.None, groupOrder++)
+    group.shape = Shape.Group
+    group.color = cssToArgb('#ffffff')
+    group.children = r.objects
+    objects.push(group)
+  }
+
+  return { objects, stats, warnings }
+}

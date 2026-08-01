@@ -1,0 +1,767 @@
+<!DOCTYPE ArrayCalc>
+<ArrayCalc Version="12.8.2">
+    <Project Name="Untitled">
+        <Date>01.08.2026</Date>
+        <Author>allansargeant</Author>
+        <Comments></Comments>
+    </Project>
+    <Venue Version="9">
+        <Comments></Comments>
+        <RoomObject Color="4278239406" Enabled="1" ListenerHeight="0.01" Locked="0" Name="SOUNDSCAPE" OrderIndex="1" ParentVenueObjectId="0" PlaneType="5" PrintColor="4294945280" Shape="1" Transparent="1">
+            <Origin x="-9.5999999999999996" y="0" z="1.6000000000000001"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="5.4050000000000002" z="0"/>
+            <P2 x="9.5999999999999996" y="5.4050000000000002" z="0"/>
+            <P3 x="9.5999999999999996" y="-5.4050000000000002" z="0"/>
+            <P4 x="0" y="-5.4050000000000002" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4282686500" Enabled="1" ListenerHeight="1.7" Locked="0" Name="MIX POSITION" OrderIndex="2" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="1">
+            <Origin x="13.06" y="0" z="0.14999999999999999"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="0.84999999999999998" z="0"/>
+            <P2 x="1.4115441436226934" y="0.84999999999999998" z="0"/>
+            <P3 x="1.4115441436226934" y="-0.84999999999999998" z="0"/>
+            <P4 x="0" y="-0.84999999999999998" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="BRIDGE 1" OrderIndex="3" ParentVenueObjectId="0" PlaneType="2" PrintColor="4294945280" Shape="4" Transparent="0">
+            <Origin x="3.2000000000000002" y="0" z="7.3899999999999997"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="7" z="0"/>
+            <P2 x="0.89999999999999947" y="7" z="0"/>
+            <P3 x="0.89999999999999947" y="-7" z="0"/>
+            <P4 x="0" y="-7" z="0"/>
+            <P5 x="0" y="7" z="2.160000000000001"/>
+            <P6 x="0.89999999999999947" y="7" z="2.160000000000001"/>
+            <P7 x="0.89999999999999947" y="-7" z="2.160000000000001"/>
+            <P8 x="0" y="-7" z="2.160000000000001"/>
+        </RoomObject>
+        <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="BRIDGE 2" OrderIndex="4" ParentVenueObjectId="0" PlaneType="2" PrintColor="4294945280" Shape="4" Transparent="0">
+            <Origin x="6.9500000000000002" y="0" z="7.3899999999999997"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="7" z="0"/>
+            <P2 x="0.89999999999999947" y="7" z="0"/>
+            <P3 x="0.89999999999999947" y="-7" z="0"/>
+            <P4 x="0" y="-7" z="0"/>
+            <P5 x="0" y="7" z="2.160000000000001"/>
+            <P6 x="0.89999999999999947" y="7" z="2.160000000000001"/>
+            <P7 x="0.89999999999999947" y="-7" z="2.160000000000001"/>
+            <P8 x="0" y="-7" z="2.160000000000001"/>
+        </RoomObject>
+        <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="PIT ROWS" OrderIndex="10" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="0.60000000000000053" y="0" z="-1.05"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="5.0650000000000004" z="0"/>
+            <P2 x="1.1600000000000001" y="5.0650000000000004" z="0"/>
+            <P3 x="1.1600000000000001" y="-5.0650000000000004" z="0"/>
+            <P4 x="0" y="-5.0650000000000004" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="RoomObjectGroup: {291c4498-45e3-450b-a435-d1e75f5d7cd4}" ObjectGroup="true" OrderIndex="101" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="STALLS - MAIN 1" OrderIndex="11" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-5.1222911208088444" y="-8.8817841970012523e-16" z="-1.05"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="5.0650000000000004" z="0"/>
+                <P2 x="5.1500000000000004" y="5.0650000000000004" z="0.40000000000000002"/>
+                <P3 x="5.1500000000000004" y="-5.0650000000000004" z="0.40000000000000002"/>
+                <P4 x="0" y="-5.0650000000000004" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="STALLS - MAIN 2" OrderIndex="12" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="0.027708879191155944" y="-8.8817841970012523e-16" z="-0.65000000000000002"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="5.0650000000000004" z="0"/>
+                <P2 x="1.5" y="4.8766182266394829" z="0.099999999999999978"/>
+                <P3 x="1.5" y="-4.8766182266394829" z="0.099999999999999978"/>
+                <P4 x="0" y="-5.0650000000000004" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="STALLS - MAIN 3" OrderIndex="13" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="1.5277088791911559" y="-8.8817841970012523e-16" z="-0.55000000000000004"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="4.875" z="0"/>
+                <P2 x="1.5" y="4.068280709913294" z="0.20000000000000007"/>
+                <P3 x="1.5" y="-4.068280709913294" z="0.20000000000000007"/>
+                <P4 x="0" y="-4.875" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="STALLS - MAIN 4" OrderIndex="14" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="3.0277088791911559" y="-8.8817841970012523e-16" z="-0.34999999999999998"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="4.0700000000000003" z="0"/>
+                <P2 x="1.5" y="2.3403769152487914" z="0.24999999999999997"/>
+                <P3 x="1.5" y="-2.3403769152487914" z="0.24999999999999997"/>
+                <P4 x="0" y="-4.0700000000000003" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="STALLS - MAIN 5" OrderIndex="15" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="4.5277088791911559" y="-8.8817841970012523e-16" z="-0.10000000000000001"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="2.3399999999999999" z="0"/>
+                <P2 x="0.59458224161768847" y="0" z="0.10000000000000001"/>
+                <P3 x="0.59458224161768847" y="0" z="0.10000000000000001"/>
+                <P4 x="0" y="-2.3399999999999999" z="0"/>
+            </RoomObject>
+            <Origin x="7.3722911208088444" y="8.8817841970012523e-16" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="RoomObjectGroup: {c9ab9376-247c-4a03-9112-6b386568921e}" ObjectGroup="true" OrderIndex="102" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 3 - LEFT 5" OrderIndex="79" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="-5.5800000000000001" z="4.9299999999999997"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.44000000000000039"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.44000000000000039"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - LEFT 4" OrderIndex="80" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.5018843148102601" y="7.04" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - LEFT 3" OrderIndex="81" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.21408757152568" Transparent="0">
+                <Origin x="-4.6218843148102611" y="5.9800000000000004" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="-54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 3 - LEFT 2" OrderIndex="82" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="-3.9199999999999999" z="4.9299999999999997"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0.44000000000000039"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0.44000000000000039"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - LEFT 1" OrderIndex="83" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - CENTRE" OrderIndex="84" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544193" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - RIGHT 1" OrderIndex="85" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765556" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 3 - RIGHT 2" OrderIndex="86" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="3.9199999999999999" z="4.9299999999999997"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0.44000000000000039"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0.44000000000000039"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - RIGHT 3" OrderIndex="87" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.09056770036528" Transparent="0">
+                <Origin x="-4.6218843148102611" y="-5.9800000000000004" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 3 - RIGHT 4" OrderIndex="88" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.5018843148102601" y="-7.0399999999999991" z="2.2999999999999998"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 3 - RIGHT 5" OrderIndex="89" ParentVenueObjectId="12" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="5.5800000000000001" z="4.9299999999999997"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.44000000000000039"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.44000000000000039"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <Origin x="7.6599999999999984" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="nan" Locked="0" Name="RoomObjectGroup: {5161602b-2c49-4b98-825c-a3151a2cd4c5}" ObjectGroup="true" OrderIndex="103" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING LEFT 5" OrderIndex="61" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="-5.5800000000000001" z="4.7799999999999994"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING LEFT 4" OrderIndex="62" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.5018843148102601" y="7.04" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="1.7" Locked="0" Name="TIER 2 - CEILING LEFT 3" OrderIndex="63" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.21408757152568" Transparent="0">
+                <Origin x="-4.6218843148102611" y="5.9800000000000004" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="-54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING LEFT 2" OrderIndex="64" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="-3.9199999999999999" z="4.7799999999999994"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING LEFT 1" OrderIndex="65" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING CENTRE" OrderIndex="66" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544187" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING RIGHT 1" OrderIndex="67" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765556" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING RIGHT 2" OrderIndex="68" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="3.9199999999999999" z="4.7799999999999994"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING RIGHT 3" OrderIndex="69" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.09056770036528" Transparent="0">
+                <Origin x="-4.6218843148102611" y="-5.9800000000000004" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING RIGHT 4" OrderIndex="70" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.5018843148102601" y="-7.0399999999999991" z="2.3999999999999999"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - CEILING RIGHT 5" OrderIndex="71" ParentVenueObjectId="24" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="5.5800000000000001" z="4.7799999999999994"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <Origin x="7.6599999999999984" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="RoomObjectGroup: {99fdd5c0-5cba-4b45-8cfe-8e1135634649}" ObjectGroup="true" OrderIndex="104" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 2 - RIGHT 5" OrderIndex="60" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="5.5800000000000001" z="2.6299999999999999"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.43999999999999995"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.43999999999999995"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - RIGHT 4" OrderIndex="59" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.501884314810261" y="-7.04" z="0"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - RIGHT 3" OrderIndex="58" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.09056770036528" Transparent="0">
+                <Origin x="-4.6218843148102611" y="-5.9800000000000013" z="0"/>
+                <Rotation x="0" y="0" z="54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 2 - RIGHT 2" OrderIndex="57" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897383" y="3.9199999999999999" z="2.6299999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0.43999999999999995"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0.43999999999999995"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - RIGHT 1" OrderIndex="56" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765556" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - CENTRE" OrderIndex="55" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544193" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - LEFT 1" OrderIndex="54" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 2 - LEFT 2" OrderIndex="53" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897383" y="-3.9199999999999999" z="2.6299999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0.43999999999999995"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0.43999999999999995"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - LEFT 3" OrderIndex="52" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.21408757152568" Transparent="0">
+                <Origin x="-4.6218843148102611" y="5.9800000000000004" z="0"/>
+                <Rotation x="0" y="0" z="-54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.6299999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 2 - LEFT 4" OrderIndex="51" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="3.0699999999999998" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.501884314810261" y="7.04" z="0"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 2 - LEFT 5" OrderIndex="50" ParentVenueObjectId="36" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="-5.5800000000000001" z="2.6299999999999999"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.43999999999999995"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.43999999999999995"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <Origin x="7.6618843148102611" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {a16b4946-5b02-45b4-ba4a-4ff2426a65b5}" ObjectGroup="true" OrderIndex="105" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING LEFT 5" OrderIndex="32" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="-5.5800000000000001" z="2.3799999999999999"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING RIGHT 4" OrderIndex="41" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.501884314810261" y="-7.04" z="0"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING RIGHT 2" OrderIndex="39" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897383" y="3.9199999999999999" z="2.3799999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING RIGHT 1" OrderIndex="38" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765556" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING CENTRE" OrderIndex="37" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544187" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING LEFT 1" OrderIndex="36" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6618843148102611" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING LEFT 2" OrderIndex="35" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897383" y="-3.9199999999999999" z="2.3799999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING LEFT 4" OrderIndex="33" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.501884314810261" y="7.04" z="0"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING RIGHT 5" OrderIndex="42" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="5.5800000000000001" z="2.3799999999999999"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING RIGHT 3" OrderIndex="40" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.09056770036528" Transparent="0">
+                <Origin x="-4.6218843148102611" y="-5.9800000000000004" z="0"/>
+                <Rotation x="0" y="0" z="54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 1 - CEILING LEFT 3" OrderIndex="34" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="48" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.21408757152568" Transparent="0">
+                <Origin x="-4.6218843148102611" y="5.9800000000000004" z="0"/>
+                <Rotation x="0" y="0" z="-54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <Origin x="7.6618843148102611" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {96bba171-0ab4-4113-a882-ef904ea8f4e0}" ObjectGroup="true" OrderIndex="106" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT RIGHT 3" OrderIndex="78" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="5.0903608121440334" z="5.6100000000000003"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8768309053910781" z="0"/>
+                <P2 x="0" y="3.8768309053910781" z="-0.83000000000000007"/>
+                <P3 x="0" y="-3.8768309053910781" z="-0.83000000000000007"/>
+                <P4 x="0" y="-3.8768309053910781" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="5.6100000000000003" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT RIGHT 2" OrderIndex="77" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="4.7800000000000002" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.581900303091331" StartAngle="354.21799733328078" Transparent="0">
+                <Origin x="-1.6093135755518482" y="-6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.3990296802898214" InnerZ="5.6100000000000003" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT RIGHT 1" OrderIndex="76" OuterRadiusA="12.510635023100631" OuterRadiusB="7.3990296802898214" OuterZ="4.7800000000000002" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.320195071788229" StartAngle="8.5421792679419664" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.5809588936474794" InnerZ="5.6100000000000003" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT CENTRE" OrderIndex="75" OuterRadiusA="12.510635023100631" OuterRadiusB="7.5809588936474794" OuterZ="4.7800000000000002" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="17.037447319385077" StartAngle="351.48127634030743" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.3990296802898214" InnerZ="5.6100000000000003" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT LEFT 1" OrderIndex="74" OuterRadiusA="12.510635023100631" OuterRadiusB="7.3990296802898214" OuterZ="4.7800000000000002" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.320195071788229" StartAngle="339.1376256602698" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="5.6100000000000003" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT LEFT 2" OrderIndex="73" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="4.7800000000000002" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.581900303091331" StartAngle="350.20010236362788" Transparent="0">
+                <Origin x="-1.6093135755518482" y="6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="-66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294770442" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - RAIL FRONT LEFT 3" OrderIndex="72" ParentVenueObjectId="60" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="-5.0903608121440334" z="5.6100000000000003"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8749999999999996" z="0"/>
+                <P2 x="1.1211062133631346e-19" y="3.8768309053910781" z="-0.83000000000000007"/>
+                <P3 x="1.1211062133631346e-19" y="-3.8768309053910781" z="-0.83000000000000007"/>
+                <P4 x="0" y="-3.8749999999999996" z="0"/>
+            </RoomObject>
+            <Origin x="6.0693135755518481" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="RoomObjectGroup: {93a8cf5a-5458-4ecf-b4c1-fee5b5aa39a4}" ObjectGroup="true" OrderIndex="107" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="0.14999999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 1 - CENTRE" OrderIndex="27" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="0.58999999999999997" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544193" Transparent="0">
+                <Origin x="-7.6594242016350362" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 1 - RIGHT 4" OrderIndex="31" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5494242016350359" y="5.5800000000000001" z="0.14999999999999999"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.43999999999999995"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.43999999999999995"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 1 - LEFT 4" OrderIndex="23" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5543444279854857" y="-5.5800000000000001" z="0.14999999999999999"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0.43999999999999995"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0.43999999999999995"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="0.14999999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 1 - LEFT 1" OrderIndex="26" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="0.58999999999999997" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6594242016350362" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="0.14999999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 1 - RIGHT 1" OrderIndex="28" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="0.58999999999999997" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765343" Transparent="0">
+                <Origin x="-7.6594242016350362" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 1 - RIGHT 2" OrderIndex="29" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.7005757983649632" y="3.9199999999999999" z="0.14999999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0.43999999999999995"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0.43999999999999995"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="1.2" Locked="0" Name="TIER 1 - LEFT 2" OrderIndex="25" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.7005757983649632" y="-3.9199999999999999" z="0.14999999999999999"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0.43999999999999995"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0.43999999999999995"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="0.14999999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 1 - RIGHT 3" OrderIndex="30" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="0.58999999999999997" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.4994242016350361" y="-7.04" z="0"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="0.14999999999999999" ListenerHeight="1.2" Locked="0" Name="TIER 1 - LEFT 3" OrderIndex="24" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="0.58999999999999997" ParentVenueObjectId="68" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.4994242016350361" y="7.04" z="0"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <Origin x="7.6594242016350362" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {5730f705-7132-4aca-9986-8feb0f4de7ac}" ObjectGroup="true" OrderIndex="108" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="1">
+            <RoomObject Color="4288519582" Enabled="1" ListenerHeight="0.01" Locked="0" Name="PROS - RIGHT" OrderIndex="7" ParentVenueObjectId="78" PlaneType="4" PrintColor="4294945280" Shape="4" Transparent="1">
+                <Origin x="0.030000000000000027" y="7.7599999999999998" z="-1.05"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="2.3450000000000006" z="0"/>
+                <P2 x="0.10000000000000009" y="2.3450000000000006" z="0"/>
+                <P3 x="0.10000000000000009" y="-2.3450000000000006" z="0"/>
+                <P4 x="0" y="-2.3450000000000006" z="0"/>
+                <P5 x="0" y="2.3450000000000006" z="11.050000000000001"/>
+                <P6 x="0.10000000000000009" y="2.3450000000000006" z="11.050000000000001"/>
+                <P7 x="0.10000000000000009" y="-2.3450000000000006" z="11.050000000000001"/>
+                <P8 x="0" y="-2.3450000000000006" z="11.050000000000001"/>
+            </RoomObject>
+            <RoomObject Color="4288519582" Enabled="1" ListenerHeight="0.01" Locked="0" Name="PROS - LEFT" OrderIndex="8" ParentVenueObjectId="78" PlaneType="4" PrintColor="4294945280" Shape="4" Transparent="1">
+                <Origin x="0.030000000000000027" y="-7.7599999999999998" z="-1.05"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="2.3450000000000006" z="0"/>
+                <P2 x="0.10000000000000009" y="2.3450000000000006" z="0"/>
+                <P3 x="0.10000000000000009" y="-2.3450000000000006" z="0"/>
+                <P4 x="0" y="-2.3450000000000006" z="0"/>
+                <P5 x="0" y="2.3450000000000006" z="11.050000000000001"/>
+                <P6 x="0.10000000000000009" y="2.3450000000000006" z="11.050000000000001"/>
+                <P7 x="0.10000000000000009" y="-2.3450000000000006" z="11.050000000000001"/>
+                <P8 x="0" y="-2.3450000000000006" z="11.050000000000001"/>
+            </RoomObject>
+            <RoomObject Color="4288519582" Enabled="1" ListenerHeight="0.01" Locked="0" Name="PROS - HEADER" OrderIndex="9" ParentVenueObjectId="78" PlaneType="4" PrintColor="4294945280" Shape="4" Transparent="1">
+                <Origin x="-0.13000000000000012" y="0" z="7.6399999999999997"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="10.095000000000001" z="0"/>
+                <P2 x="0.10000000000000009" y="10.095000000000001" z="0"/>
+                <P3 x="0.10000000000000009" y="-10.095000000000001" z="0"/>
+                <P4 x="0" y="-10.095000000000001" z="0"/>
+                <P5 x="0" y="10.095000000000001" z="2.3999999999999995"/>
+                <P6 x="0.10000000000000009" y="10.095000000000001" z="2.3999999999999995"/>
+                <P7 x="0.10000000000000009" y="-10.095000000000001" z="2.3999999999999995"/>
+                <P8 x="0" y="-10.095000000000001" z="2.3999999999999995"/>
+            </RoomObject>
+            <Origin x="-0.53000000000000003" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {7caa5896-ed4c-4ce3-a25d-c829d92c6b1e}" ObjectGroup="true" OrderIndex="109" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="1">
+            <RoomObject Color="4288519582" Enabled="1" ListenerHeight="0.01" Locked="0" Name="STAGE" OrderIndex="5" ParentVenueObjectId="82" PlaneType="4" PrintColor="4294945280" Shape="4" Transparent="1">
+                <Origin x="-4.7999999999999998" y="0" z="-1.05"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="7.25" z="0"/>
+                <P2 x="8.7599999999999998" y="7.25" z="0"/>
+                <P3 x="8.7599999999999998" y="-7.25" z="0"/>
+                <P4 x="0" y="-7.25" z="0"/>
+                <P5 x="0" y="7.25" z="1.05"/>
+                <P6 x="8.7599999999999998" y="7.25" z="1.05"/>
+                <P7 x="8.7599999999999998" y="-7.25" z="1.05"/>
+                <P8 x="0" y="-7.25" z="1.05"/>
+            </RoomObject>
+            <RoomObject Color="4288519582" Enabled="1" ListenerHeight="0.01" Locked="0" Name="STAGE - FRONT" OrderIndex="6" ParentVenueObjectId="82" PlaneType="4" PrintColor="4294945280" Shape="4" Transparent="1">
+                <Origin x="3.9699999999999998" y="0" z="-1.05"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="5.4050000000000002" z="0"/>
+                <P2 x="0.83000000000000007" y="5.4050000000000002" z="0"/>
+                <P3 x="0.83000000000000007" y="-5.4050000000000002" z="0"/>
+                <P4 x="0" y="-5.4050000000000002" z="0"/>
+                <P5 x="0" y="5.4050000000000002" z="1.05"/>
+                <P6 x="0.83000000000000007" y="5.4050000000000002" z="1.05"/>
+                <P7 x="0.83000000000000007" y="-5.4050000000000002" z="1.05"/>
+                <P8 x="0" y="-5.4050000000000002" z="1.05"/>
+            </RoomObject>
+            <Origin x="-4.7999999999999998" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {ef23214b-1385-4c3c-a563-2d59fe368d42}" ObjectGroup="true" OrderIndex="110" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING LEFT 5" OrderIndex="90" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="-5.5800000000000001" z="7.1799999999999979"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING LEFT 4" OrderIndex="91" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="351.66496511560081" Transparent="0">
+                <Origin x="-2.5018843148102601" y="7.04" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="-72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING LEFT 3" OrderIndex="92" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.21408757152568" Transparent="0">
+                <Origin x="-4.6218843148102611" y="5.9800000000000004" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="-54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING LEFT 2" OrderIndex="93" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="-3.9199999999999999" z="7.1799999999999979"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.5134461803898223" y="-0.5223465524148887" z="0"/>
+                <P3 x="1.0800000000000001" y="-1.0800000000000001" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING LEFT 1" OrderIndex="94" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="340.95996186214171" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="7.994884653173437" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING CENTRE" OrderIndex="95" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.6863263491162" StartAngle="352.15683682544187" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING RIGHT 1" OrderIndex="96" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.177407057281734" StartAngle="7.8626310805765556" Transparent="0">
+                <Origin x="-7.6618843148102602" y="0" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING RIGHT 2" OrderIndex="97" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="6" Transparent="0">
+                <Origin x="3.6981156851897392" y="3.9199999999999999" z="7.1799999999999979"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="0" z="0"/>
+                <P2 x="1.0800000000000001" y="1.0800000000000001" z="0"/>
+                <P3 x="1.5134461803898223" y="0.5223465524148887" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0960685283759855" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING RIGHT 3" OrderIndex="98" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6643015815182398" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="9.6953447281090561" StartAngle="355.09056770036528" Transparent="0">
+                <Origin x="-4.6218843148102611" y="-5.9800000000000004" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="54.200000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" InnerRadiusA="12.978861061695445" InnerRadiusB="8.0332639491009719" InnerZ="2.3799999999999999" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING RIGHT 4" OrderIndex="99" OuterRadiusA="14.498848403270072" OuterRadiusB="9.6536464770179755" OuterZ="2.3799999999999999" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.645475559470924" StartAngle="355.68955932492827" Transparent="0">
+                <Origin x="-2.5018843148102601" y="-7.0399999999999991" z="4.7999999999999989"/>
+                <Rotation x="0" y="0" z="72.700000000000003"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4289636522" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 3 - CEILING RIGHT 5" OrderIndex="100" ParentVenueObjectId="85" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-3.5518843148102608" y="5.5800000000000001" z="7.1799999999999979"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.2850797736495512" z="0"/>
+                <P2 x="1.5199999999999996" y="3.2850797736495512" z="0"/>
+                <P3 x="1.5199999999999996" y="-3.2850797736495512" z="0"/>
+                <P4 x="0" y="-3.2850797736495512" z="0"/>
+            </RoomObject>
+            <Origin x="7.6599999999999984" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {577f5168-51a1-433c-bf11-241e54a2a2cb}" ObjectGroup="true" OrderIndex="111" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="3.1600000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT RIGHT 2" OrderIndex="48" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="2.3799999999999999" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.581900303091331" StartAngle="354.21799733328078" Transparent="0">
+                <Origin x="-1.6093135755518482" y="-6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.3990296802898214" InnerZ="3.1600000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT RIGHT 1" OrderIndex="47" OuterRadiusA="12.510635023100631" OuterRadiusB="7.3990296802898214" OuterZ="2.3799999999999999" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.320195071788229" StartAngle="8.5421792679419664" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT RIGHT 3" OrderIndex="49" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="5.0903608121440334" z="3.1600000000000001"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8768309053910781" z="0"/>
+                <P2 x="0" y="3.8768309053910781" z="-0.78000000000000025"/>
+                <P3 x="0" y="-3.8768309053910781" z="-0.78000000000000025"/>
+                <P4 x="0" y="-3.8768309053910781" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.5809588936474794" InnerZ="3.1600000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT CENTRE" OrderIndex="46" OuterRadiusA="12.510635023100631" OuterRadiusB="7.5809588936474794" OuterZ="2.3799999999999999" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="17.037447319385077" StartAngle="351.48127634030749" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.3990296802898214" InnerZ="3.1600000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT LEFT 1" OrderIndex="45" OuterRadiusA="12.510635023100631" OuterRadiusB="7.3990296802898214" OuterZ="2.3799999999999999" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.320195071788229" StartAngle="339.1376256602698" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="3.1600000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT LEFT 2" OrderIndex="44" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="2.3799999999999999" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="15.581900303091331" StartAngle="350.20010236362788" Transparent="0">
+                <Origin x="-1.6093135755518482" y="6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="-66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4294937633" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 2 - RAIL FRONT LEFT 3" OrderIndex="43" ParentVenueObjectId="97" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="-5.0903608121440334" z="3.1600000000000001"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8768309053910781" z="0"/>
+                <P2 x="0" y="3.8768309053910781" z="-0.78000000000000025"/>
+                <P3 x="0" y="-3.8768309053910781" z="-0.78000000000000025"/>
+                <P4 x="0" y="-3.8768309053910781" z="0"/>
+            </RoomObject>
+            <Origin x="6.0693135755518481" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="RoomObjectGroup: {e040f36d-0326-47ae-8954-a9d6969d66b2}" ObjectGroup="true" OrderIndex="112" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.5809588936474794" InnerZ="0.76000000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT CENTRE" OrderIndex="19" OuterRadiusA="12.510635023100631" OuterRadiusB="7.5809588936474794" OuterZ="0" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="12.168955266626938" StartAngle="353.91552236668656" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.5809588936474794" InnerZ="0.76000000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT LEFT 1" OrderIndex="18" OuterRadiusA="12.510635023100631" OuterRadiusB="7.5809588936474794" OuterZ="0" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.640307143151961" StartAngle="342.09328969505049" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="7.5809588936474794" InnerZ="0.76000000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT RIGHT 1" OrderIndex="20" OuterRadiusA="12.510635023100631" OuterRadiusB="7.5809588936474794" OuterZ="0" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.640307143151961" StartAngle="6.2664031617975517" Transparent="0">
+                <Origin x="-6.0693135755518481" y="0" z="0"/>
+                <Rotation x="0" y="0" z="0"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="0.76000000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT RIGHT 2" OrderIndex="21" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="0" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.875137098514813" StartAngle="357.92476053785731" Transparent="0">
+                <Origin x="-1.6093135755518482" y="-6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT RIGHT 3" OrderIndex="22" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="5.0903608121440334" z="0.76000000000000001"/>
+                <Rotation x="0" y="0" z="90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8768309053910781" z="0"/>
+                <P2 x="0" y="3.8768309053910781" z="-0.76000000000000001"/>
+                <P3 x="0" y="-3.8768309053910781" z="-0.76000000000000001"/>
+                <P4 x="0" y="-3.8768309053910781" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT LEFT 3" OrderIndex="16" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="-2.5644905421577051" y="-5.0903608121440334" z="0.76000000000000001"/>
+                <Rotation x="0" y="0" z="-90"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="3.8768309053910781" z="0"/>
+                <P2 x="0" y="3.8768309053910781" z="-0.76000000000000001"/>
+                <P3 x="0" y="-3.8768309053910781" z="-0.76000000000000001"/>
+                <P4 x="0" y="-3.8768309053910781" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293929754" Enabled="1" InnerRadiusA="12.510635023100631" InnerRadiusB="8.2316894114042203" InnerZ="0.76000000000000001" ListenerHeight="0.01" Locked="0" Name="TIER 1 - RAIL FRONT LEFT 2" OrderIndex="17" OuterRadiusA="12.510635023100631" OuterRadiusB="8.2316894114042203" OuterZ="0" ParentVenueObjectId="105" PlaneType="2" PrintColor="4294945280" Shape="2" SpanAngle="11.875137098514813" StartAngle="350.20010236362788" Transparent="0">
+                <Origin x="-1.6093135755518482" y="6.8699999999999992" z="0"/>
+                <Rotation x="0" y="0" z="-66.600000000000009"/>
+                <Scaling x="1" y="1" z="1"/>
+            </RoomObject>
+            <Origin x="6.0693135755518481" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+    </Venue>
+</ArrayCalc>
