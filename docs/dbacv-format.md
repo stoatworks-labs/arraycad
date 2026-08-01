@@ -90,8 +90,13 @@ points were spread symmetrically around it — the obvious encoding, which round
 perfectly through this project's own reader. **ArrayCalc 12.8.2 collapsed them to zero
 depth.** A 4 × 3 m plane became a 3 m line, with no error shown.
 
-**And it does not fail consistently, which is worse.** A second probe showed a
-non-canonical quad survives untouched until something makes ArrayCalc re-write it:
+**CONFIRMED FIXED.** A third round trip, with every quad written in the canonical frame,
+came back with **all 29 objects across both probes byte-identical** — no geometry moved,
+no rotation added, no plane collapsed. That result is pinned in
+`src/lib/dbacv/roundtrip.test.ts`.
+
+**The old failure did not happen consistently, which is worse.** A non-canonical quad
+survives untouched until something makes ArrayCalc re-write it:
 
 | Situation | Non-canonical quad |
 |---|---|
@@ -259,10 +264,24 @@ and exported. Results:
 | Do nested groups survive? | **Yes.** |
 | Does the DXF export carry venue geometry? | **No.** It is device-only; with no loudspeakers placed the ENTITIES section is empty. |
 
-Still open: whether group rotation and scaling are actually *applied* to children when
-ArrayCalc draws them. The transforms are preserved as a hierarchy and children of a
-transformed group are demonstrably re-processed on import, which is strong circumstantial
-evidence, but only looking at the screen settles it.
+### A third round trip, after the canonical-quad fix
+
+Both probes came back with **every object identical**. Also learned:
+
+| Question | Answer |
+|---|---|
+| Does ArrayCalc ever write `-0`? | **No.** Three genuine exports, zero occurrences. Our writer emitted them from `atan2(-0, x)`; `g17` now prints `0` for both zeros. |
+| Is a quad with `Rotation x` accepted? | **Preserved unchanged** (probe B40, `x=30`). But "kept in the file" is not "applied when drawing" — see below. |
+
+Still open, and answerable only by looking at the screen:
+
+- **Are group rotation and scaling actually applied to children?** Preserved as a
+  hierarchy and never baked in, but nothing proves ArrayCalc renders the children rotated.
+  Probe B10's bar points north-east if it does, due east if it does not.
+- **Is a quad's X rotation applied?** If it is, a sideways-tilted plane could be one quad
+  instead of two triangles. `canonicalQuad` deliberately refuses to use X rotation until
+  this is confirmed: guessing wrong would lay a tilted plane flat, silently.
+- **What is `PlaneType 3` called?**
 
 ## 9. What this project does NOT know
 

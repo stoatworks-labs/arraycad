@@ -86,6 +86,12 @@ class TestG17(unittest.TestCase):
             v = (random.random() - 0.5) * 10 ** random.randint(-10, 10)
             self.assertEqual(float(g17(v)), v)
 
+    def test_negative_zero_prints_as_zero(self):
+        # Strict %.17g would say "-0", but no ArrayCalc export has ever contained one and
+        # the canonical-quad atan2 produces them freely.
+        self.assertEqual(g17(-0.0), "0")
+        self.assertEqual(g17(0.0), "0")
+
     def test_non_finite(self):
         self.assertEqual(g17(float("nan")), "nan")
         self.assertEqual(g17(float("inf")), "inf")

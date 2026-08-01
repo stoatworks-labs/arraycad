@@ -39,6 +39,9 @@ describe('g17 — printf("%.17g") equivalence', () => {
     // 1.0e-01 (-1). Getting it wrong costs one fraction digit and yields
     // 0.09999999999999998. The Python port in vectorworks/ had exactly this bug.
     [0.099999999999999978, '0.099999999999999978'],
+    // Negative zero prints as "0". Strict %.17g would say "-0", but no ArrayCalc export
+    // has ever contained one and our canonical-quad atan2 produces them freely.
+    [-0, '0'],
   ]
   for (const [v, want] of cases) {
     it(`${want}`, () => expect(g17(v)).toBe(want))

@@ -25,64 +25,73 @@
             <P3 x="4" y="-1.5" z="0"/>
             <P4 x="0" y="-1.5" z="0"/>
         </RoomObject>
-        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B40 QUAD fully warped, no two corners level" OrderIndex="3" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
-            <Origin x="20" y="9.5" z="0.20000000000000001"/>
-            <Rotation x="0" y="0" z="-180"/>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B40 QUAD with Rotation x=30 - is a tilted plane honoured" OrderIndex="3" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="20" y="8" z="2"/>
+            <Rotation x="30" y="0" z="0"/>
             <Scaling x="1" y="1" z="1"/>
-            <P1 x="0" y="1.5" z="-0.20000000000000001"/>
-            <P2 x="0" y="1.5000000000000004" z="0.30000000000000004"/>
-            <P3 x="0" y="-1.4999999999999996" z="1.3"/>
-            <P4 x="0" y="-1.5" z="0.20000000000000001"/>
+            <P1 x="0" y="2" z="0"/>
+            <P2 x="4" y="2" z="0"/>
+            <P3 x="4" y="-2" z="0"/>
+            <P4 x="0" y="-2" z="0"/>
         </RoomObject>
-        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10 GROUP rot z45 at (10,8,0)" ObjectGroup="true" OrderIndex="9" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
-            <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10a bar local +X - points NE if group rot composes" OrderIndex="4" ParentVenueObjectId="3" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B41 QUAD flat control beside B40" OrderIndex="4" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="18" y="2" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="2" z="0"/>
+            <P2 x="4" y="2" z="0"/>
+            <P3 x="4" y="-2" z="0"/>
+            <P4 x="0" y="-2" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10 GROUP rot z45 at (10,8,0)" ObjectGroup="true" OrderIndex="10" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10a bar along group +X - points NE if group rot composes" OrderIndex="5" ParentVenueObjectId="3" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
                 <Origin x="0" y="0" z="0"/>
-                <Rotation x="0" y="0" z="180"/>
+                <Rotation x="0" y="0" z="0"/>
                 <Scaling x="1" y="1" z="1"/>
                 <P1 x="0" y="0.25" z="0"/>
-                <P2 x="0" y="0.24999999999999928" z="0"/>
-                <P3 x="0" y="-0.25000000000000072" z="0"/>
+                <P2 x="6" y="0.25" z="0"/>
+                <P3 x="6" y="-0.25" z="0"/>
                 <P4 x="0" y="-0.25" z="0"/>
             </RoomObject>
-            <RoomObject Color="4291343584" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10b marker at local(6,0) - lands NE too if origins rotate" OrderIndex="5" ParentVenueObjectId="3" PlaneType="4" PrintColor="4294945280" Shape="1" Transparent="0">
+            <RoomObject Color="4291343584" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B10b marker at group local (6,0) - moves too if origins rotate" OrderIndex="6" ParentVenueObjectId="3" PlaneType="4" PrintColor="4294945280" Shape="1" Transparent="0">
                 <Origin x="5.5" y="0" z="0"/>
-                <Rotation x="0" y="0" z="180"/>
+                <Rotation x="0" y="0" z="0"/>
                 <Scaling x="1" y="1" z="1"/>
                 <P1 x="0" y="0.5" z="0"/>
-                <P2 x="0" y="0.49999999999999989" z="0"/>
-                <P3 x="0" y="-0.50000000000000011" z="0"/>
+                <P2 x="1" y="0.5" z="0"/>
+                <P3 x="1" y="-0.5" z="0"/>
                 <P4 x="0" y="-0.5" z="0"/>
             </RoomObject>
             <Origin x="10" y="8" z="0"/>
             <Rotation x="0" y="0" z="45"/>
             <Scaling x="1" y="1" z="1"/>
         </RoomObject>
-        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="nan" Locked="0" Name="B20 GROUP scaling 2x at (10,-4,0)" ObjectGroup="true" OrderIndex="10" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
-            <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B20a 2x2 square - becomes 4x4 if group scale 2 composes" OrderIndex="6" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="nan" Locked="0" Name="B20 GROUP scaling 2x at (10,-4,0)" ObjectGroup="true" OrderIndex="11" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B20a 2x2 square - becomes 4x4 if group scale composes" OrderIndex="7" ParentVenueObjectId="6" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
                 <Origin x="-1" y="0" z="0"/>
-                <Rotation x="0" y="0" z="180"/>
+                <Rotation x="0" y="0" z="0"/>
                 <Scaling x="1" y="1" z="1"/>
                 <P1 x="0" y="1" z="0"/>
-                <P2 x="0" y="0.99999999999999978" z="0"/>
-                <P3 x="0" y="-1.0000000000000002" z="0"/>
+                <P2 x="2" y="1" z="0"/>
+                <P3 x="2" y="-1" z="0"/>
                 <P4 x="0" y="-1" z="0"/>
             </RoomObject>
-            <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B20b 2x2 reference, same group" OrderIndex="7" ParentVenueObjectId="6" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+            <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="B20b 2x2 square at group local (6,0)" OrderIndex="8" ParentVenueObjectId="6" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
                 <Origin x="5" y="0" z="0"/>
-                <Rotation x="0" y="0" z="180"/>
+                <Rotation x="0" y="0" z="0"/>
                 <Scaling x="1" y="1" z="1"/>
                 <P1 x="0" y="1" z="0"/>
-                <P2 x="0" y="0.99999999999999978" z="0"/>
-                <P3 x="0" y="-1.0000000000000002" z="0"/>
+                <P2 x="2" y="1" z="0"/>
+                <P3 x="2" y="-1" z="0"/>
                 <P4 x="0" y="-1" z="0"/>
             </RoomObject>
             <Origin x="10" y="-4" z="0"/>
             <Rotation x="0" y="0" z="0"/>
             <Scaling x="2" y="2" z="2"/>
         </RoomObject>
-        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30 GROUP origin(10,-12,0) containing a group" ObjectGroup="true" OrderIndex="12" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
-            <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30-inner GROUP origin(0,-4,0)" ObjectGroup="true" OrderIndex="11" ParentVenueObjectId="9" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
-                <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30a inner child - two levels of translation should stack" OrderIndex="8" ParentVenueObjectId="10" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30 GROUP origin(10,-12,0) containing a group" ObjectGroup="true" OrderIndex="13" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30-inner GROUP origin(0,-4,0)" ObjectGroup="true" OrderIndex="12" ParentVenueObjectId="9" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+                <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="B30a inner child - two translations should stack" OrderIndex="9" ParentVenueObjectId="10" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
                     <Origin x="-1.5" y="0" z="0"/>
                     <Rotation x="0" y="0" z="0"/>
                     <Scaling x="1" y="1" z="1"/>

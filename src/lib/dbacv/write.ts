@@ -22,7 +22,11 @@ import { type RoomObject, type VenueFile, Shape } from './types.ts'
  */
 export function g17(v: number): string {
   if (!Number.isFinite(v)) return v > 0 ? 'inf' : Number.isNaN(v) ? 'nan' : '-inf'
-  if (v === 0) return Object.is(v, -0) ? '-0' : '0'
+  // Negative zero prints as "0", deliberately departing from strict %.17g. No ArrayCalc
+  // file has ever contained "-0" — three genuine exports, zero occurrences — whereas our
+  // canonical-quad maths produces it readily from atan2(-0, x). -0 and 0 are the same
+  // point, so this costs nothing and keeps a diff against a real export free of noise.
+  if (v === 0) return '0'
 
   const P = 17
   const X = Math.floor(Math.log10(Math.abs(v)))

@@ -91,7 +91,12 @@ def g17(v: float) -> str:
     if math.isinf(v):
         return "inf" if v > 0 else "-inf"
     if v == 0.0:
-        return "-0" if math.copysign(1.0, v) < 0 else "0"
+        # Negative zero prints as "0", deliberately departing from strict %.17g. No
+        # ArrayCalc file has ever contained "-0" — three genuine exports, zero
+        # occurrences — whereas the canonical-quad maths produces it readily from
+        # atan2(-0, x). -0 and 0 are the same point, so this costs nothing and keeps a
+        # diff against a real export free of noise.
+        return "0"
 
     p = 17
     # The exponent must be the one from a %e conversion AT PRECISION P-1, which is what
