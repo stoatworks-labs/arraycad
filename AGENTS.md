@@ -111,8 +111,9 @@ label for exactly that reason — do not quietly drop the caveat from the inspec
 ### Groups write their transform AFTER their children
 
 And that transform **composes** — child origins are relative to it. Evidence is in
-`docs/dbacv-format.md` §7. Every group in the sample has rotation 0 and scale 1, so
-**rotation composition is untested**.
+`docs/dbacv-format.md` §7. A round trip confirms ArrayCalc preserves a group's Origin,
+Rotation and Scaling unchanged and does not bake them into children, so the hierarchy is
+real; whether rotation and scaling are *applied* when drawing is still unconfirmed by eye.
 
 ### Welding must probe neighbouring cells
 

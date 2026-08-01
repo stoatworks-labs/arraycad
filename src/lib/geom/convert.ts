@@ -33,7 +33,7 @@ import { planeBasis, toPlane2D } from './vec.ts'
 
 /** How a region's outline is turned into ArrayCalc geometry. */
 export type FitMode =
-  /** Keep the outline, decomposed into quads and triangles. Faithful, more objects. */
+  /** Keep the outline. Faithful, but faces that are not symmetric trapezoids split in two. */
   | 'exact'
   /** Replace the outline with a level-aligned bounding rectangle. One quad per region. */
   | 'rect'
