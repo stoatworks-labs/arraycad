@@ -5,6 +5,7 @@ the whole strategy layer is testable here. Only `vwbridge.py` needs Vectorworks,
 that is exactly why the two are separate files.
 """
 
+import math
 import os
 import sys
 import unittest
@@ -238,8 +239,18 @@ class TestRun(unittest.TestCase):
 
         def walk(objects):
             for o in objects:
+                # Apply the Z rotation: canonical quads carry one, and ignoring it
+                # reports geometry in the wrong place.
+                r = math.radians(o.rotation[2])
+                c, s = math.cos(r), math.sin(r)
                 for p in o.points:
-                    pts.append((p[0] + o.origin[0], p[1] + o.origin[1], p[2] + o.origin[2]))
+                    pts.append(
+                        (
+                            p[0] * c - p[1] * s + o.origin[0],
+                            p[0] * s + p[1] * c + o.origin[1],
+                            p[2] + o.origin[2],
+                        )
+                    )
                 walk(o.children)
 
         walk(venue.objects)

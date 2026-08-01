@@ -279,16 +279,30 @@ describe('convertNode', () => {
     expect(r.stats.regionsFound).toBe(1)
   })
 
-  it('puts points in a local frame around the origin', () => {
+  it('puts a quad in ArrayCalc’s canonical frame, NOT around the centroid', () => {
+    // This was the bug the ArrayCalc round trip caught. A centroid origin round-trips
+    // fine through our own reader and is silently collapsed to zero depth on import.
     const r = convertNode(node(quadXY(10, 6)), PlaneType.Audience, DEFAULT_CONVERT)
     const o = r.objects[0]
-    expect(o.origin.x).toBeCloseTo(5)
-    expect(o.origin.y).toBeCloseTo(3)
-    // Points are offsets, so they must sum to zero about the centroid.
-    expect(o.points.reduce((s, p) => s + p.x, 0)).toBeCloseTo(0)
-    expect(o.points.reduce((s, p) => s + p.y, 0)).toBeCloseTo(0)
-    // World position is recoverable.
-    expect(o.origin.x + o.points[0].x).toBeCloseTo(0)
+    expect(o.shape).toBe(Shape.Quad)
+    expect(o.points[0].x).toBe(0)
+    expect(o.points[3].x).toBe(0)
+    expect(o.points[0].y).toBeCloseTo(-o.points[3].y)
+    // Origin sits on the near edge, so it is NOT the centroid (5, 3).
+    expect(o.origin.x === 5 && o.origin.y === 3).toBe(false)
+
+    // And the geometry is still exactly where it started: a 10 x 6 rectangle.
+    const rad = (o.rotation.z * Math.PI) / 180
+    const world = o.points.map((p) => ({
+      x: p.x * Math.cos(rad) - p.y * Math.sin(rad) + o.origin.x,
+      y: p.x * Math.sin(rad) + p.y * Math.cos(rad) + o.origin.y,
+    }))
+    const xs = world.map((p) => p.x)
+    const ys = world.map((p) => p.y)
+    expect(Math.min(...xs)).toBeCloseTo(0)
+    expect(Math.max(...xs)).toBeCloseTo(10)
+    expect(Math.min(...ys)).toBeCloseTo(0)
+    expect(Math.max(...ys)).toBeCloseTo(6)
   })
 
   it('turns a box into six objects', () => {

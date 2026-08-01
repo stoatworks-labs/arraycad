@@ -34,6 +34,21 @@ def read_fixture():
         return fh.read()
 
 
+def world_points(o):
+    """World positions, APPLYING the Z rotation.
+
+    Quads carry a real rotation now — ArrayCalc's canonical frame demands it. Simply
+    adding the origin, which was correct while rotation was always zero, reports
+    geometry in the wrong place.
+    """
+    r = math.radians(o.rotation[2])
+    c, s = math.cos(r), math.sin(r)
+    return [
+        (p[0] * c - p[1] * s + o.origin[0], p[0] * s + p[1] * c + o.origin[1], p[2] + o.origin[2])
+        for p in o.points
+    ]
+
+
 class TestG17(unittest.TestCase):
     """Every literal here is lifted verbatim from the ArrayCalc fixture."""
 
@@ -139,17 +154,41 @@ class TestRoundTrip(unittest.TestCase):
 
 
 class TestConstruction(unittest.TestCase):
-    def test_face_puts_points_around_the_centroid(self):
+    def test_quad_uses_arraycalcs_canonical_frame_not_the_centroid(self):
+        # The bug the ArrayCalc round trip caught: a centroid origin round-trips fine
+        # through our own reader and is silently collapsed to zero depth on import.
         o = RoomObject.from_face(
             "Deck", [(0, 0, 0), (10, 0, 0), (10, 6, 0), (0, 6, 0)], PLANE_AUDIENCE
         )
         self.assertEqual(o.shape, SHAPE_QUAD)
-        self.assertAlmostEqual(o.origin[0], 5.0)
-        self.assertAlmostEqual(o.origin[1], 3.0)
-        self.assertAlmostEqual(sum(p[0] for p in o.points), 0.0)
-        # World position must be recoverable.
-        self.assertAlmostEqual(o.origin[0] + o.points[0][0], 0.0)
+        self.assertAlmostEqual(o.points[0][0], 0.0)  # near edge at local x = 0
+        self.assertAlmostEqual(o.points[3][0], 0.0)
+        self.assertAlmostEqual(o.points[0][1], -o.points[3][1])  # symmetric
+        self.assertNotAlmostEqual(o.origin[0], 5.0)  # NOT the centroid
         self.assertEqual(o.listener_height, 1.2)
+        # And the geometry is still a 10 x 6 rectangle in the same place.
+        world = world_points(o)
+        xs = [p[0] for p in world]
+        ys = [p[1] for p in world]
+        self.assertAlmostEqual(min(xs), 0.0)
+        self.assertAlmostEqual(max(xs), 10.0)
+        self.assertAlmostEqual(min(ys), 0.0)
+        self.assertAlmostEqual(max(ys), 6.0)
+
+    def test_a_quad_that_cannot_be_canonical_becomes_two_triangles(self):
+        sheared = [(0, 0, 0), (4, 0, 0), (5, 3, 0), (1, 3, 0)]
+        self.assertIsNone(RoomObject.from_face("X", sheared, PLANE_AUDIENCE))
+        got = RoomObject.faces_for("X", sheared, PLANE_AUDIENCE)
+        self.assertEqual(len(got), 2)
+        self.assertTrue(all(o.shape == SHAPE_TRIANGLE for o in got))
+
+    def test_a_vertical_quad_is_depth_zero_with_a_rise(self):
+        # How the reference venue stores every rail front.
+        wall = [(0, 5, 0), (0, 5, -0.83), (0, -5, -0.83), (0, -5, 0)]
+        o = RoomObject.from_face("Rail", wall, PLANE_SURFACE)
+        self.assertIsNotNone(o)
+        self.assertAlmostEqual(o.points[1][0], 0.0)
+        self.assertAlmostEqual(abs(o.points[1][2]), 0.83)
 
     def test_triangle(self):
         o = RoomObject.from_face("T", [(0, 0, 0), (4, 0, 0), (0, 4, 0)], PLANE_SURFACE)

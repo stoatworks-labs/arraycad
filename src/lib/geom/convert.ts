@@ -16,6 +16,7 @@ import {
   Shape,
   cssToArgb,
 } from '../dbacv/types.ts'
+import { canonicalQuad, quadToTriangles } from '../dbacv/quad.ts'
 import type { ImportedNode } from '../import/types.ts'
 import { type PlanarizeOptions, DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
 import {
@@ -89,25 +90,48 @@ function baseObject(name: string, planeType: PlaneType, orderIndex: number): Roo
   }
 }
 
-/**
- * Build one RoomObject from a face's world-space points.
- *
- * Origin is the face centroid and Rotation is left at zero, with the points carried as
- * world-minus-origin offsets. ArrayCalc's own files do use non-zero Rotation, but it is
- * not required: the sample proves points need not even be planar (seating is raked by
- * pushing P2/P3 up in z), so an axis-aligned local frame is always expressible. Solving
- * for a rotation that the file does not need would only add a way to be subtly wrong.
- */
-function faceToObject(points: Vec3[], name: string, planeType: PlaneType, order: number): RoomObject | null {
-  if (points.length !== 3 && points.length !== 4) return null
+/** A triangle, whose local frame ArrayCalc leaves entirely alone. Centroid origin is fine. */
+function triangleToObject(points: Vec3[], name: string, planeType: PlaneType, order: number): RoomObject {
   const o = baseObject(name, planeType, order)
-  const cx = points.reduce((s, p) => s + p.x, 0) / points.length
-  const cy = points.reduce((s, p) => s + p.y, 0) / points.length
-  const cz = points.reduce((s, p) => s + p.z, 0) / points.length
+  const n = points.length
+  const cx = points.reduce((s, p) => s + p.x, 0) / n
+  const cy = points.reduce((s, p) => s + p.y, 0) / n
+  const cz = points.reduce((s, p) => s + p.z, 0) / n
   o.origin = { x: cx, y: cy, z: cz }
-  o.shape = points.length === 3 ? Shape.Triangle : Shape.Quad
+  o.shape = Shape.Triangle
   o.points = points.map((p) => ({ x: p.x - cx, y: p.y - cy, z: p.z - cz }))
   return o
+}
+
+/**
+ * Build RoomObjects from a face's world-space points. May return TWO objects.
+ *
+ * A quad has to be written in ArrayCalc's canonical local frame — origin on the near
+ * edge, symmetric trapezoid, rotation about Z only. See dbacv/quad.ts for what happens
+ * when it is not: ArrayCalc collapses the plane to zero depth and says nothing.
+ *
+ * Quads that cannot be expressed that way (sheared, sideways-tilted, generally
+ * quadrilateral) are split into two triangles, which ArrayCalc accepts untouched.
+ */
+function faceToObjects(points: Vec3[], name: string, planeType: PlaneType, order: number): RoomObject[] {
+  if (points.length === 3) return [triangleToObject(points, name, planeType, order)]
+  if (points.length !== 4) return []
+
+  const canonical = canonicalQuad(points)
+  if (canonical) {
+    const o = baseObject(name, planeType, order)
+    o.shape = Shape.Quad
+    o.origin = canonical.origin
+    o.rotation = { x: 0, y: 0, z: canonical.rotationZ }
+    o.points = canonical.points
+    return [o]
+  }
+
+  const [t1, t2] = quadToTriangles(points)
+  return [
+    triangleToObject(t1, `${name}a`, planeType, order),
+    triangleToObject(t2, `${name}b`, planeType, order + 1),
+  ]
 }
 
 export interface ConvertStats {
@@ -179,8 +203,7 @@ export function convertNode(
     if (outer.length < 3) continue
 
     for (const face of toFaces(outer, holes, basis)) {
-      const obj = faceToObject(face.points, `${node.name} ${order}`, planeType, order)
-      if (obj) {
+      for (const obj of faceToObjects(face.points, `${node.name} ${order}`, planeType, order)) {
         objects.push(obj)
         order++
       }

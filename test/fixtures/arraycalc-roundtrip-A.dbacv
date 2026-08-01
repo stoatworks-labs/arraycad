@@ -1,0 +1,150 @@
+<!DOCTYPE ArrayCalc>
+<ArrayCalc Version="12.8.2">
+    <Project Name="Untitled">
+        <Date>01.08.2026</Date>
+        <Author>allansargeant</Author>
+        <Comments></Comments>
+    </Project>
+    <Venue Version="9">
+        <Comments>Diagnostic. Only constructs observed in a real ArrayCalc export.</Comments>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A01 QUAD flat 4x3 at y16..19 z0" OrderIndex="1" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="0" y="17.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A02 QUAD raked +0.6z at far X, y12..15" OrderIndex="2" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="0" y="13.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0.59999999999999998"/>
+            <P3 x="0" y="-1.5000000000000004" z="0.59999999999999998"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A03 TRI 4x3 at y8..11 z0" OrderIndex="3" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="6" Transparent="0">
+            <Origin x="1.3333333333333333" y="9" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="-1.3333333333333333" y="-1" z="0"/>
+            <P2 x="2.666666666666667" y="-1" z="0"/>
+            <P3 x="-1.3333333333333333" y="2" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="A04 BOX 4x3x1.5 at y4..7 z0..1.5" OrderIndex="4" ParentVenueObjectId="0" PlaneType="2" PrintColor="4294945280" Shape="4" Transparent="0">
+            <Origin x="2" y="5.5" z="0.75"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="-2" y="-1.5" z="-0.75"/>
+            <P2 x="2" y="-1.5" z="-0.75"/>
+            <P3 x="2" y="1.5" z="-0.75"/>
+            <P4 x="-2" y="1.5" z="-0.75"/>
+            <P5 x="-2" y="-1.5" z="0.75"/>
+            <P6 x="2" y="-1.5" z="0.75"/>
+            <P7 x="2" y="1.5" z="0.75"/>
+            <P8 x="-2" y="1.5" z="0.75"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" InnerRadiusA="10" InnerRadiusB="10" InnerZ="0" ListenerHeight="1.2" Locked="0" Name="A05 ARC r10-14 sweep0-45 rise0-1 at origin(0,0,0)" OrderIndex="5" OuterRadiusA="14" OuterRadiusB="14" OuterZ="1" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="2" SpanAngle="45" StartAngle="0" Transparent="0">
+            <Origin x="0" y="0" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A06 QUAD rot z45 - should point NE in plan" OrderIndex="6" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="10" y="16" z="0"/>
+            <Rotation x="0" y="0" z="-135.00000000000017"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="0.2499999999999995" z="0"/>
+            <P2 x="0" y="0.24999999999998118" z="0"/>
+            <P3 x="0" y="-0.25000000000001799" z="0"/>
+            <P4 x="0" y="-0.25000000000000078" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A10 PT1 - what does ArrayCalc call this" OrderIndex="7" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="8" y="13.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="A11 PT2 - what does ArrayCalc call this" OrderIndex="8" ParentVenueObjectId="0" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="8" y="9.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4291343584" Enabled="1" ListenerHeight="0.01" Locked="0" Name="A12 PT4 - what does ArrayCalc call this" OrderIndex="9" ParentVenueObjectId="0" PlaneType="4" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="8" y="5.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4278239406" Enabled="1" ListenerHeight="0.01" Locked="0" Name="A13 PT5 - what does ArrayCalc call this" OrderIndex="10" ParentVenueObjectId="0" PlaneType="5" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="8" y="1.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="0.77000000000000002" Locked="0" Name="A20 PT1 with ListenerHeight 0.77 - kept or reset to 1.2" OrderIndex="11" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="16" y="17.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4288798890" Enabled="1" ListenerHeight="0.01" Locked="0" Name="A21 PT2 with ListenerHeight 1.55 - kept or reset to 0.01" OrderIndex="12" ParentVenueObjectId="0" PlaneType="2" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="16" y="13.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A22 QUAD x1=4.0000000000000009 - check the digits survive" OrderIndex="13" ParentVenueObjectId="0" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+            <Origin x="16" y="9.5" z="0"/>
+            <Rotation x="0" y="0" z="180"/>
+            <Scaling x="1" y="1" z="1"/>
+            <P1 x="0" y="1.5" z="0"/>
+            <P2 x="0" y="1.4999999999999996" z="0"/>
+            <P3 x="0" y="-1.5000000000000004" z="0"/>
+            <P4 x="0" y="-1.5" z="0"/>
+        </RoomObject>
+        <RoomObject Color="4294967295" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A30 GROUP origin(0,-8,0) - do children move with it" ObjectGroup="true" OrderIndex="16" ParentVenueObjectId="0" PlaneType="0" PrintColor="4294945280" Shape="5" Transparent="0">
+            <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A30a child local(0,0) - should sit at world (2,-8)" OrderIndex="14" ParentVenueObjectId="14" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="0" y="0" z="0"/>
+                <Rotation x="0" y="0" z="180"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="1.5" z="0"/>
+                <P2 x="0" y="1.4999999999999996" z="0"/>
+                <P3 x="0" y="-1.5000000000000004" z="0"/>
+                <P4 x="0" y="-1.5" z="0"/>
+            </RoomObject>
+            <RoomObject Color="4293450970" Enabled="1" ListenerHeight="1.2" Locked="0" Name="A30b child local(0,-4) - should sit at world (2,-12)" OrderIndex="15" ParentVenueObjectId="14" PlaneType="1" PrintColor="4294945280" Shape="1" Transparent="0">
+                <Origin x="0" y="-4" z="0"/>
+                <Rotation x="0" y="0" z="180"/>
+                <Scaling x="1" y="1" z="1"/>
+                <P1 x="0" y="1.5" z="0"/>
+                <P2 x="0" y="1.4999999999999996" z="0"/>
+                <P3 x="0" y="-1.5000000000000004" z="0"/>
+                <P4 x="0" y="-1.5" z="0"/>
+            </RoomObject>
+            <Origin x="0" y="-8" z="0"/>
+            <Rotation x="0" y="0" z="0"/>
+            <Scaling x="1" y="1" z="1"/>
+        </RoomObject>
+    </Venue>
+</ArrayCalc>

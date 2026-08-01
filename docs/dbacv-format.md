@@ -82,11 +82,47 @@ Child elements, in order: `Origin`, `Rotation`, `Scaling`, then `P1`…`Pn`, eac
 | 5 | Group | none |
 | 6 | Triangle | `P1`…`P3` |
 
-### Quads need not be planar
+### ⚠️ The canonical quad — VERIFIED BY ROUND TRIP, and it is not optional
 
-**Observed, and important.** `STALLS - MAIN 1` is a `Shape=1` quad whose `P2` and `P3` sit
-0.4 m higher than `P1` and `P4`. That is how ArrayCalc rakes a seating block. Any exporter
-may therefore express a warped quad directly and does not need to split it into triangles.
+**A `Shape=1` quad must be written in ArrayCalc's own local frame.** This was confirmed
+the hard way: a probe venue was written with quads whose origin was the centroid and whose
+points were spread symmetrically around it — the obvious encoding, which round-trips
+perfectly through this project's own reader. **ArrayCalc 12.8.2 imported every one of them
+and collapsed it to zero depth.** A 4 × 3 m plane became a 3 m line. No error was shown.
+
+The real form, matching all 26 quads in the reference venue and reproduced exactly by
+`canonicalQuad()`:
+
+```
+origin    at the MIDPOINT OF THE NEAR EDGE, not the centroid
+rotation  about Z only (no quad in the reference venue rotates about X or Y)
+
+P1 = (0,      +wNear/2, 0)        P2 = (depth, +wFar/2, rise)
+P4 = (0,      -wNear/2, 0)        P3 = (depth, -wFar/2, rise)
+```
+
+So a quad is a **symmetric trapezoid**: near and far edges both level and parallel, both
+bisected by the local X axis, with the far edge free to sit at a different height.
+
+| Property | Holds on all 26 reference quads |
+|---|---|
+| `P1.x == P4.x == 0` | ✅ |
+| `P2.x == P3.x` (a single depth) | ✅ |
+| `P1.y == -P4.y`, `P2.y == -P3.y` | ✅ |
+| `P1.z == P4.z`, `P2.z == P3.z` | ✅ |
+| `depth >= 0` | ✅ (6 of them exactly 0) |
+
+**`depth` may be zero.** That is how ArrayCalc stores a **vertical** plane: every rail
+front in the reference venue is a quad with `depth = 0` and a negative `rise`. So
+horizontal, vertical and raked planes are all expressible.
+
+**`rise` is what rakes seating.** `STALLS - MAIN 1` has its far edge 0.4 m higher than its
+near edge — the quad is genuinely non-planar in the sense that it is not axis-aligned, but
+it is still a valid ruled surface in this parameterisation.
+
+What **cannot** be expressed: a sheared parallelogram, an asymmetric trapezoid, or a quad
+with no level edge at all. Emit two **triangles** for those — `Shape=6` has no such
+constraint and ArrayCalc returned every triangle in the probe byte-identical.
 
 ### `Shape=2` is a rake, not a flat ring
 
@@ -95,27 +131,50 @@ fixture's curved tiers `InnerZ` and `OuterZ` differ by the rise of the tier, so
 interpolating z from inner to outer across the ring is what makes the seating raked.
 Angles are degrees; `StartAngle` is measured from +X.
 
-## 5. `PlaneType` — ⚠️ INFERRED
+## 5. `PlaneType` — partly verified
 
-**These labels are not verified against ArrayCalc's UI.** They are deductions from the
-names, colours and listener heights in one file. The app always shows the numeric code
-next to the label so a wrong guess stays visible.
+Two names now come from ArrayCalc itself. Importing a `PlaneType=5` quad that was not
+rectangular produced this dialog:
 
-| Code | Inferred meaning | Evidence |
+> *"Positioning areas need to be rectangles, but plane 'A13 …' is not rectangular. Click
+> 'Ok' to transform the plane or 'Cancel' to change the plane type to 'Listening'."*
+
+So **`PlaneType 5` is a "Positioning area"** and one of the other types is called
+**"Listening"** — almost certainly 1, which is the only type that keeps a custom
+`ListenerHeight`.
+
+| Code | Status | Meaning | Evidence |
+|---|---|---|---|
+| 0 | inferred | none / group | Only ever on groups. |
+| 1 | **strongly supported** | **Listening** | All the seating blocks. The ONLY type that keeps a user-set `ListenerHeight` (see §5a). |
+| 2 | inferred | Surface / obstacle | Ceilings, rails, bridges. `ListenerHeight` forced to 0.01. |
+| 3 | **unknown** | — | Not present in any sample. Still untested. |
+| 4 | inferred | Stage | `STAGE`, `STAGE - FRONT`, the three `PROS -` objects. `ListenerHeight` forced to 0.01. |
+| 5 | **VERIFIED** | **Positioning area** | Named by ArrayCalc's own dialog. Must be a **rectangle**. En-Scene teal `#00C0AE`. |
+
+### 5a. `ListenerHeight` is NOT simply derived — it depends on the plane type
+
+**Verified by round trip.** A probe wrote deliberately wrong values and ArrayCalc's export
+shows what it did with them:
+
+| Sent | Returned | Conclusion |
 |---|---|---|
-| 0 | none / group | Only ever on groups. |
-| 1 | Audience | All the seating blocks; `ListenerHeight` 1.2 (seated) or 1.7 (standing, at the mix position). |
-| 2 | Surface / obstacle | Ceilings, rails, lighting bridges; `ListenerHeight` 0.01. |
-| 3 | **unknown** | Not present in the sample. |
-| 4 | Stage | `STAGE`, `STAGE - FRONT`, the three `PROS -` objects. |
-| 5 | Soundscape | Exactly one object, named `SOUNDSCAPE`, in ArrayCalc's En-Scene teal `#00C0AE`. |
+| `PlaneType 1`, `ListenerHeight 0.77` | **`0.77`** | Kept. Type 1 has a user-settable listener height. |
+| `PlaneType 2`, `ListenerHeight 1.55` | **`0.01`** | **Silently reset.** Type 2 forces 0.01. |
 
-`ListenerHeight` tracks the plane type closely enough that it is almost certainly derived
-from it, so the app defaults it accordingly.
+So write whatever height the user wants on type 1, and do not bother fighting types 2/4/5.
+
+### 5b. `Color` is respected
+
+ArrayCalc returned every colour exactly as written — it does not impose a palette per
+plane type.
 
 ## 6. `ParentVenueObjectId` — derived, never stored
 
-**Observed, and verified by round-trip.** There is no `id` attribute anywhere in the file.
+**VERIFIED by an ArrayCalc round trip.** A probe venue whose group sat at document index
+14 came back with both its children still saying `ParentVenueObjectId="14"`.
+
+There is no `id` attribute anywhere in the file.
 `ParentVenueObjectId` is the parent's **1-based position in a depth-first walk of the
 document**, and `0` at the top level.
 
@@ -157,13 +216,37 @@ sample exercises it.
 There is no unit declaration in the file. Metres is inferred from the magnitudes being
 right for a theatre and from ArrayCalc being a metric tool throughout.
 
+## 8a. What an ArrayCalc round trip settled
+
+A diagnostic venue (`scripts/make_probe_venue.py`) was opened in ArrayCalc 12.8.2, saved
+and exported. Results:
+
+| Question | Answer |
+|---|---|
+| Is `%.17g` the right number format? | **Yes.** `0.77000000000000002`, `1.4999999999999996`, `-135.00000000000017` all reproduced exactly. |
+| Is `ParentVenueObjectId` depth-first document order? | **Yes.** |
+| Does ArrayCalc keep our `Color`? | **Yes.** |
+| Does it keep `ListenerHeight`? | **Only on PlaneType 1.** Type 2 is reset to 0.01. |
+| Does it keep `OrderIndex`? | **No** — it renumbers freely. Treat ours as a hint. |
+| Do triangles survive? | **Yes, byte-identical.** Centroid origin and all. |
+| Do `Shape=4` boxes survive? | **Yes, byte-identical.** |
+| Do `Shape=2` arcs survive? | **Yes, byte-identical.** |
+| Do centroid-framed quads survive? | **NO — every one collapsed to zero depth.** See §4. |
+
+Still open, pending a second probe: what `PlaneType 3` is, whether group **rotation** and
+**scaling** compose onto children, and whether a group containing a single object survives.
+
 ## 9. What this project does NOT know
 
-- The meaning of `PlaneType` 3, or whether the labels for 1/2/4/5 are what d&b calls them.
+- The meaning of `PlaneType` 3.
+- Whether the labels for 1, 2 and 4 are what d&b calls them. Only 5 ("Positioning area")
+  and the existence of "Listening" come from ArrayCalc itself.
 - Whether `Shape` 0 or 3 exist.
 - Whether any other top-level section (loudspeaker systems, sources, positions) can appear
   inside `<ArrayCalc>` — the fixture is a venue-only export and contains just `<Project>`
   and `<Venue>`.
 - How ArrayCalc reacts to a venue with several hundred objects, which is what a
   CAD conversion can easily produce.
-- Whether group `Rotation`/`Scaling` compose the way this code assumes (§7).
+- Whether group `Rotation`/`Scaling` compose the way this code assumes (§7). Group
+  TRANSLATION survived a round trip untouched, but no sample or probe has yet exercised a
+  rotated or scaled group.

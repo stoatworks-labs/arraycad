@@ -173,10 +173,11 @@ def convert_source(source, rule, options, order_start=1):
         if len(polygon) < 3:
             continue
         for face in fan_quads(polygon):
-            obj = RoomObject.from_face(
+            # faces_for, not from_face: a quad that will not fit ArrayCalc's canonical
+            # frame comes back as two triangles rather than being silently dropped.
+            for obj in RoomObject.faces_for(
                 "{} {}".format(source.name, order), face, rule.plane_type, order
-            )
-            if obj is not None:
+            ):
                 objects.append(obj)
                 order += 1
 

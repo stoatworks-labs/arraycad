@@ -119,6 +119,114 @@ def _esc(s: str) -> str:
     )
 
 
+# -------------------------------------------------------------- the canonical quad
+
+
+def canonical_quad(pts, tol=1e-4):
+    # type: (Sequence[Vec3], float) -> Optional[Tuple[Vec3, float, List[Vec3]]]
+    """Express four world points as an ArrayCalc Shape=1 quad, or return None.
+
+    THIS IS A HARD FORMAT REQUIREMENT and getting it wrong is silent and destructive.
+    An earlier version wrote quads with the origin at the centroid and points spread
+    symmetrically around it — the obvious encoding, and one that round-trips perfectly
+    through our own reader. ArrayCalc 12.8.2 imported those and collapsed every one to
+    ZERO DEPTH: a 4 x 3 m plane became a 3 m line, with no error message.
+
+    The real form, confirmed on all 26 quads in the reference venue and by a round trip
+    through ArrayCalc itself:
+
+        origin   at the MIDPOINT OF THE NEAR EDGE, not the centroid
+        rotation about Z only
+        P1 = (0,     +wNear/2, 0)      P2 = (depth, +wFar/2, rise)
+        P4 = (0,     -wNear/2, 0)      P3 = (depth, -wFar/2, rise)
+
+    so a quad is a SYMMETRIC TRAPEZOID: near and far edges both LEVEL and parallel, both
+    bisected by the local X axis, the far edge free to sit at a different height. `rise`
+    is where the tilt lives, and `depth` may be ZERO — that is precisely how ArrayCalc
+    stores a vertical plane. Every rail front in the reference venue is depth 0.
+
+    So horizontal, vertical and raked planes are all expressible. What is not is a
+    sheared parallelogram, an asymmetric trapezoid, or a quad with no level edge at all.
+    Returns None for those; use two triangles, which ArrayCalc accepts untouched.
+
+    Returns (origin, rotation_z_degrees, [P1, P2, P3, P4]).
+    """
+    pts = list(pts)
+    if len(pts) != 4:
+        return None
+
+    # The caller's winding is arbitrary; only some alignments match the convention.
+    found = []
+    for ring in (pts, list(reversed(pts))):
+        for r in range(4):
+            got = _try_canonical(
+                ring[r], ring[(r + 1) % 4], ring[(r + 2) % 4], ring[(r + 3) % 4], tol
+            )
+            if got is not None:
+                found.append(got)
+    if not found:
+        return None
+
+    # Prefer a non-negative depth. Geometrically identical either way, but ArrayCalc
+    # writes depth >= 0 on all 26 quads in the reference venue.
+    for got in found:
+        if got[2][1][0] >= -1e-9:
+            return got
+    return found[0]
+
+
+def _try_canonical(p1, p2, p3, p4, tol):
+    # type: (Vec3, Vec3, Vec3, Vec3, float) -> Optional[Tuple[Vec3, float, List[Vec3]]]
+    eps = 1e-9
+    # Both edges must be LEVEL. The frame rotates about Z only, so near and far edges are
+    # always horizontal and the plane's tilt lives entirely in `rise`.
+    if abs(p1[2] - p4[2]) > tol or abs(p2[2] - p3[2]) > tol:
+        return None
+
+    # The near edge sets local +Y; local +X is that turned -90 degrees.
+    e0x, e0y = p1[0] - p4[0], p1[1] - p4[1]
+    w_near = math.hypot(e0x, e0y)
+    if w_near < eps:
+        return None
+    yx, yy = e0x / w_near, e0y / w_near
+    xx, xy = yy, -yx
+
+    # The far edge must be parallel to the near edge and point the same way.
+    e1x, e1y = p2[0] - p3[0], p2[1] - p3[1]
+    w_far = math.hypot(e1x, e1y)
+    if w_far > eps:
+        if abs(e1x * yy - e1y * yx) > tol:
+            return None
+        if e1x * yx + e1y * yy < 0:
+            return None
+
+    m0x, m0y = (p1[0] + p4[0]) / 2.0, (p1[1] + p4[1]) / 2.0
+    m1x, m1y = (p2[0] + p3[0]) / 2.0, (p2[1] + p3[1]) / 2.0
+    dx, dy = m1x - m0x, m1y - m0y
+
+    # The far edge must sit square in front of the near one, or the quad is sheared.
+    if abs(dx * yx + dy * yy) > tol:
+        return None
+
+    depth = dx * xx + dy * xy
+    rise = p2[2] - p1[2]
+    # Depth may be ZERO: that is exactly how ArrayCalc stores a vertical plane, and every
+    # rail front in the reference venue is depth 0 with a negative rise.
+    if abs(depth) < eps and abs(rise) < eps:
+        return None
+
+    return (
+        (m0x, m0y, p1[2]),
+        math.degrees(math.atan2(xy, xx)),
+        [
+            (0.0, w_near / 2.0, 0.0),
+            (depth, w_far / 2.0, rise),
+            (depth, -w_far / 2.0, rise),
+            (0.0, -w_near / 2.0, 0.0),
+        ],
+    )
+
+
 # -------------------------------------------------------------------------- model
 
 
@@ -186,31 +294,83 @@ class RoomObject(object):
         return g
 
     @staticmethod
-    def from_face(name, world_points, plane_type, order_index=1):
+    def from_triangle(name, world_points, plane_type, order_index=1):
         # type: (str, Sequence[Vec3], int, int) -> Optional[RoomObject]
-        """Build a quad or triangle from world-space points.
-
-        Origin is the centroid and Rotation stays zero, with the points carried as
-        offsets. ArrayCalc's own files do use non-zero Rotation, but it is not required:
-        quads need not even be planar (the sample rakes seating by lifting two corners),
-        so an axis-aligned local frame can express anything. Solving for a rotation the
-        file does not need would only add a way to be subtly wrong.
-        """
+        """A triangle. ArrayCalc leaves a triangle's local frame entirely alone."""
         pts = list(world_points)
-        if len(pts) not in (3, 4):
+        if len(pts) != 3:
             return None
-        n = float(len(pts))
-        cx = sum(p[0] for p in pts) / n
-        cy = sum(p[1] for p in pts) / n
-        cz = sum(p[2] for p in pts) / n
+        cx = sum(p[0] for p in pts) / 3.0
+        cy = sum(p[1] for p in pts) / 3.0
+        cz = sum(p[2] for p in pts) / 3.0
         return RoomObject(
             name,
-            shape=SHAPE_TRIANGLE if len(pts) == 3 else SHAPE_QUAD,
+            shape=SHAPE_TRIANGLE,
             plane_type=plane_type,
             origin=(cx, cy, cz),
             points=[(p[0] - cx, p[1] - cy, p[2] - cz) for p in pts],
             order_index=order_index,
         )
+
+    @staticmethod
+    def from_face(name, world_points, plane_type, order_index=1):
+        # type: (str, Sequence[Vec3], int, int) -> Optional[RoomObject]
+        """A triangle, or a quad THAT FITS ArrayCalc's canonical frame. Else None.
+
+        Returns None for a quad that cannot be expressed — see `canonical_quad`. Callers
+        that can emit more than one object should use `faces_for` instead, which falls
+        back to two triangles rather than dropping the geometry.
+        """
+        pts = list(world_points)
+        if len(pts) == 3:
+            return RoomObject.from_triangle(name, pts, plane_type, order_index)
+        if len(pts) != 4:
+            return None
+
+        got = canonical_quad(pts)
+        if got is None:
+            return None
+        origin, rotation_z, local = got
+        return RoomObject(
+            name,
+            shape=SHAPE_QUAD,
+            plane_type=plane_type,
+            origin=origin,
+            rotation=(0.0, 0.0, rotation_z),
+            points=local,
+            order_index=order_index,
+        )
+
+    @staticmethod
+    def faces_for(name, world_points, plane_type, order_index=1):
+        # type: (str, Sequence[Vec3], int, int) -> List[RoomObject]
+        """One or two RoomObjects for a face, never dropping it.
+
+        A quad that will not fit the canonical frame becomes two triangles. Two objects
+        instead of one is the price of geometry that survives the import.
+        """
+        pts = list(world_points)
+        if len(pts) == 3:
+            o = RoomObject.from_triangle(name, pts, plane_type, order_index)
+            return [o] if o else []
+        if len(pts) != 4:
+            return []
+
+        one = RoomObject.from_face(name, pts, plane_type, order_index)
+        if one is not None:
+            return [one]
+
+        out = []
+        for suffix, tri in (
+            ("a", [pts[0], pts[1], pts[2]]),
+            ("b", [pts[0], pts[2], pts[3]]),
+        ):
+            o = RoomObject.from_triangle(
+                name + suffix, tri, plane_type, order_index + (1 if suffix == "b" else 0)
+            )
+            if o:
+                out.append(o)
+        return out
 
     @staticmethod
     def from_box(name, bottom, top, plane_type, order_index=1):

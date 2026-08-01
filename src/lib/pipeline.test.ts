@@ -33,11 +33,27 @@ function toVenue(objects: VenueFile['objects']): VenueFile {
   }
 }
 
+/**
+ * World positions, APPLYING the Z rotation.
+ *
+ * Quads carry a real rotation now — ArrayCalc's canonical frame demands it. Adding the
+ * origin to the raw local points, which was correct while rotation was always zero,
+ * silently reports geometry in the wrong place.
+ */
 function allPoints(objects: VenueFile['objects']) {
   const out: { x: number; y: number; z: number }[] = []
   const walk = (os: VenueFile['objects']) => {
     for (const o of os) {
-      for (const p of o.points) out.push({ x: p.x + o.origin.x, y: p.y + o.origin.y, z: p.z + o.origin.z })
+      const r = (o.rotation.z * Math.PI) / 180
+      const c = Math.cos(r)
+      const s = Math.sin(r)
+      for (const p of o.points) {
+        out.push({
+          x: p.x * c - p.y * s + o.origin.x,
+          y: p.x * s + p.y * c + o.origin.y,
+          z: p.z + o.origin.z,
+        })
+      }
       walk(o.children)
     }
   }
@@ -159,8 +175,31 @@ describe('venue -> planes -> venue', () => {
   it('rectangle fit never emits more objects than following the outline', () => {
     const rect = convertAll(scene.nodes, PlaneType.Audience, { ...DEFAULT_CONVERT, fit: 'rect' })
     expect(rect.stats.objectsOut).toBeLessThanOrEqual(result.stats.objectsOut)
-    // One quad per region, by definition.
-    expect(rect.stats.objectsOut).toBe(rect.stats.regionsFound)
+    // One region becomes one canonical quad, or two triangles when the rectangle has no
+    // level edge for ArrayCalc's local frame to sit on — a rectangle on a compound
+    // slope, for instance. Never more than two.
+    expect(rect.stats.objectsOut).toBeGreaterThanOrEqual(rect.stats.regionsFound)
+    expect(rect.stats.objectsOut).toBeLessThanOrEqual(rect.stats.regionsFound * 2)
+  })
+
+  it('emits only geometry that survives an ArrayCalc import', () => {
+    // Every quad must be in the canonical frame; anything else is silently flattened on
+    // import. Triangles are unconstrained.
+    const walk = (os: typeof reparsed.objects) => {
+      for (const o of os) {
+        if (o.shape === Shape.Quad) {
+          expect(Math.abs(o.points[0].x), `"${o.name}" P1.x`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[3].x), `"${o.name}" P4.x`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[1].x - o.points[2].x), `"${o.name}" far depth`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[0].y + o.points[3].y), `"${o.name}" near sym`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[1].y + o.points[2].y), `"${o.name}" far sym`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[0].z - o.points[3].z), `"${o.name}" near level`).toBeLessThan(1e-9)
+          expect(Math.abs(o.points[1].z - o.points[2].z), `"${o.name}" far level`).toBeLessThan(1e-9)
+        }
+        walk(o.children)
+      }
+    }
+    walk(reparsed.objects)
   })
 })
 
