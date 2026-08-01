@@ -1,4 +1,4 @@
-# CLAUDE.md — Venue Forge
+# CLAUDE.md — ArrayCAD
 
 Command reference. For the model, the invariants and the traps, read
 [AGENTS.md](AGENTS.md) first.
@@ -14,6 +14,12 @@ npm run build        # tsc -b && vite build -> dist/
 npm run preview      # serve the built dist/ (does NOT apply _headers)
 npm run serve:dist   # serve dist/ WITH _headers applied — use this to check the CSP
 npx tsc -b           # typecheck only
+```
+
+The Vectorworks plug-in is Python and has its own tests. None need Vectorworks:
+
+```bash
+python3 vectorworks/tests/test_dbacv.py && python3 vectorworks/tests/test_geom.py && python3 vectorworks/tests/test_export.py
 ```
 
 ## Deploy
@@ -39,6 +45,11 @@ deploy `npx wrangler deploy`.
 - `src/lib/` stays free of three.js (bar `import/mesh.ts`) so the pipeline tests run in node.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
+- `vectorworks/` is a **second implementation** of the writer and the reduction, in Python
+  3.9, because the plug-in runs inside Vectorworks' own interpreter. Change the reduction
+  and you change it in both places — the shared test cases are what catch the drift.
+- `vectorworks/arraycad/vwbridge.py` is the only code here that has never been executed.
+  Its defensive `_call` wrapping is load-bearing; don't tidy it away.
 
 ## The fixture is the ground truth
 

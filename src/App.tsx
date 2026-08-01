@@ -100,9 +100,9 @@ export default function App() {
       venueVersion: '9',
       projectName,
       date: formatDbacvDate(),
-      author: 'Venue Forge',
+      author: 'ArrayCAD',
       projectComments: '',
-      venueComments: `Converted from ${scene?.format ?? 'CAD'} by Venue Forge.`,
+      venueComments: `Converted from ${scene?.format ?? 'CAD'} by ArrayCAD.`,
       objects: result.objects,
     }
     const blob = new Blob([writeDbacv(venue)], { type: 'application/xml' })
@@ -161,7 +161,7 @@ export default function App() {
               </div>
             )}
             <p className="pitch">
-              Venue Forge turns a CAD model into a d&amp;b ArrayCalc venue. It merges the
+              ArrayCAD turns a CAD model into a d&amp;b ArrayCalc venue. It merges the
               model's triangles back into flat planes, lets you throw away everything
               ArrayCalc does not need, and lets you say what each surface is — then writes a{' '}
               <code>.dbacv</code>.
@@ -470,7 +470,7 @@ function Topbar({ children }: { children?: React.ReactNode }) {
   return (
     <header className="topbar">
       <span className="brand">
-        Venue&nbsp;Forge <em>CAD → ArrayCalc</em>
+        ArrayCAD <em>CAD → ArrayCalc</em>
       </span>
       {children}
     </header>

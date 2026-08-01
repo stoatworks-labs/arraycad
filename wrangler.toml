@@ -1,4 +1,4 @@
-# Cloudflare deployment for Venue Forge.
+# Cloudflare deployment for ArrayCAD.
 #
 # A static-assets-only Worker: no server code. The fleet does NOT use Cloudflare
 # Pages — `pages_build_output_dir` fails here with "Could not detect a directory
@@ -18,7 +18,7 @@
 #
 # `name` must match the Cloudflare project.
 
-name = "venue-forge"
+name = "arraycad"
 compatibility_date = "2026-07-30"
 
 [assets]

@@ -1,4 +1,4 @@
-# AGENTS.md — bringing an LLM up to speed on Venue Forge
+# AGENTS.md — bringing an LLM up to speed on ArrayCAD
 
 Orientation for an AI assistant (or a new human) picking this project up cold.
 `CLAUDE.md` holds the short command reference; this file explains the model and the traps.
@@ -34,6 +34,7 @@ src/
     convert.ts          the pipeline: ImportedNode -> RoomObject
   components/           Viewport (three.js), Tree, Inspector, ui
   state.ts              decisions, settings, the debounced conversion hook
+vectorworks/            a SECOND implementation, in Python 3.9, for the VW plug-in
 test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
 docs/dbacv-format.md    everything known about the format, and what is not known
 ```
@@ -130,7 +131,30 @@ Unique to this app in the fleet. web-ifc instantiates a WebAssembly module. With
 **IFC import fails and nothing else does**, which looks like an IFC bug rather than a
 policy problem. It is in `public/_headers`.
 
-## 6. Testing
+## 6. The Vectorworks plug-in is a deliberate second implementation
+
+`vectorworks/` contains a Python 3.9 port of the `.dbacv` writer and the core of the
+geometry engine. It has to: the plug-in runs inside Vectorworks' own CPython and cannot
+call the TypeScript.
+
+**Two implementations of the same reduction will drift apart.** What stops that:
+
+- `vectorworks/tests/test_geom.py` uses the **same synthetic cases** as
+  `src/lib/geom/geom.test.ts` — box is six regions, split rectangle is one, cylinder is
+  not one.
+- `vectorworks/tests/test_dbacv.py` reproduces the **same fixture byte for byte** as
+  `src/lib/dbacv/dbacv.test.ts`.
+
+Change the reduction on one side and you must change it on both. The drift has already
+been caught once: the Python `g17` took its exponent from a 6-digit `%e` probe, which
+rounds `9.99…e-02` up to `1.0e-01` and cost one fraction digit. The TypeScript was right
+by accident (`toExponential()` is shortest-round-trip). Both now have the case pinned.
+
+`vwbridge.py` is the only module that imports `vs`, and it is the only code in this repo
+that has **never been executed**. Every call in it is wrapped so a wrong signature becomes
+a named diagnostic rather than wrong geometry. Do not "tidy" that wrapping away.
+
+## 7. Testing
 
 102 tests, all in node, no browser needed.
 
@@ -144,7 +168,7 @@ The ones that matter most:
   split rectangle is one, a cylinder is not one.
 - `guards.test.ts` — degenerate input that must not throw or hang.
 
-## 7. Deploy
+## 8. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 

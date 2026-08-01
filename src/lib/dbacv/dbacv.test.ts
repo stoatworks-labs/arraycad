@@ -33,6 +33,12 @@ describe('g17 — printf("%.17g") equivalence', () => {
     [0.027708879191155944, '0.027708879191155944'],
     [0.60000000000000053, '0.60000000000000053'],
     [-8.8817841970012523e-16, '-8.8817841970012523e-16'],
+    // The decade-boundary trap. This double is just under 0.1, so the exponent that
+    // decides the fixed-notation digit count must be taken AFTER rounding to 17
+    // significant digits (-2), not from a low-precision probe that rounds it up to
+    // 1.0e-01 (-1). Getting it wrong costs one fraction digit and yields
+    // 0.09999999999999998. The Python port in vectorworks/ had exactly this bug.
+    [0.099999999999999978, '0.099999999999999978'],
   ]
   for (const [v, want] of cases) {
     it(`${want}`, () => expect(g17(v)).toBe(want))

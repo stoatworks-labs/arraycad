@@ -26,7 +26,7 @@ function toVenue(objects: VenueFile['objects']): VenueFile {
     venueVersion: '9',
     projectName: 'Test',
     date: formatDbacvDate(new Date(2026, 7, 1)),
-    author: 'Venue Forge',
+    author: 'ArrayCAD',
     projectComments: '',
     venueComments: '',
     objects,

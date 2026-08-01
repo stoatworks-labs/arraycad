@@ -1,8 +1,8 @@
-# Venue Forge
+# ArrayCAD
 
 **Turn a CAD venue model into a d&b ArrayCalc venue file.**
 
-Drop in a DXF, glTF, IFC, OBJ or similar. Venue Forge merges the model's triangles back
+Drop in a DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles back
 into flat planes, lets you throw away everything ArrayCalc does not need, lets you say
 what each surface *is* — audience, surface, stage — and writes a `.dbacv`.
 
@@ -40,8 +40,25 @@ on it. A 12-triangle box is six. That collapse is the tool.
 
 `.vwx`, `.dwg`, `.skp`, `.rvt`, `.3dm`, `.max`, `.blend` are **closed binary formats with
 no public specification**. Nothing outside their own application can read them, and no
-amount of work here changes that. Drop one in and Venue Forge names the export to run
+amount of work here changes that. Drop one in and ArrayCAD names the export to run
 instead — for Vectorworks that is glTF first, then IFC, then DXF 3D.
+
+## Vectorworks plug-in
+
+For Vectorworks there is a second route that skips the intermediate file entirely:
+**[`vectorworks/`](vectorworks/README.md)** is a Python plug-in that runs inside
+Vectorworks and writes `.dbacv` directly.
+
+It can do better than the browser tool, because inside Vectorworks it can see your
+**class names** — which an export throws away — and use them to decide what each object
+is. It also knows venue-specific tricks the browser tool cannot: take just the top face of
+a seating solid, or collapse a lighting bridge to a single ArrayCalc box instead of six
+quads.
+
+⚠️ **It has never been run inside Vectorworks.** Everything testable without Vectorworks
+is tested (64 tests, including the same byte-exact format check), but the one module that
+calls the Vectorworks API is unverified. Run its probe script first. See
+[vectorworks/README.md](vectorworks/README.md).
 
 ## Getting a good result
 
