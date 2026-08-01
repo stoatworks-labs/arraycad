@@ -40,7 +40,7 @@ docs/dbacv-format.md    everything known about the format, and what is not known
 ```
 
 **`src/lib/` is pure and three-free** (except `import/mesh.ts`, which needs the loaders).
-The whole conversion runs in node, which is why 102 tests can cover it without a browser.
+The whole conversion runs in node, which is why 127 tests can cover it without a browser.
 
 ## 3. The one thing to understand
 
@@ -80,13 +80,33 @@ byte-exact and a diff against a real ArrayCalc export meaningful.
 
 ## 5. Traps
 
-### The plane-type labels are guesses
+### A quad is NOT four free points
 
-`Audience`, `Surface`, `Stage`, `Soundscape` were **inferred from one file** — its names,
-its colours, its listener heights. They are not from documentation. The UI shows the raw
-numeric code beside every label for exactly this reason. If someone verifies them against
-ArrayCalc, update `PLANE_TYPES` in `lib/dbacv/types.ts` and flip `verified` to `true`.
-Do not quietly drop the caveat from the inspector.
+`Shape=1` must be written in ArrayCalc's canonical frame — origin on the **near edge**,
+symmetric trapezoid, rotation about Z only, `depth` may be zero for a vertical plane. See
+`dbacv/quad.ts`. Write it the obvious way (centroid origin) and ArrayCalc collapses the
+plane to zero depth **with no error**, and does so only sometimes: a bad quad survives at
+top level and dies later when it ends up under a rotated group. Quads that cannot be
+expressed become two triangles, which are unconstrained.
+
+This cost the project a whole round trip to find. Do not "simplify" `canonicalQuad` away.
+
+### A Positioning area must be rectangular
+
+`PlaneType 5` is ArrayCalc's "Positioning area" and it refuses a non-rectangular one — it
+offers to transform the plane or to change the type, and both damage the venue. `convert.ts`
+therefore forces rectangle fit for that plane type regardless of the fit setting, and warns.
+
+### The plane-type labels are only partly guesses
+
+Two names now come from ArrayCalc itself: **5 is "Positioning area"** and its dialog also
+names a **"Listening"** type, which is almost certainly 1 — the only type that keeps a
+user-set `ListenerHeight` (2 is silently forced to 0.01). **3 is a real type** that
+ArrayCalc accepts and preserves, but its name is unknown. **0 is groups-only** and is
+coerced to 1 on a real object.
+
+`Surface` and `Stage` are still guesses. The UI shows the raw numeric code beside every
+label for exactly that reason — do not quietly drop the caveat from the inspector.
 
 ### Groups write their transform AFTER their children
 
@@ -156,7 +176,7 @@ a named diagnostic rather than wrong geometry. Do not "tidy" that wrapping away.
 
 ## 7. Testing
 
-102 tests, all in node, no browser needed.
+127 TypeScript tests plus 75 Python tests, none of which need a browser or Vectorworks.
 
 The ones that matter most:
 

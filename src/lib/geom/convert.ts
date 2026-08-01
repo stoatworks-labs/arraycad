@@ -173,6 +173,18 @@ export function convertNode(
   const objects: RoomObject[] = []
   let order = 1
 
+  // A Positioning area MUST be a rectangle. ArrayCalc says so itself: importing a
+  // non-rectangular one raises "Positioning areas need to be rectangles… click Ok to
+  // transform the plane or Cancel to change the plane type to 'Listening'". Both answers
+  // damage the venue, so never emit one that would trigger it.
+  const mustBeRectangular = planeType === PlaneType.PositioningArea
+  if (mustBeRectangular && opts.fit !== 'rect') {
+    warnings.push(
+      `"${node.name}" is a Positioning area, which ArrayCalc requires to be rectangular, ` +
+        'so it was squared off regardless of the fit setting.',
+    )
+  }
+
   for (const region of regions) {
     const loops = boundaryLoops(region, mesh)
     if (loops.length === 0) {
@@ -186,7 +198,7 @@ export function convertNode(
     let outer = simplifyClosed(dropCollinear(to2(loops[0]), opts.simplifyTolerance), opts.simplifyTolerance)
     let holes: Pt2[][] = []
 
-    if (opts.fit === 'rect') {
+    if (opts.fit === 'rect' || mustBeRectangular) {
       outer = minAreaRect(outer)
       // A rectangle has no interior to preserve, so holes go with it. Deliberate: 'rect'
       // is the "give me the coverage area, not the joinery" mode.

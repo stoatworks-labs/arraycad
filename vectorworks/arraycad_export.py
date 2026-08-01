@@ -37,8 +37,8 @@ except ImportError:
 
 from arraycad import vwbridge
 from arraycad.dbacv import (
-    PLANE_AUDIENCE,
-    PLANE_SOUNDSCAPE,
+    PLANE_LISTENING,
+    PLANE_POSITIONING,
     PLANE_STAGE,
     PLANE_SURFACE,
     PLANE_TYPE_NAMES,
@@ -58,11 +58,11 @@ from arraycad.export import (
 # Class names that usually mean a given plane type. Only a starting guess — the dialog
 # always shows what was chosen and lets it be changed.
 CLASS_HINTS = (
-    (("seat", "audience", "stall", "balcony", "tier", "circle", "gallery"), PLANE_AUDIENCE, STRATEGY_TOP),
+    (("seat", "audience", "stall", "balcony", "tier", "circle", "gallery"), PLANE_LISTENING, STRATEGY_TOP),
     (("stage", "deck", "riser", "pros", "apron", "thrust"), PLANE_STAGE, STRATEGY_TOP),
     (("wall", "ceiling", "rail", "balustrade", "reflector", "soffit"), PLANE_SURFACE, STRATEGY_FACES),
     (("bridge", "truss", "rig", "bar", "beam", "column"), PLANE_SURFACE, STRATEGY_BOX),
-    (("soundscape", "en-scene", "enscene"), PLANE_SOUNDSCAPE, STRATEGY_TOP),
+    (("soundscape", "en-scene", "enscene"), PLANE_POSITIONING, STRATEGY_TOP),
 )
 
 SKIP_HINTS = ("dim", "text", "annot", "note", "grid", "sheet", "title", "north", "hidden")
@@ -78,7 +78,7 @@ def suggest(class_name):
         for needle in needles:
             if needle in low:
                 return plane_type, strategy, True
-    return PLANE_AUDIENCE, STRATEGY_AUTO, True
+    return PLANE_LISTENING, STRATEGY_AUTO, True
 
 
 def collect(scale):
@@ -109,10 +109,10 @@ def ask_rules(class_names):
     """One dialog per class. Crude, but it needs no .vsm resource to install."""
     rules = {}
     plane_choices = [
-        (PLANE_AUDIENCE, "Audience"),
+        (PLANE_LISTENING, "Listening"),
         (PLANE_SURFACE, "Surface"),
         (PLANE_STAGE, "Stage"),
-        (PLANE_SOUNDSCAPE, "Soundscape"),
+        (PLANE_POSITIONING, "Positioning area"),
     ]
 
     for name in class_names:

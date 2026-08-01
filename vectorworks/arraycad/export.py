@@ -24,6 +24,7 @@ from typing import Dict, List, Optional, Sequence, Tuple
 
 from .dbacv import (
     PLANE_LISTENING,
+    PLANE_POSITIONING,
     PLANE_STAGE,
     RoomObject,
     VenueFile,
@@ -166,10 +167,22 @@ def convert_source(source, rule, options, order_start=1):
         )
         chosen_list = chosen_list[: options.max_objects_per_source]
 
+    # A Positioning area MUST be a rectangle. ArrayCalc says so itself: importing a
+    # non-rectangular one raises "Positioning areas need to be rectangles… click Ok to
+    # transform the plane or Cancel to change the plane type to 'Listening'". Both
+    # answers damage the venue, so never emit one that would trigger it.
+    rectangle = rule.rectangle
+    if rule.plane_type == PLANE_POSITIONING and not rectangle:
+        rectangle = True
+        warnings.append(
+            '"{}" is a Positioning area, which ArrayCalc requires to be rectangular, so '
+            "it was squared off regardless of the fit setting.".format(source.name)
+        )
+
     objects = []  # type: List[RoomObject]
     order = order_start
     for region in chosen_list:
-        polygon = region_polygon(region, mesh, options.simplify_tol, rule.rectangle)
+        polygon = region_polygon(region, mesh, options.simplify_tol, rectangle)
         if len(polygon) < 3:
             continue
         for face in fan_quads(polygon):

@@ -4,7 +4,7 @@
 
 Drop in a DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles back
 into flat planes, lets you throw away everything ArrayCalc does not need, lets you say
-what each surface *is* — audience, surface, stage — and writes a `.dbacv`.
+what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 
 Browser only. No backend, no upload: the file never leaves your machine.
 
@@ -56,7 +56,7 @@ a seating solid, or collapse a lighting bridge to a single ArrayCalc box instead
 quads.
 
 ⚠️ **It has never been run inside Vectorworks.** Everything testable without Vectorworks
-is tested (64 tests, including the same byte-exact format check), but the one module that
+is tested (75 tests, including the same byte-exact format check), but the one module that
 calls the Vectorworks API is unverified. Run its probe script first. See
 [vectorworks/README.md](vectorworks/README.md).
 
@@ -79,16 +79,24 @@ calls the Vectorworks API is unverified. Run its probe script first. See
 ## The `.dbacv` format
 
 It is undocumented. Everything this tool knows was reverse-engineered from one real
-ArrayCalc 12.8.2 export, and is written up in **[docs/dbacv-format.md](docs/dbacv-format.md)**.
+ArrayCalc 12.8.2 export **plus two round trips through ArrayCalc itself**, and is written
+up in **[docs/dbacv-format.md](docs/dbacv-format.md)**.
 
 The reader and writer reproduce that file **byte for byte**, which is good evidence the
 structure is right.
 
-> ⚠️ **The plane-type names are inferred, not verified.** `Audience`, `Surface`, `Stage`,
-> `Soundscape` are deductions from one file's names, colours and listener heights — they
-> are not read from d&b documentation. The app always shows the raw numeric code beside
-> the label, because that is what actually gets written. Check a converted venue in
-> ArrayCalc before trusting a whole design to it.
+The round trips were worth doing. They found that a `Shape=1` quad must be written in
+ArrayCalc's own local frame — origin on the *near edge*, not the centroid — and that
+getting it wrong makes ArrayCalc **silently collapse the plane to zero depth**, sometimes
+not until later. They also pinned down that `PlaneType 5` is a "Positioning area" which
+must be rectangular, and that a listener height is kept on type 1 but silently reset on
+type 2.
+
+> ⚠️ **Some plane-type names are still inferred.** `Positioning area` (5) comes from
+> ArrayCalc's own dialog, and `Listening` (1) is near-certain. `Surface` (2) and `Stage`
+> (4) are still deductions, and type 3 is a real type whose name is unknown. The app
+> always shows the raw numeric code beside the label, because that is what actually gets
+> written. Check a converted venue in ArrayCalc before trusting a whole design to it.
 
 ### Re-importing a `.dbacv` is lossy
 

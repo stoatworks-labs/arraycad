@@ -321,6 +321,29 @@ describe('convertNode', () => {
     expect(exact.objects.length).toBeGreaterThanOrEqual(1)
   })
 
+  it('forces a Positioning area to be rectangular whatever the fit says', () => {
+    // ArrayCalc refuses a non-rectangular Positioning area: it offers to "transform the
+    // plane" or to change the type to Listening, and both answers damage the venue.
+    const ragged = [...quadXY(10, 5), 10, 0, 0, 12, 2.5, 0, 10, 5, 0]
+    const r = convertNode(node(ragged), PlaneType.PositioningArea, DEFAULT_CONVERT)
+    expect(DEFAULT_CONVERT.fit).toBe('exact')
+    expect(r.objects).toHaveLength(1)
+    expect(r.objects[0].shape).toBe(Shape.Quad)
+    expect(r.warnings.join(' ')).toMatch(/Positioning area/)
+
+    // A Listening plane with the same geometry is left ragged, as asked.
+    const listening = convertNode(node(ragged), PlaneType.Listening, DEFAULT_CONVERT)
+    expect(listening.warnings.join(' ')).not.toMatch(/Positioning area/)
+  })
+
+  it('does not warn about a Positioning area when rectangle fit was already chosen', () => {
+    const r = convertNode(node(quadXY(10, 5)), PlaneType.PositioningArea, {
+      ...DEFAULT_CONVERT,
+      fit: 'rect',
+    })
+    expect(r.warnings.join(' ')).not.toMatch(/Positioning area/)
+  })
+
   it('assigns the listener height that matches the plane type', () => {
     const aud = convertNode(node(quadXY(4, 4)), PlaneType.Listening, DEFAULT_CONVERT)
     const srf = convertNode(node(quadXY(4, 4)), PlaneType.Surface, DEFAULT_CONVERT)

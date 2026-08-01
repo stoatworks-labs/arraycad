@@ -14,6 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
 
 from arraycad.dbacv import (  # noqa: E402
     PLANE_LISTENING,
+    PLANE_POSITIONING,
     PLANE_STAGE,
     PLANE_SURFACE,
     SHAPE_BOX,
@@ -151,6 +152,25 @@ class TestStrategies(unittest.TestCase):
         self.assertEqual(len(rect), 1)
         self.assertEqual(rect[0].shape, SHAPE_QUAD)
         self.assertGreaterEqual(len(plain), 1)
+
+    def test_positioning_area_is_forced_rectangular(self):
+        # ArrayCalc refuses a non-rectangular Positioning area: it offers to "transform
+        # the plane" or change the type to Listening, and both damage the venue.
+        tris = quad_xy(10, 5) + [10, 0, 0, 12, 2.5, 0, 10, 5, 0]
+        src = SourceObject("Soundscape", tris, "Soundscape")
+        objs, _, warnings = convert_source(
+            src, ClassRule(PLANE_POSITIONING, STRATEGY_FACES, rectangle=False), Options()
+        )
+        self.assertEqual(len(objs), 1)
+        self.assertEqual(objs[0].shape, SHAPE_QUAD)
+        self.assertTrue(any("Positioning area" in w for w in warnings))
+
+    def test_no_positioning_warning_when_rectangle_already_asked_for(self):
+        src = SourceObject("Soundscape", quad_xy(10, 5), "Soundscape")
+        _, _, warnings = convert_source(
+            src, ClassRule(PLANE_POSITIONING, STRATEGY_FACES, rectangle=True), Options()
+        )
+        self.assertFalse(any("Positioning area" in w for w in warnings))
 
     def test_object_cap_keeps_the_largest(self):
         src = SourceObject("Solid", box_tris(4, 3, 2), "Walls")

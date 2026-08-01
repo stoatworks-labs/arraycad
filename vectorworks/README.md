@@ -14,7 +14,7 @@ names — and use them to decide what each object is.
 
 **This plug-in has never been run inside Vectorworks.**
 
-Everything that can be verified without Vectorworks has been, and is covered by 64 tests:
+Everything that can be verified without Vectorworks has been, and is covered by 75 tests:
 the `.dbacv` writer reproduces a real ArrayCalc export **byte for byte**, and the geometry
 engine gives the same answers as the browser tool on the same cases.
 
@@ -56,11 +56,11 @@ these words get a sensible default, which you can override:
 
 | Class name contains | Becomes | Strategy |
 |---|---|---|
-| seat, audience, stall, balcony, tier, circle, gallery | Audience | Top face |
+| seat, audience, stall, balcony, tier, circle, gallery | Listening | Top face |
 | stage, deck, riser, pros, apron, thrust | Stage | Top face |
 | wall, ceiling, rail, balustrade, reflector, soffit | Surface | All faces |
 | bridge, truss, rig, bar, beam, column | Surface | Single box |
-| soundscape, en-scene | Soundscape | Top face |
+| soundscape, en-scene | Positioning area | Top face, **forced rectangular** |
 | dim, text, annot, note, grid, sheet, title, north, hidden | — | **skipped** |
 
 ### 2. Select and run
@@ -114,29 +114,30 @@ on what actually responds to a call.
   annulus sector ArrayCalc uses for curved tiers — is understood by the writer but nothing
   generates one. A curved balcony comes out as a run of flat quads.
 - **The document unit scale is not read.** See above.
-- **Plane type names are reverse-engineered** from one sample file, not from d&b
-  documentation. The numeric code is shown next to every name because that is what gets
-  written. See [`../docs/dbacv-format.md`](../docs/dbacv-format.md).
+- **Some plane type names are still inferred.** "Positioning area" (5) is ArrayCalc's own
+  word and "Listening" (1) is near-certain; "Surface" (2) and "Stage" (4) are deductions.
+  The numeric code is shown next to every name because that is what gets written. See
+  [`../docs/dbacv-format.md`](../docs/dbacv-format.md).
+- **A Positioning area is forced rectangular.** ArrayCalc refuses a non-rectangular one,
+  so the exporter squares it off whatever the strategy says, and warns.
 
 ## Tests
 
-64 tests, none of which need Vectorworks:
+75 tests, none of which need Vectorworks:
 
 ```bash
-python3 vectorworks/tests/test_dbacv.py
-```
-
-```bash
-python3 vectorworks/tests/test_geom.py
-```
-
-```bash
-python3 vectorworks/tests/test_export.py
+python3 vectorworks/tests/run_all.py
 ```
 
 `test_geom.py` deliberately uses the **same cases** as `src/lib/geom/geom.test.ts`. Two
 implementations of the same reduction will drift apart unless something pins them
 together, and that is what it is for.
+
+`test_plugin_entrypoints.py` imports `arraycad_export.py` and `arraycad_probe.py` with a
+stubbed `vs`. Those two files only ever run inside Vectorworks, so nothing else touches
+them and they rot silently — a rename of the plane-type constants once left the exporter
+importing names that no longer existed, and only a Vectorworks session would have caught
+it.
 
 ## Files
 
@@ -148,5 +149,5 @@ arraycad/
   geom.py               weld, coplanar merge, outline, box detection, top face
   export.py             the per-class strategy logic. No `vs` — fully testable
   vwbridge.py           THE ONLY MODULE THAT TOUCHES VECTORWORKS
-tests/                  64 tests, no Vectorworks needed
+tests/                  75 tests, no Vectorworks needed
 ```

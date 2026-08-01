@@ -8,7 +8,7 @@ Command reference. For the model, the invariants and the traps, read
 ```bash
 npm install
 npm run dev          # vite dev server
-npm test             # vitest — 102 tests
+npm test             # vitest — 127 tests
 npm run test:watch
 npm run build        # tsc -b && vite build -> dist/
 npm run preview      # serve the built dist/ (does NOT apply _headers)
@@ -19,7 +19,7 @@ npx tsc -b           # typecheck only
 The Vectorworks plug-in is Python and has its own tests. None need Vectorworks:
 
 ```bash
-python3 vectorworks/tests/test_dbacv.py && python3 vectorworks/tests/test_geom.py && python3 vectorworks/tests/test_export.py
+python3 vectorworks/tests/run_all.py
 ```
 
 ## Deploy
