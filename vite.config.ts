@@ -1,12 +1,20 @@
 import { defineConfig } from 'vitest/config'
 import react from '@vitejs/plugin-react'
 
+import { readFileSync } from 'node:fs'
+
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
+
 // Static SPA, no backend. dist/ is what the Cloudflare Worker serves as assets.
 //
 // web-ifc fetches its own .wasm at runtime. import/ifc.ts resolves that path with
 // `new URL(..., import.meta.url)` so Vite emits it as a hashed asset and it stays
 // same-origin — the CSP has no external connect source, so a CDN default would be blocked.
 export default defineConfig({
+  // The About dialog shows the version the build actually produced. about-data.js
+  // carries one baked at sync time as a fallback, and it goes stale the moment a
+  // release is tagged; this is the one that is always right.
+  define: { __APP_VERSION__: JSON.stringify(`v${pkg.version}`) },
   plugins: [react()],
   base: './',
   assetsInclude: ['**/*.wasm'],
