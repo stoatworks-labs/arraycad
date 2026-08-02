@@ -83,7 +83,7 @@ read, and a wrong scale makes every distance in the export wrong.
 | **Top face** | The single highest roughly-horizontal surface | Seating, stage decks |
 | **All faces** | Every coplanar region | Walls, ceilings, reflectors |
 | **Single box** | One ArrayCalc `Shape=4` box | Lighting bridges, proscenium legs |
-| **Top face, rectangle** | Top face squared off to its smallest enclosing rectangle | Ragged seating outlines |
+| **Top face, rectangle** | Top face squared off to a rectangle aligned with the plane's level direction, so it is always one ArrayCalc quad | Ragged seating outlines |
 
 **Single box is worth reaching for.** A box exported as faces is six RoomObjects; exported
 as a box it is one, which is what a person would have drawn in ArrayCalc by hand. It only
