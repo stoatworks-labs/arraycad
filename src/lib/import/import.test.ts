@@ -87,9 +87,32 @@ describe('DXF import', () => {
       ]),
       'a.dxf',
     )
-    expect(countTriangles(s.nodes)).toBe(4) // fan about the centroid
     const m = weld(s.nodes[0].positions, 0.001)
     expect(m.vertices.every((v) => Math.abs(v.z - 6.5) < 1e-9)).toBe(true)
+    const regions = findCoplanarRegions(m, DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(32)
+  })
+
+  it('fills a concave ring without covering the hollow', () => {
+    // An L. A fan about the centroid lays triangles across the notch, and the recovered
+    // region then has the area of the bounding box — which for an auditorium outline
+    // means the whole middle of the room imports as floor.
+    const s = importDxf(
+      dxf([
+        '0', 'LWPOLYLINE', '8', 'L', '70', '1', '90', '6',
+        '10', '0', '20', '0',
+        '10', '10', '20', '0',
+        '10', '10', '20', '4',
+        '10', '4', '20', '4',
+        '10', '4', '20', '10',
+        '10', '0', '20', '10',
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(64) // not 100
   })
 
   it('ignores an open polyline unless asked', () => {
@@ -190,6 +213,182 @@ describe('DXF import', () => {
   it('rejects a DXF with nothing usable, and says what to do', () => {
     expect(() => importDxf(dxf(['0', 'LINE', '8', 'X', '10', '0', '20', '0', '11', '5', '21', '5']), 'a.dxf'))
       .toThrow(/no surfaces/)
+  })
+})
+
+const line = (layer: string, a: number[], b: number[]) => [
+  '0', 'LINE', '8', layer,
+  '10', `${a[0]}`, '20', `${a[1]}`, '30', `${a[2] ?? 0}`,
+  '11', `${b[0]}`, '21', `${b[1]}`, '31', `${b[2] ?? 0}`,
+]
+
+describe('DXF segment chaining', () => {
+  it('recovers a room outline drawn as four separate LINEs', () => {
+    // This is what a plan drawing actually looks like. Before chaining, every one of these
+    // was discarded and the file imported as nothing.
+    const s = importDxf(
+      dxf([
+        ...line('STAGE', [0, 0], [10, 0]),
+        ...line('STAGE', [10, 0], [10, 6]),
+        ...line('STAGE', [10, 6], [0, 6]),
+        ...line('STAGE', [0, 6], [0, 0]),
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(60)
+  })
+
+  it('joins lines to arcs', () => {
+    // A semicircular apron: two straight sides closed by an arc. The arc is a boundary,
+    // not a pie slice, so its own sector must not appear as floor.
+    const s = importDxf(
+      dxf([
+        ...line('APRON', [-5, 0], [5, 0]),
+        '0', 'ARC', '8', 'APRON', '10', '0', '20', '0', '30', '0', '40', '5', '50', '0', '51', '180',
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo((Math.PI * 25) / 2, 0)
+  })
+
+  it('leaves a chain that never closes alone', () => {
+    expect(() =>
+      importDxf(dxf([...line('D', [0, 0], [10, 0]), ...line('D', [10, 0], [10, 6])]), 'a.dxf'),
+    ).toThrow(/no surfaces/)
+  })
+
+  it('takes the straightest continuation at a tee', () => {
+    // A wall running past a row divider. Turning up the divider would close a ring that
+    // is not in the drawing and swallow half the room.
+    const s = importDxf(
+      dxf([
+        ...line('R', [0, 0], [5, 0]),
+        ...line('R', [5, 0], [10, 0]),
+        ...line('R', [5, 0], [5, 3]), // the divider teeing in
+        ...line('R', [10, 0], [10, 6]),
+        ...line('R', [10, 6], [0, 6]),
+        ...line('R', [0, 6], [0, 0]),
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(60)
+  })
+
+  it('walks both ways from the segment it starts on', () => {
+    // A three-sided bay. The chain is seeded on whichever segment comes first in the
+    // file, which is usually in the middle of it — walking only forwards strands
+    // everything behind the seed, and force-closing what is left turns a three-sided bay
+    // into a triangle with a wall missing.
+    const s = importDxf(
+      dxf([
+        ...line('BAY', [-6, -2], [6, -2]), // seeded here, in the middle of the chain
+        ...line('BAY', [-6, -2], [-6, -12]),
+        ...line('BAY', [6, -2], [6, -12]),
+      ]),
+      'a.dxf',
+      { includeOpenPaths: true },
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(120) // 12 x 10, not the 60 of a triangle
+  })
+
+  it('can be switched off', () => {
+    const src = dxf([
+      ...line('S', [0, 0], [10, 0]),
+      ...line('S', [10, 0], [10, 6]),
+      ...line('S', [10, 6], [0, 6]),
+      ...line('S', [0, 6], [0, 0]),
+    ])
+    expect(() => importDxf(src, 'a.dxf', { chainSegments: false })).toThrow(/no surfaces/)
+  })
+
+  it('closes a ring across a gap left by a rounded export', () => {
+    // Endpoints that should coincide but do not, which is what a rounded export gives you.
+    const s = importDxf(
+      dxf([
+        ...line('G', [0, 0], [10, 0]),
+        ...line('G', [10.00001, 0], [10, 6]),
+        ...line('G', [10, 6], [0, 6]),
+        ...line('G', [0, 6], [0, 0]),
+      ]),
+      'a.dxf',
+    )
+    expect(countTriangles(s.nodes)).toBeGreaterThan(0)
+  })
+
+  it('tessellates a bulged polyline segment into an arc', () => {
+    // Bulge 1 on the closing segment is a semicircle: a 10-wide box capped by a half disc.
+    const s = importDxf(
+      dxf([
+        '0', 'LWPOLYLINE', '8', 'B', '70', '1', '90', '2',
+        '10', '0', '20', '0', '42', '1',
+        '10', '10', '20', '0', '42', '1',
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(Math.PI * 25, 0) // two half discs of r=5
+  })
+
+  it('sweeps an arc that runs past zero the short way round', () => {
+    // Start 270, end 0. The arc is the last quarter turn. dxf-parser reports the sweep as
+    // -270, which draws the other three quarters; chained against its own chord that is a
+    // three-quarter disc instead of a small cap.
+    const s = importDxf(
+      dxf([
+        ...line('A', [0, -5], [5, 0]),
+        '0', 'ARC', '8', 'A', '10', '0', '20', '0', '30', '0', '40', '5', '50', '270', '51', '360',
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    // The circular segment cut off by the chord: a quarter disc less the triangle.
+    expect(regions[0].area).toBeCloseTo((Math.PI * 25) / 4 - 12.5, 0)
+  })
+
+  it('skips an ARC with no end angle rather than filling in a disc', () => {
+    // Group code 60 is the visibility flag, not the end angle. A writer that puts the end
+    // angle there leaves the arc with no sweep at all, and defaulting to a full turn puts
+    // a solid circle tens of metres across into the venue.
+    const s = importDxf(
+      dxf([
+        ...line('X', [0, 0], [10, 0]),
+        ...line('X', [10, 0], [10, 6]),
+        ...line('X', [10, 6], [0, 6]),
+        ...line('X', [0, 6], [0, 0]),
+        '0', 'ARC', '8', 'X', '10', '0', '20', '0', '30', '0', '40', '140', '50', '210', '60', '330',
+      ]),
+      'a.dxf',
+    )
+    expect(s.warnings.join(' ')).toMatch(/no end angle/)
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(60)
+  })
+
+  it('reads an ELLIPSE as a closed ring', () => {
+    const s = importDxf(
+      dxf([
+        '0', 'ELLIPSE', '8', 'E',
+        '10', '0', '20', '0', '30', '0',
+        '11', '10', '21', '0', '31', '0',
+        '40', '0.5',
+        '41', '0', '42', `${Math.PI * 2}`,
+      ]),
+      'a.dxf',
+    )
+    const regions = findCoplanarRegions(weld(s.nodes[0].positions, 0.001), DEFAULT_PLANARIZE)
+    expect(regions).toHaveLength(1)
+    expect(regions[0].area).toBeCloseTo(Math.PI * 10 * 5, 0)
   })
 })
 

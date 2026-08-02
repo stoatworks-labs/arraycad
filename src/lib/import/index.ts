@@ -4,16 +4,20 @@
 
 import { type ImportedScene, ImportError } from './types.ts'
 import { importMesh } from './mesh.ts'
-import { type DxfOptions, importDxf } from './dxf.ts'
+import { importDxf } from './dxf.ts'
+import { importDwg } from './dwg.ts'
+import type { CadOptions } from './entities.ts'
 import { importIfc } from './ifc.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
 
 export * from './types.ts'
-export { DEFAULT_DXF_OPTIONS } from './dxf.ts'
+export { DEFAULT_CAD_OPTIONS, DEFAULT_CAD_OPTIONS as DEFAULT_DXF_OPTIONS } from './entities.ts'
+export type { CadOptions } from './entities.ts'
 export { importDbacvExact } from './dbacvScene.ts'
 
 export const ACCEPTED_EXTENSIONS = [
   '.dxf',
+  '.dwg',
   '.obj',
   '.stl',
   '.ply',
@@ -46,12 +50,6 @@ const CLOSED_FORMATS: Record<string, { name: string; advice: string }> = {
       'Export only the classes you need (seating, stage, walls, ceiling) and leave lighting, ' +
       'rigging and dimensions behind — it saves most of the pruning.',
   },
-  '.dwg': {
-    name: 'AutoCAD DWG',
-    advice:
-      'DWG is a closed binary format. In AutoCAD use SAVEAS and choose DXF (R2013 ASCII is ' +
-      'safest), or run the free ODA File Converter to turn DWG into DXF, then drop the DXF here.',
-  },
   '.skp': {
     name: 'SketchUp',
     advice:
@@ -72,7 +70,8 @@ const CLOSED_FORMATS: Record<string, { name: string; advice: string }> = {
 }
 
 export interface ImportOptions {
-  dxf?: Partial<DxfOptions>
+  /** Shared by DXF and DWG: they are the same drawing model and the same importer. */
+  cad?: Partial<CadOptions>
 }
 
 function extensionOf(filename: string): string {
@@ -93,7 +92,9 @@ export async function importFile(
 
   switch (ext) {
     case '.dxf':
-      return importDxf(await file.text(), file.name, options.dxf)
+      return importDxf(await file.text(), file.name, options.cad)
+    case '.dwg':
+      return importDwg(await file.arrayBuffer(), file.name, options.cad)
     case '.ifc':
       return importIfc(await file.arrayBuffer(), file.name)
     case '.dbacv':

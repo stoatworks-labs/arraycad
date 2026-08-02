@@ -32,7 +32,10 @@ src/
   lib/import/           one importer per format, all producing ImportedScene
     types.ts            the intermediate model every importer must produce
     mesh.ts             OBJ STL PLY glTF FBX DAE 3DS, via three.js loaders
-    dxf.ts              DXF entities -> triangles. The fiddliest importer
+    entities.ts         THE VECTOR-CAD CORE: entities -> triangles. Shared by DXF and DWG
+    chain.ts            loose LINE/ARC segments -> closed rings. See §9
+    dxf.ts              dxf-parser -> CadDocument. A translation, no geometry
+    dwg.ts              acad-ts -> CadDocument. A translation, no geometry
     ifc.ts              web-ifc wasm; the only source of plane-type suggestions
     dbacvScene.ts       an existing venue, tessellated, so it can be pruned
     index.ts            extension dispatcher + the closed-format guidance table
@@ -318,7 +321,60 @@ a real user, and *not* a bug to go hunting — but it makes automated verificati
 headless or hidden browser pane look like a hang in the loader. Bring the page to the
 front before testing PDF import.
 
-## 9. Deploy
+## 9. Vector CAD: DXF and DWG
+
+**They are one importer, not two.** DXF is the drawing model written as tagged text; DWG
+is the same model written as a versioned bitstream. `entities.ts` owns everything from an
+entity list onwards — block expansion, curve flattening, chaining, filling, layer
+bucketing — and `dxf.ts` and `dwg.ts` are each only a translation into `CadDocument`.
+Neither of them contains any geometry, and neither should ever grow any. This is the same
+rule as `geom/outline.ts`, for the same reason.
+
+**A plan drawing contains no surfaces.** This is the thing to understand about DXF. A
+seating block is not a closed polyline; it is forty separate LINE and ARC entities whose
+endpoints coincide on the page. `chain.ts` welds those endpoints and walks the segment
+graph to recover the rings. Without it every LINE in the file is discarded and a seating
+plan imports as nothing at all — which is exactly what it used to do.
+
+Two things in the chainer are load-bearing and both look like details:
+
+- **The walk goes in BOTH directions from its seed.** The seed is rarely the end of its
+  own chain, and walking only forwards strands every segment behind it.
+- **At a junction it takes the straightest continuation**, comparing the direction of
+  TRAVEL against each candidate. Compare the segment's own outward direction instead and
+  the test inverts: the walk takes the sharpest available turn, runs up the first row
+  divider it meets, and closes a ring that is not in the drawing.
+
+**Where the parsers lie, and it changes geometry.** Both of these were found by importing
+the same drawing as `.dxf` and as `.dwg` and comparing:
+
+- dxf-parser stores an arc's `angleLength` as a bare `endAngle - startAngle`. A DXF arc
+  always sweeps counter-clockwise, so one that runs past zero comes back **negative** and
+  draws the complement — the long way round, covering none of the same ground. Its own
+  CIRCLE handler normalises this and its ARC handler does not. In the Music Hall drawing
+  that was 64 of 316 arcs.
+- dxf-parser has no end angle at all if the writer used group code 60, which is the
+  *visibility* flag. Defaulting a missing sweep to a full turn fills in a disc tens of
+  metres across that nobody drew, so a missing end angle is a warning and no geometry.
+- acad-ts reports angles in **radians**; DXF's INSERT rotation is degrees. Miss it and
+  every seat in the house faces somewhere random.
+- acad-ts's `Arc.sweep` getter is `start - end`, the negative of the DXF sweep. Don't use
+  it; recompute.
+
+**Fills use earcut, not a centroid fan.** A fan is only correct for a convex ring, and
+chaining makes deeply concave rings the common case — an auditorium outline fanned about
+its centroid lays triangles across the empty middle of the room, which then merge into one
+region whose recovered boundary is the convex hull.
+
+**Why acad-ts and not libredwg.** libredwg is the obvious choice and is GPL-3; bundling it
+into an MIT browser app relicenses the app. Several npm packages wrap it in WASM and
+declare themselves MIT, which they cannot do — check what a DWG package actually contains
+before believing its licence field. acad-ts is an independent MIT implementation (a port
+of ACadSharp), is pure TypeScript, and pulls in no WebAssembly, so unlike web-ifc it needs
+nothing added to the CSP. It is behind a **dynamic import**: nobody who only opens a DXF
+should download it.
+
+## 10. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 

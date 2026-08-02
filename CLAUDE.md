@@ -50,6 +50,13 @@ deploy `npx wrangler deploy`.
   forced in `soundvision/convert.ts` and must stay that way. See `docs/soundvision-format.md`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
+- **DXF and DWG share `import/entities.ts`.** `dxf.ts` and `dwg.ts` are translations into
+  `CadDocument` and hold no geometry. Do not fork the entity reduction to add a format —
+  same rule as `geom/outline.ts`, same reason. See AGENTS.md §9 for the parser lies that
+  silently change geometry (arc sweep sign, radians vs degrees).
+- DWG is read by `@node-projects/acad-ts` — **MIT and pure TypeScript**, behind a dynamic
+  import. libredwg is GPL-3 and would relicense this app; npm packages that wrap it in
+  WASM and claim MIT are wrong. Don't swap the dependency without checking that.
 - `vectorworks/` is a **second implementation** of the writer and the reduction, in Python
   3.9, because the plug-in runs inside Vectorworks' own interpreter. Change the reduction
   and you change it in both places — the shared test cases are what catch the drift.
