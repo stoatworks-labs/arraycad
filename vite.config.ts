@@ -10,6 +10,8 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   assetsInclude: ['**/*.wasm'],
+  // Honour PORT so more than one dev server can run at once. Vite does not read it itself.
+  server: { port: process.env.PORT ? Number(process.env.PORT) : undefined },
   build: {
     outDir: 'dist',
     sourcemap: true,

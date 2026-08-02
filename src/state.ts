@@ -128,6 +128,40 @@ export function useDebounced<T>(value: T, ms: number, key?: unknown): T {
 }
 
 /**
+ * The per-node decisions a converter consumes.
+ *
+ * Shared by the live ArrayCalc conversion and by every export, so that what a user sees on
+ * screen and what lands in the file cannot drift apart.
+ */
+export function conversionEntries(
+  scene: ImportedScene,
+  decisions: Decisions,
+): { node: ImportedNode; planeType: PlaneType; include: boolean; name: string }[] {
+  return flattenNodes(scene.nodes)
+    .filter((n) => n.positions.length > 0)
+    .map((n) => {
+      const d = decisions[n.id]
+      return {
+        node: n,
+        planeType: d?.planeType ?? PlaneType.Listening,
+        include: d?.include ?? false,
+        name: d?.name ?? n.name,
+      }
+    })
+}
+
+/** Settings -> the options every target's reduction takes. */
+export function convertOptions(settings: Settings): ConvertOptions {
+  return {
+    transform: settings.transform,
+    planarize: settings.planarize,
+    simplifyTolerance: settings.simplifyTolerance,
+    fit: settings.fit,
+    maxObjectsPerNode: settings.maxObjectsPerNode,
+  }
+}
+
+/**
  * Run the conversion whenever the inputs settle.
  *
  * Debounced because dragging a tolerance slider would otherwise re-planarise a 50,000
@@ -151,25 +185,7 @@ export function useConversion(
     // import, nothing at all. Converting against those is meaningless and, with no
     // transform to read, throws. Wait for them to catch up.
     if (!scene || !debouncedSettings?.transform) return null
-    const opts: ConvertOptions = {
-      transform: debouncedSettings.transform,
-      planarize: debouncedSettings.planarize,
-      simplifyTolerance: debouncedSettings.simplifyTolerance,
-      fit: debouncedSettings.fit,
-      maxObjectsPerNode: debouncedSettings.maxObjectsPerNode,
-    }
-    const entries = flattenNodes(scene.nodes)
-      .filter((n) => n.positions.length > 0)
-      .map((n) => {
-        const d = debouncedDecisions[n.id]
-        return {
-          node: n,
-          planeType: d?.planeType ?? PlaneType.Listening,
-          include: d?.include ?? false,
-          name: d?.name ?? n.name,
-        }
-      })
-    return convertNodes(entries, opts)
+    return convertNodes(conversionEntries(scene, debouncedDecisions), convertOptions(debouncedSettings))
   }, [scene, debouncedDecisions, debouncedSettings])
 
   useEffect(() => {

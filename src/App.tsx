@@ -10,6 +10,8 @@ import {
   flattenNodes,
   importFile,
 } from './lib/import/index.ts'
+import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
+import { writeSoundvision } from './lib/soundvision/write.ts'
 import { type TraceDocument, buildTraceScene } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
@@ -18,6 +20,8 @@ import {
   type Settings,
   type ViewMode,
   DEFAULT_SETTINGS,
+  conversionEntries,
+  convertOptions,
   mergeDecisions,
   seedDecisions,
   settingsForScene,
@@ -193,6 +197,23 @@ export default function App() {
     download(writeDbacv(venue), `${projectName || 'venue'}.dbacv`, 'application/xml')
   }, [result, projectName, scene])
 
+  /**
+   * Soundvision's native scene file is encrypted, so the target here is the 3D room data
+   * text format its own SketchUp and Vectorworks plug-ins write — see
+   * docs/soundvision-format.md. It is converted on demand rather than alongside the live
+   * ArrayCalc result: nothing on screen depends on it, and planarising twice on every
+   * slider movement would halve the frame rate for a file most sessions never export.
+   */
+  const exportSoundvision = useCallback(() => {
+    if (!scene || !settings?.transform) return
+    const r = convertNodesToSoundvision(conversionEntries(scene, decisions), {
+      ...convertOptions(settings),
+      winding: 'up',
+    })
+    if (r.scene.faces.length === 0) return
+    download(writeSoundvision(r.scene), `${projectName || 'venue'}.txt`, 'text/plain')
+  }, [scene, decisions, settings, projectName])
+
   // ---------------------------------------------------------------- render
 
   if (!scene || !settings) {
@@ -289,6 +310,14 @@ export default function App() {
           onChange={(e) => setProjectName(e.target.value)}
           aria-label="Project name"
         />
+        <button
+          type="button"
+          onClick={exportSoundvision}
+          disabled={!result || result.objects.length === 0}
+          title="Soundvision 3D room data. Import with 3D room data > Import 3D room data."
+        >
+          Export .txt
+        </button>
         <button
           type="button"
           className="primary"

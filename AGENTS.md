@@ -14,6 +14,11 @@ shape as blend-calc, pixel-peeker and aspect-calc.
 It imports a CAD model, reduces its triangles to flat planes, lets the user prune and
 classify them, and writes a `.dbacv`.
 
+It writes **L-Acoustics Soundvision** too, as a 3D room data `.txt`. Soundvision's native
+`.xmls` is AES-256-CBC encrypted with a runtime-assembled key and cannot be written from
+outside, so the target is the unencrypted interchange format its own SketchUp and
+Vectorworks plug-ins produce. See `docs/soundvision-format.md`.
+
 It also **traces one off a plan**. A PDF or an image has no model in it at all, so the
 tracer builds one: the user calibrates the sheet, outlines regions (by hand or by flood
 fill), and types a height at each corner. What comes out is the same `ImportedScene` every
@@ -40,18 +45,30 @@ src/
     calibrate.ts        pixels -> metres. The ONLY place the sheet scale is applied
     heights.ts          typed corner heights -> a least-squares surface
     build.ts            regions -> ImportedScene, and from there the ordinary pipeline
+  lib/soundvision/      THE OTHER FORMAT. Soundvision 3D room data .txt
+    types.ts            faces, the scene, and the header a real export begins with
+    read.ts             parser, mostly so the writer can be proved by round trip
+    write.ts            serialiser + the winding rule Soundvision fails silently on
+    convert.ts          outlines -> surfaces. The short half; the reduction is shared
   lib/geom/             THE ENGINE
     vec.ts              small vector maths, deliberately three-free
     planarize.ts        weld + coplanar flood fill. The module that makes this possible
     polygon.ts          boundary loops, simplification, quad/triangle fitting
     transform.ts        units, up-axis, datum. The ONLY place these are applied
-    convert.ts          the pipeline: ImportedNode -> RoomObject
+    outline.ts          the SHARED reduction: ImportedNode -> planar outlines
+    convert.ts          the ArrayCalc half: outlines -> RoomObject
   components/           Viewport (three.js), Tree, Inspector, TraceEditor, TracePanel, ui
   state.ts              decisions, settings, the debounced conversion hook
 vectorworks/            a SECOND implementation, in Python 3.9, for the VW plug-in
 test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
+test/fixtures/roomdata.txt    a synthetic Soundvision export, in the exact byte format
 docs/dbacv-format.md    everything known about the format, and what is not known
+docs/soundvision-format.md    ditto for Soundvision, incl. why .xmls is not writable
 ```
+
+**Every output target shares `geom/outline.ts` and differs only after it.** The reduction is
+the whole value of this tool; a second copy of it would drift the way the TypeScript and
+Python writers already did once (§6).
 
 **`src/lib/` is pure and three-free** (except `import/mesh.ts`, which needs the loaders,
 and `trace/source.ts`, which needs a canvas and pdf.js). The whole conversion runs in node,
@@ -129,6 +146,25 @@ And that transform **composes** — child origins are relative to it. Evidence i
 `docs/dbacv-format.md` §7. A round trip confirms ArrayCalc preserves a group's Origin,
 Rotation and Scaling unchanged and does not bake them into children, so the hierarchy is
 real; whether rotation and scaling are *applied* when drawing is still unconfirmed by eye.
+
+### A backwards Soundvision surface predicts nothing, and says nothing
+
+Soundvision requires surface points counter-clockwise. A face wound the other way is **not**
+an error — it simply returns no mapping result. A CAD model whose floor triangles wind
+downwards therefore imports into a venue that looks right and predicts nothing.
+
+`soundvision/convert.ts` forces each ring counter-clockwise in its own plane frame first (so
+the face normal is the region normal, not its opposite), and `orientFace(…, 'up')` then
+flips any near-horizontal face still pointing down. Vertical faces are deliberately left
+alone: a wall has no correct side without knowing which way the room is. Same family as the
+Y-up handedness trap below, and tested the same way.
+
+### Soundvision `.xmls` cannot be written, and that is not a gap to close
+
+It is AES-256-CBC with a fixed key and IV that the application assembles at runtime rather
+than storing — there is no 64-character hex string in the binary to find. The `.txt` route
+is the supported one, is what L-Acoustics' own plug-ins use, and does not break when a
+Soundvision update rotates the key. Evidence in `docs/soundvision-format.md` §1.
 
 ### Welding must probe neighbouring cells
 
@@ -213,6 +249,16 @@ The ones that matter most:
 - `guards.test.ts` — degenerate input that must not throw or hang.
 - `trace.test.ts` — synthetic *drawings*: a mask built by hand, so "a rectangular room
   detects as four corners" is an exact assertion rather than a tolerance on a real scan.
+- `soundvision.test.ts` — round trip of `roomdata.txt`, the winding rule, and the fact a
+  six-sided region stays ONE surface. The writer was additionally checked byte for byte
+  against a real 7,194-face Vectorworks export (1.0 MB, 29,760 coordinates); that file is a
+  client drawing and is not in the repo.
+
+**Nothing ArrayCAD writes has yet been opened in Soundvision.** The `.dbacv` side has three
+ArrayCalc round trips behind it; the Soundvision side has a byte-exact reproduction of a
+real export, which is strong but is not the same thing. Until someone runs *3D room data →
+Import 3D room data* on an ArrayCAD file, treat the header attribution line and the `'up'`
+winding default as the likeliest things to need revisiting.
 
 ## 8. The tracer
 

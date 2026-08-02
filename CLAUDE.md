@@ -43,6 +43,11 @@ deploy `npx wrangler deploy`.
 - `ParentVenueObjectId` is derived on write from depth-first document order. Never store it.
 - Numbers go through `g17()`. Never `String(n)` — it breaks the byte-exact round trip.
 - `src/lib/` stays free of three.js (bar `import/mesh.ts`) so the pipeline tests run in node.
+- **Every output target shares `geom/outline.ts`.** ArrayCalc and Soundvision differ only in
+  what they do with an outline. Do not fork the reduction to add a target.
+- Soundvision `.xmls` is encrypted and is not writable — the target is 3D room data `.txt`.
+  A surface wound clockwise is not an error there, it silently predicts nothing; winding is
+  forced in `soundvision/convert.ts` and must stay that way. See `docs/soundvision-format.md`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
 - `vectorworks/` is a **second implementation** of the writer and the reduction, in Python
@@ -66,3 +71,7 @@ deploy `npx wrangler deploy`.
 `test/fixtures/theatre.dbacv` is a real ArrayCalc 12.8.2 export. The round-trip test
 reproduces it byte for byte. If that test fails, the format understanding has regressed —
 fix that before anything else.
+
+`test/fixtures/roomdata.txt` does the same job for Soundvision. It is synthetic, written in
+the exact byte format of a Vectorworks plug-in export; the writer was separately verified
+byte for byte against a real 7,194-face export that is not in the repo.

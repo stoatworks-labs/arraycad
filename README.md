@@ -6,6 +6,10 @@ Drop in a DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles 
 into flat planes, lets you throw away everything ArrayCalc does not need, lets you say
 what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 
+**L-Acoustics Soundvision too.** The same reduced venue exports as Soundvision *3D room
+data* (`.txt`), the format its own SketchUp and Vectorworks plug-ins write. See
+[Soundvision](#soundvision).
+
 **No 3D model? Trace one off the plan.** Drop a PDF or an image instead: set the scale,
 click inside a room to detect its outline, and type a height at each corner. See
 [Tracing a plan](#tracing-a-plan).
@@ -163,6 +167,38 @@ type 1 but silently reset on type 2.
 Opening an existing venue tessellates every object into triangles and rebuilds it from
 planes. Arc segments and boxes come back as flat quads. Use it to prune and retype, not to
 preserve.
+
+## Soundvision
+
+**Export .txt**, then in Soundvision: *3D room data → Import 3D room data*.
+
+Soundvision's native scene file (`.xmls`) is encrypted — AES-256-CBC with a key the
+application assembles at runtime — so nothing outside Soundvision can write one. The export
+target is instead the format L-Acoustics documents for exactly this job, and that its own
+SU4SV (SketchUp) and Vectorworks plug-ins produce:
+
+> It is possible to import in Soundvision 3D room data `*.txt` files that were exported from
+> CAD software, such as SketchUp or Vectorworks.
+
+It is a plain list of labelled, planar polygons, which suits the reduction better than
+`.dbacv` does: a Soundvision surface is a **free polygon**, so a six-sided balcony stays one
+surface instead of being split into two triangles to fit ArrayCalc's canonical quad.
+
+Two things to know:
+
+- **The format carries geometry and a label, nothing else.** Audience listening levels, and
+  which surfaces are enabled for mapping, are set in Soundvision after importing — that is
+  its normal workflow. Faces are labelled with your CAD layer names so you can find them.
+- **Winding matters, and getting it wrong is silent.** Soundvision needs surface points
+  counter-clockwise; a reversed one is not an error, it just returns no mapping result.
+  ArrayCAD orients every face for you.
+
+The grammar, the evidence behind it and what is still unverified are in
+**[docs/soundvision-format.md](docs/soundvision-format.md)**.
+
+> ⚠️ **Not yet confirmed inside Soundvision.** The writer reproduces a real 7,194-face
+> Vectorworks export byte for byte, which is strong evidence, but no ArrayCAD-written file
+> has been through *Import 3D room data* yet. Check one before trusting a whole design to it.
 
 ## Develop
 
