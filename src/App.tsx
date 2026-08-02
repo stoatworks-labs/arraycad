@@ -310,13 +310,24 @@ export default function App() {
           onChange={(e) => setProjectName(e.target.value)}
           aria-label="Project name"
         />
+        {/*
+          Tagged experimental deliberately. The format is reproduced byte for byte from a
+          real Vectorworks export, which is good evidence, but no ArrayCAD-written file has
+          yet been through Soundvision's own importer — unlike the .dbacv side, which has
+          three ArrayCalc round trips behind it. Drop the tag once that check is done.
+        */}
         <button
           type="button"
           onClick={exportSoundvision}
           disabled={!result || result.objects.length === 0}
-          title="Soundvision 3D room data. Import with 3D room data > Import 3D room data."
+          title={
+            'Soundvision 3D room data — import with 3D room data > Import 3D room data.\n\n' +
+            'Experimental: the format is reproduced byte for byte from a real Vectorworks ' +
+            'export, but no ArrayCAD file has yet been confirmed to import. Check the venue ' +
+            'in Soundvision before trusting a design to it.'
+          }
         >
-          Export .txt
+          Export .txt (experimental)
         </button>
         <button
           type="button"
