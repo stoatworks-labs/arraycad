@@ -23,3 +23,9 @@ compatibility_date = "2026-07-30"
 
 [assets]
 directory = "./dist"
+
+# The custom domain is declared here rather than clicked into the dashboard, so the
+# routing is in the repo and a fresh deploy reproduces it. Same shape as simple-rta.
+[[routes]]
+pattern = "arraycad.stoatworks-labs.com"
+custom_domain = true
