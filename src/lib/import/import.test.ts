@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs'
 import { JSDOM } from 'jsdom'
 import { importDxf } from './dxf.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
+import { importSoundvisionAsScene } from './soundvisionScene.ts'
 import { countTriangles, flattenNodes } from './types.ts'
 import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from '../geom/planarize.ts'
 
@@ -444,5 +445,54 @@ describe('.dbacv re-import', () => {
     expect(maxX).toBeGreaterThan(13)
     expect(maxZ).toBeGreaterThan(7)
     expect(maxZ).toBeLessThan(20)
+  })
+})
+
+describe('Soundvision re-import', () => {
+  const txt = readFileSync(new URL('../../../test/fixtures/roomdata.txt', import.meta.url), 'utf8')
+  const scene = importSoundvisionAsScene(txt, 'roomdata.txt')
+
+  it('groups faces by label, in the order the file lists them', () => {
+    expect(scene.nodes.map((n) => n.tags[0])).toEqual([
+      'label:None face',
+      'label:Stage Trusses face',
+      'label:Seating face',
+    ])
+  })
+
+  // Without this an export gains a " face" on every conversion: "Seating face face".
+  it("strips the plug-ins' \" face\" suffix from the node name", () => {
+    expect(scene.nodes.map((n) => n.name)).toEqual(['None', 'Stage Trusses', 'Seating'])
+  })
+
+  it('declares metres and Z up, which the format fixes', () => {
+    expect(scene.unitsPerMetre).toBe(1)
+    expect(scene.upAxis).toBe('z')
+  })
+
+  it('triangulates a flat polygon in its own plane', () => {
+    const byName = (n: string) => scene.nodes.find((x) => x.name === n)!
+    expect(countTriangles([byName('None')])).toBe(2) // a quad
+    expect(countTriangles([byName('Stage Trusses')])).toBe(1) // already a triangle
+  })
+
+  // The fixture's five-sided seating face is deliberately warped. Projecting it onto a
+  // best-fit plane would fold it flat and silently lose the step; a fan keeps the points
+  // that were actually in the file, and the note says what happened.
+  it('fans a surface that is not flat, and says so', () => {
+    const seating = scene.nodes.find((n) => n.name === 'Seating')!
+    expect(countTriangles([seating])).toBe(5)
+    expect(scene.warnings.some((w) => /1 surface\(s\) were not flat/.test(w))).toBe(true)
+  })
+
+  it('keeps the coordinates it was given', () => {
+    const trusses = scene.nodes.find((n) => n.name === 'Stage Trusses')!
+    expect([...trusses.positions]).toEqual([0, 0, 9.5, 2.5, 0, 9.5, 1.25, 3, 9.5])
+  })
+
+  it('refuses a .txt that is not room data, and says what to export', () => {
+    expect(() => importSoundvisionAsScene('hello\nworld\n', 'notes.txt')).toThrow(
+      /not a Soundvision 3D room data file/,
+    )
   })
 })

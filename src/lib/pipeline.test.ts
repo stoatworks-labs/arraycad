@@ -13,9 +13,13 @@ import { parseDbacv } from './dbacv/read.ts'
 import { formatDbacvDate, writeDbacv } from './dbacv/write.ts'
 import { type VenueFile, PlaneType, Shape } from './dbacv/types.ts'
 import { importDbacvAsScene } from './import/dbacvScene.ts'
+import { importSoundvisionAsScene } from './import/soundvisionScene.ts'
 import { importDxf } from './import/dxf.ts'
 import { type ImportedNode, flattenNodes } from './import/types.ts'
 import { DEFAULT_CONVERT, convertNodes } from './geom/convert.ts'
+import { DEFAULT_SOUNDVISION_CONVERT, convertNodesToSoundvision } from './soundvision/convert.ts'
+import { readSoundvision } from './soundvision/read.ts'
+import { writeSoundvision } from './soundvision/write.ts'
 
 const parser = new (new JSDOM().window.DOMParser)()
 const xml = readFileSync(new URL('../../test/fixtures/theatre.dbacv', import.meta.url), 'utf8')
@@ -254,5 +258,78 @@ describe('DXF -> venue', () => {
     const e = extent(allPoints(parseDbacv(writeDbacv(toVenue(r.objects)), parser).objects))
     expect(e.x[1] - e.x[0]).toBeCloseTo(30.48, 2) // 100 ft
     expect(e.y[1] - e.y[0]).toBeCloseTo(15.24, 2) // 50 ft
+  })
+})
+
+/**
+ * The two prediction tools' own venue formats, converted into each other.
+ *
+ * Neither ArrayCalc nor Soundvision will open the other's venue, and redrawing a room by
+ * hand in the second tool is a day's work that also guarantees the two predictions are of
+ * slightly different buildings. Both formats being importable makes the conversion the same
+ * road as a CAD import: tessellate in, planarise, reduce, write the other one out.
+ */
+describe('cross conversion', () => {
+  const roomdata = readFileSync(new URL('../../test/fixtures/roomdata.txt', import.meta.url), 'utf8')
+
+  it('Soundvision -> ArrayCalc lands the room where it started', () => {
+    const scene = importSoundvisionAsScene(roomdata, 'roomdata.txt')
+    const before = extent(
+      flattenNodes(scene.nodes).flatMap((n) => {
+        const pts = []
+        for (let i = 0; i < n.positions.length; i += 3) {
+          pts.push({ x: n.positions[i], y: n.positions[i + 1], z: n.positions[i + 2] })
+        }
+        return pts
+      }),
+    )
+
+    const r = convertAll(scene.nodes)
+    expect(r.objects.length).toBeGreaterThan(0)
+    const venue = parseDbacv(writeDbacv(toVenue(r.objects)), parser)
+    const after = extent(allPoints(venue.objects))
+
+    for (const axis of ['x', 'y', 'z'] as const) {
+      expect(Math.abs(after[axis][0] - before[axis][0])).toBeLessThan(0.03)
+      expect(Math.abs(after[axis][1] - before[axis][1])).toBeLessThan(0.03)
+    }
+  })
+
+  it('ArrayCalc -> Soundvision writes a file that reads back', () => {
+    const scene = importDbacvAsScene(xml, 'theatre.dbacv', parser)
+    const leaves = flattenNodes(scene.nodes).filter((n) => n.positions.length > 0)
+    const r = convertNodesToSoundvision(
+      leaves.map((n) => ({ node: n, include: true, name: n.name })),
+      DEFAULT_SOUNDVISION_CONVERT,
+    )
+    expect(r.scene.faces.length).toBeGreaterThan(0)
+
+    const reread = readSoundvision(writeSoundvision(r.scene))
+    expect(reread.scene.faces).toHaveLength(r.scene.faces.length)
+    // A Soundvision surface is a free polygon, so the reduction is never forced to split a
+    // region the way an ArrayCalc quad is. Nothing in this venue has a hole in it, so the
+    // count is exact: one region, one surface.
+    expect(r.stats.regionsTriangulated).toBe(0)
+    expect(r.stats.facesOut).toBe(r.stats.regionsFound)
+  })
+
+  /**
+   * The stock plug-ins label a face "<layer> face" and so does the writer, so the importer
+   * has to take the suffix back off. Without that, every trip through Soundvision adds
+   * another word: "Seating face", "Seating face face", "Seating face face face".
+   */
+  it('does not grow a " face" suffix on every Soundvision round trip', () => {
+    let text = roomdata
+    for (let i = 0; i < 3; i++) {
+      const scene = importSoundvisionAsScene(text, 'room.txt')
+      const r = convertNodesToSoundvision(
+        flattenNodes(scene.nodes).map((n) => ({ node: n, include: true, name: n.name })),
+        DEFAULT_SOUNDVISION_CONVERT,
+      )
+      text = writeSoundvision(r.scene)
+      expect(new Set(readSoundvision(text).scene.faces.map((f) => f.label))).toEqual(
+        new Set(['None face', 'Stage Trusses face', 'Seating face']),
+      )
+    }
   })
 })

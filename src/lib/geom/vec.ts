@@ -89,3 +89,27 @@ export function triArea(a: Vec3, b: Vec3, c: Vec3): number {
 export function triNormal(a: Vec3, b: Vec3, c: Vec3): Vec3 {
   return normalize(cross(sub(b, a), sub(c, a)))
 }
+
+/**
+ * Best-fit normal of a 3D ring, by Newell's method. Its length is the ring's area.
+ *
+ * Newell rather than a cross product of the first three points: a ring recovered from a
+ * drawing or a trace routinely starts with three nearly collinear corners, and a cross
+ * product there is numerical noise pointing anywhere.
+ *
+ * This lives here rather than beside either of its callers because both the CAD importer
+ * and the polygon triangulator need it, and `geom/` must not import from `import/`.
+ */
+export function newellNormal(ring: Vec3[]): Vec3 {
+  let x = 0
+  let y = 0
+  let z = 0
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const a = ring[j]
+    const b = ring[i]
+    x += (a.y - b.y) * (a.z + b.z)
+    y += (a.z - b.z) * (a.x + b.x)
+    z += (a.x - b.x) * (a.y + b.y)
+  }
+  return v3(x / 2, y / 2, z / 2)
+}

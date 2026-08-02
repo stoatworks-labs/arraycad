@@ -17,6 +17,7 @@ import {
   dot,
   fromPlane2D,
   len,
+  newellNormal,
   normalize,
   planeBasis,
   scale,
@@ -356,6 +357,89 @@ function mergeToQuads(tris: number[], verts: Pt2[]): number[][] {
     }
   }
   return out
+}
+
+/** How a ring was filled, so a caller can report what it had to compromise on. */
+export type RingFill = 'planar' | 'fanned' | 'degenerate'
+
+/**
+ * Triangulate a closed 3D ring into world-space triangle soup, appended to `out`.
+ *
+ * This is the one way in for any source that already speaks polygons rather than triangles
+ * — a Soundvision surface, a filled ring recovered from a CAD drawing — because
+ * `ImportedNode.positions` is soup and everything downstream of it expects soup.
+ *
+ * A fan about the centroid is only correct for a convex ring, and a room outline is deeply
+ * concave: fanning one lays triangles across the empty middle of the room, which then merge
+ * into a single region whose recovered boundary is the convex hull rather than the room. So
+ * this projects into the ring's own plane and triangulates properly, and keeps the fan only
+ * for a ring too warped to project without folding it flat — wrong locally, rather than
+ * inventing a surface where there was a fold.
+ */
+export function triangulateRing(ring: Vec3[], out: number[]): RingFill {
+  if (ring.length < 3) return 'degenerate'
+
+  const nv = newellNormal(ring)
+  const nl = len(nv)
+  // Zero Newell area: every corner collinear, or a ring that doubles back and cancels
+  // itself out. There is no surface here to draw.
+  if (nl < 1e-18) return 'degenerate'
+  const n = scale(nv, 1 / nl)
+
+  // A triangle is already a triangle, and it is flat by definition. Projecting it and
+  // running earcut returns the same three corners rotated, at the cost of the round trip.
+  if (ring.length === 3) {
+    for (const p of ring) out.push(p.x, p.y, p.z)
+    return 'planar'
+  }
+
+  const fan = () => {
+    let cx = 0
+    let cy = 0
+    let cz = 0
+    for (const p of ring) {
+      cx += p.x
+      cy += p.y
+      cz += p.z
+    }
+    cx /= ring.length
+    cy /= ring.length
+    cz /= ring.length
+    for (let i = 0; i < ring.length; i++) {
+      const a = ring[i]
+      const b = ring[(i + 1) % ring.length]
+      out.push(cx, cy, cz, a.x, a.y, a.z, b.x, b.y, b.z)
+    }
+  }
+
+  let extent = 0
+  for (const p of ring) extent = Math.max(extent, len(sub(p, ring[0])))
+  const flatTol = Math.max(1e-9, extent * 1e-3)
+  for (const p of ring) {
+    if (Math.abs(dot(sub(p, ring[0]), n)) > flatTol) {
+      fan()
+      return 'fanned'
+    }
+  }
+
+  const basis = planeBasis({ normal: n, point: ring[0] })
+  const flat: number[] = []
+  for (const p of ring) {
+    const [x, y] = toPlane2D(p, basis)
+    flat.push(x, y)
+  }
+  const idx = earcut(flat, [], 2)
+  // earcut gives up on a self-intersecting ring. A fan of one is at least made of the
+  // points that were actually there.
+  if (idx.length === 0) {
+    fan()
+    return 'fanned'
+  }
+  for (const k of idx) {
+    const p = ring[k]
+    out.push(p.x, p.y, p.z)
+  }
+  return 'planar'
 }
 
 /** True when every turn of the polygon goes the same way and no edge is degenerate. */

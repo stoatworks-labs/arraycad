@@ -39,11 +39,52 @@ From its own help, *Interoperability → Importing 3D room data into Soundvision
 > from CAD software, such as SketchUp or Vectorworks.
 
 This is the format its own SU4SV (SketchUp) and Vectorworks plug-ins write. It is
-unencrypted, it is bidirectional — the menu offers both *Import 3D room data* and *Export
-3D room data*, filter `*.txt;*.xar` — and it is the supported CAD route. DXF is **export
-only** (loudspeaker designs out to CAD), so it is not an inbound path.
+unencrypted and it is the supported CAD route. DXF is **export only** (loudspeaker designs
+out to CAD), so it is not an inbound path.
 
-`.xar` is the EASE audience-area alternative offered by the same menu item. Not implemented.
+`.xar` is the EASE audience-area alternative accepted by the same dialog. Not implemented.
+
+### The text format is INBOUND ONLY
+
+An earlier draft of this document said the menu offers both *Import 3D room data* and
+*Export 3D room data*. **It does not**, and this was checked directly in 3.18.0.15's
+3D ROOM DATA panel, whose entire toolbar is:
+
+| Control | Tooltip | What it does |
+| --- | --- | --- |
+| 📄 | `New 3D room data [command + N]` | empties the panel |
+| 📂 | `Open 3D room data [command + O]` | opens an `.xmls` |
+| ▾ | `Open recent 3D room data` | recent `.xmls` list |
+| 💾▾ | `Save 3D room data as... [ctrl + option + command + S]` | writes an **`.xmls`** |
+| 📂↓ | `Import 3D room data` | reads a `.txt` or `.xar` |
+
+So room data goes **in** as text and comes **out** encrypted. Saving the imported probe
+produced a 3,872-byte `.xmls` — 242 × 16, consistent with the AES-CBC block size in §1.
+
+The practical consequence is that the writer cannot be proved by asking Soundvision to
+write the same file back, the way `theatre.dbacv` proves the ArrayCalc writer. What can be
+done instead is read the geometry back off the Properties panel, which is what §6 records.
+
+### It is read as well as written
+
+`import/soundvisionScene.ts` takes the same format back in, which is what makes ArrayCAD a
+converter *between* ArrayCalc and Soundvision rather than only into them. Faces are grouped
+by label — the CAD layer tree, recovered — triangulated by `geom/polygon.ts:triangulateRing`
+and then handed to the ordinary pipeline, so a Soundvision room is pruned, retyped and
+written as a `.dbacv` by exactly the road a DXF takes.
+
+Two things the round trip depends on:
+
+- **The ` face` suffix comes off on the way in**, because §3 says every label carries it and
+  `convert.ts` puts it back on the way out. Without the strip a name gains a word per
+  conversion: `"Seating face face"`, then `"Seating face face face"`.
+- **A `.txt` is sniffed first.** One `"Label",` row is the whole test — the same thing
+  Soundvision's own parser needs, and less brittle than matching the inert header, which a
+  plug-in other than the two stock ones need not write.
+
+Faces are planar by requirement (§3), but a hand-edited one need not be: a ring too warped
+to project without folding it flat is fanned about its centre instead and counted in a
+warning, rather than silently flattened onto a best-fit plane.
 
 ## 3. The grammar
 
@@ -171,13 +212,43 @@ here.
 | --- | --- |
 | Grammar | Parsed a real 7,194-face Vectorworks export; 0 unrecognised lines |
 | Writer fidelity | Byte-exact round trip of that file, all 1,066,486 bytes |
+| Reader as an import source | `.txt` → planes → `.dbacv` lands inside 30 mm of where it started; three `.txt` → `.txt` conversions leave every label unchanged |
 | Coordinate format | All 89,280 coordinates reproduced exactly via `f6()` |
 | Planarity requirement | Measured across all 7,180 non-degenerate faces |
 | End-to-end | `demo/demo-venue.dxf` (mm) → 80 faces in metres, in the running app |
-| **Import into Soundvision** | **NOT verified — see below** |
+| **Import into Soundvision** | **VERIFIED in 3.18.0.15 — see below** |
+| Acoustic orientation | **Still NOT verified** — see below |
 
-**No file written by ArrayCAD has yet been opened in Soundvision.** The format is derived
-from a real export and reproduced byte for byte, which is strong evidence, but it is not the
-same as an accepted import. That check needs Soundvision on a Mac with the file in hand:
-*3D room data → Import 3D room data*. Until it has been done, treat the header attribution
-line and the `'up'` winding default as the two most likely things to want revisiting.
+### The import check, 2026-08-02
+
+A file written by `writeSoundvision` was imported into **Soundvision 3.18.0.15 (2026.2)**
+through *Import 3D room data*, and every surface was read back off the Properties panel.
+The probe is four surfaces chosen so each one answers something:
+
+| Written by ArrayCAD | Read back in Soundvision | Answers |
+| --- | --- | --- |
+| `Floor face`, 4 pts, `0,-6,0 / 20,-6,0 / 20,6,0 / 0,6,0` | group **Floor** → Surface 1, 4 points, identical | coordinates survive exactly, in order |
+| `Rake face`, 4 pts, rising `0 → 3` over `x 20 → 30` | identical, `Z (auto)` column | a raked plane is not flattened |
+| `Hexagon face`, **6 pts** at `z = 6` | **one surface, "Number of points: 6"** | §5 holds *inside* Soundvision — a six-sided region is ONE surface |
+| `Wall face`, vertical at `x = 30`, `z 0 → 8` | identical, and the dependent column becomes **`X (auto)`** | a vertical face is recognised as vertical, not folded flat |
+
+Four findings worth keeping:
+
+1. **The `written by ArrayCAD` header line is tolerated.** It was one of the two things §4
+   flagged as most likely to need revisiting. It does not need revisiting.
+2. **Soundvision strips the trailing ` face` itself.** `"Floor face"` arrives as an object
+   named **`Floor`**. So the suffix really is the plug-ins' convention and not part of the
+   name, which is independent confirmation that `import/soundvisionScene.ts` is right to
+   strip it — both ends agree, and a round trip is name-stable.
+3. **A label becomes a GROUP, not a surface name.** `"Floor face"` produced a group `Floor`
+   containing `Surface 1`. Labels shared by many faces therefore collect into one group,
+   which is exactly what makes the CAD layer tree survive the trip.
+4. **`Audience listening level (m)` came in as 0** on every surface, confirming §4: the
+   format carries no listening level and Soundvision defaults it.
+
+**What is still not verified: whether a mapping actually results.** Geometry landing
+correctly and a surface *predicting* are different claims — §4 is precisely about a
+correctly-shaped surface that silently returns nothing because it is wound the wrong way.
+Confirming that needs a source placed on the scene and a prediction run over an imported
+surface, which this check did not do. Until then the `'up'` winding default is still the
+thing most likely to want revisiting; the header attribution line no longer is.

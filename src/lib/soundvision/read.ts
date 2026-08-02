@@ -18,6 +18,20 @@ export interface ReadResult {
   warnings: string[]
 }
 
+/**
+ * Does this text look like 3D room data?
+ *
+ * `.txt` declares nothing about its contents, so a file arriving under that extension has
+ * to be sniffed before it is claimed. Only `"Label"` rows and coordinate rows carry meaning
+ * to Soundvision's own parser and a room with no surfaces is not a room, so one `"Label"`
+ * row is the whole test. The header is inert comment and a plug-in other than the two
+ * stock ones may well not write it — matching on `"; VECTORWORKS"` would reject a valid
+ * file from SketchUp.
+ */
+export function isSoundvisionText(text: string): boolean {
+  return /^"Label",/m.test(text)
+}
+
 export function readSoundvision(text: string): ReadResult {
   // Tolerate CRLF even though the plug-ins write LF: a file that has been through Windows
   // or a mail client should still import rather than fail on an invisible byte.

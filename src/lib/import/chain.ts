@@ -16,7 +16,7 @@
  */
 
 import type { Vec3 } from '../geom/vec.ts'
-import { cross, dot, len, normalize, sub, v3 } from '../geom/vec.ts'
+import { cross, dot, len, newellNormal, normalize, sub, v3 } from '../geom/vec.ts'
 
 export interface ChainOptions {
   /**
@@ -252,27 +252,6 @@ function dropRepeated(pts: Vec3[], tol: number): Vec3[] {
   }
   while (out.length > 1 && len(sub(out[0], out[out.length - 1])) <= tol) out.pop()
   return out
-}
-
-/**
- * Best-fit normal of a 3D ring, by Newell's method.
- *
- * Newell rather than a cross product of the first three points: a traced ring routinely
- * starts with three nearly collinear corners, and a cross product there is numerical
- * noise pointing anywhere.
- */
-export function newellNormal(ring: Vec3[]): Vec3 {
-  let x = 0
-  let y = 0
-  let z = 0
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
-    const a = ring[j]
-    const b = ring[i]
-    x += (a.y - b.y) * (a.z + b.z)
-    y += (a.z - b.z) * (a.x + b.x)
-    z += (a.x - b.x) * (a.y + b.y)
-  }
-  return v3(x / 2, y / 2, z / 2)
 }
 
 /** Area of a planar ring in 3D, from the Newell vector. */

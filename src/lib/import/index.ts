@@ -9,6 +9,7 @@ import { importDwg } from './dwg.ts'
 import type { CadOptions } from './entities.ts'
 import { importIfc } from './ifc.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
+import { importSoundvisionAsScene } from './soundvisionScene.ts'
 
 export * from './types.ts'
 export { DEFAULT_CAD_OPTIONS, DEFAULT_CAD_OPTIONS as DEFAULT_DXF_OPTIONS } from './entities.ts'
@@ -27,7 +28,12 @@ export const ACCEPTED_EXTENSIONS = [
   '.dae',
   '.3ds',
   '.ifc',
+  // The two prediction tools' own venue formats, so a conversion can go either way between
+  // them. `.txt` is Soundvision 3D room data and is sniffed before it is claimed — the
+  // extension says nothing, so a .txt that is not room data must say so rather than import
+  // as an empty venue.
   '.dbacv',
+  '.txt',
 ] as const
 
 /**
@@ -99,6 +105,8 @@ export async function importFile(
       return importIfc(await file.arrayBuffer(), file.name)
     case '.dbacv':
       return importDbacvAsScene(await file.text(), file.name)
+    case '.txt':
+      return importSoundvisionAsScene(await file.text(), file.name)
     case '.obj':
     case '.stl':
     case '.ply':

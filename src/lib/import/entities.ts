@@ -18,11 +18,11 @@
  * seating plan imports as nothing at all.
  */
 
-import earcut from 'earcut'
 import { type ImportedNode, ImportError } from './types.ts'
-import { chainSegments, newellNormal, ringArea } from './chain.ts'
+import { chainSegments, ringArea } from './chain.ts'
+import { triangulateRing } from '../geom/polygon.ts'
 import type { Vec3 } from '../geom/vec.ts'
-import { add, cross, dot, len, normalize, scale, sub, v3 } from '../geom/vec.ts'
+import { add, scale } from '../geom/vec.ts'
 
 let seq = 0
 const nextId = () => `dxf${++seq}`
@@ -62,56 +62,6 @@ function fanTriangulate(loop: P3[], out: number[]): void {
     const a = loop[i]
     const b = loop[(i + 1) % loop.length]
     out.push(cx, cy, cz, a.x, a.y, a.z, b.x, b.y, b.z)
-  }
-}
-
-/**
- * Triangulate a closed ring properly, in its own plane.
- *
- * A fan about the centroid is only correct for a convex ring. An auditorium outline is
- * deeply concave, and a centroid fan of one lays triangles across the empty middle of the
- * room — which then merge into a single coplanar region whose recovered boundary is the
- * convex hull, not the room. Chaining makes concave rings the common case, so the fill has
- * to be a real triangulation.
- */
-function fillLoop(ring: P3[], out: number[]): void {
-  if (ring.length < 3) return
-  const nv = newellNormal(ring)
-  const nl = len(nv)
-  if (nl < 1e-18) return
-  const n = scale(nv, 1 / nl)
-
-  let extent = 0
-  for (const p of ring) extent = Math.max(extent, len(sub(p, ring[0])))
-  // A ring that is not flat cannot be projected without folding it. Fan it instead: it is
-  // wrong in a different way, but it is wrong locally rather than inventing a surface.
-  for (const p of ring) {
-    if (Math.abs(dot(sub(p, ring[0]), n)) > Math.max(1e-9, extent * 1e-3)) {
-      fanTriangulate(ring, out)
-      return
-    }
-  }
-
-  const ax = Math.abs(n.x)
-  const ay = Math.abs(n.y)
-  const az = Math.abs(n.z)
-  const seed = ax <= ay && ax <= az ? v3(1, 0, 0) : ay <= az ? v3(0, 1, 0) : v3(0, 0, 1)
-  const u = normalize(cross(seed, n))
-  const v = cross(n, u)
-
-  const flat: number[] = []
-  for (const p of ring) {
-    const d = sub(p, ring[0])
-    flat.push(dot(d, u), dot(d, v))
-  }
-  const idx = earcut(flat, [], 2)
-  if (idx.length === 0) {
-    fanTriangulate(ring, out)
-    return
-  }
-  for (const k of idx) {
-    const p = ring[k]
-    out.push(p.x, p.y, p.z)
   }
 }
 
@@ -348,7 +298,13 @@ function emitRing(verts: P3[], out: number[], opts: CadOptions): void {
       return
     }
   }
-  fillLoop(verts, out)
+  // A ring recovered from a drawing and a polygon read from a format that speaks polygons
+  // are the same problem, so they get the same answer — see geom/polygon.ts. A fan about
+  // the centroid is only correct for a convex ring, and chaining makes concave rings the
+  // common case: fanning an auditorium outline lays triangles across the empty middle of
+  // the room, which then merge into one region whose recovered boundary is the convex hull
+  // rather than the room.
+  triangulateRing(verts, out)
 }
 
 /** Send an open path to the chainer, or fill it now if chaining is switched off. */
