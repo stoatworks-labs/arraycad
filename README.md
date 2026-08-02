@@ -8,6 +8,10 @@ what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 
 Browser only. No backend, no upload: the file never leaves your machine.
 
+**[Try it →](https://arraycad.stoatworks-labs.com)**  ·  **[Watch the 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)**
+
+[![ArrayCAD](docs/video-thumb.png)](https://www.youtube.com/watch?v=g5TH-Y7cWNs)
+
 ---
 
 ## Why it is not just a file conversion
@@ -81,18 +85,19 @@ calls the Vectorworks API is unverified. Run its probe script first. See
 ## The `.dbacv` format
 
 It is undocumented. Everything this tool knows was reverse-engineered from one real
-ArrayCalc 12.8.2 export **plus two round trips through ArrayCalc itself**, and is written
+ArrayCalc 12.8.2 export **plus three round trips through ArrayCalc itself**, and is written
 up in **[docs/dbacv-format.md](docs/dbacv-format.md)**.
 
 The reader and writer reproduce that file **byte for byte**, which is good evidence the
 structure is right.
 
-The round trips were worth doing. They found that a `Shape=1` quad must be written in
-ArrayCalc's own local frame — origin on the *near edge*, not the centroid — and that
-getting it wrong makes ArrayCalc **silently collapse the plane to zero depth**, sometimes
-not until later. They also pinned down that `PlaneType 5` is a "Positioning area" which
-must be rectangular, and that a listener height is kept on type 1 but silently reset on
-type 2.
+The round trips were worth doing. The first one FAILED and found a real bug: a `Shape=1`
+quad must be written in ArrayCalc's own local frame — origin on the *near edge*, not the
+centroid — and getting it wrong makes ArrayCalc **silently collapse the plane to zero
+depth**, sometimes not until weeks later. By the third round every object came back
+byte-identical, and that result is pinned as a test. They also settled that `PlaneType 5`
+is a "Positioning area" which must be rectangular, and that a listener height is kept on
+type 1 but silently reset on type 2.
 
 > ⚠️ **Some plane-type names are still inferred.** `Positioning area` (5) comes from
 > ArrayCalc's own dialog, and `Listening` (1) is near-certain. `Surface` (2) and `Stage`
