@@ -20,5 +20,20 @@
     -->
     <script src="/about-data.js" defer></script>
     <script src="/about.js" defer></script>
+    <!--
+      Support footer. Vendored from stoatworks-backend/support-footer — edit it
+      there and re-run that repo's scripts/sync-support-footer.sh, never here.
+      Classic + defer on purpose: it reads its config off this tag, and
+      document.currentScript is null inside a module.
+
+      No data-repo: this repo is private, and the footer leaves the "source is
+      on GitHub" link out entirely rather than rendering one that 404s.
+    -->
+    <script
+      src="/support-footer.js"
+      defer
+      data-app="ArrayCAD"
+      data-note="It runs entirely in your browser — no account, and no drawing you import is uploaded."
+    ></script>
   </body>
 </html>

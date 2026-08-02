@@ -23,25 +23,27 @@
   box-sizing: border-box;
 }
 
-html,
-body,
-#root {
-  height: 100%;
-}
-
+/*
+ * The tool still fills the viewport exactly (see `.app` below) — but the page
+ * itself is allowed to scroll past it, because the support footer is appended
+ * after #root and `overflow: hidden` here made it unreachable. Height moved off
+ * html/body/#root and onto `.app` as 100vh: leaving `height: 100%` here while
+ * body grew past the viewport left `.app`'s percentage height resolving against
+ * an auto-height parent, which collapses the layout. Same fix, same reason, as
+ * the worked example at the top of pixel-peeker/src/styles.css.
+ */
 body {
   margin: 0;
   background: var(--navy-900);
   color: var(--text);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
-  overflow: hidden;
 }
 
 .app {
   display: flex;
   flex-direction: column;
-  height: 100%;
+  height: 100vh;
 }
 
 .spacer {
