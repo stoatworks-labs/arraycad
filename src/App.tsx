@@ -235,7 +235,7 @@ export default function App() {
           }}
         >
           <div className="drop-inner">
-            <h1>Drop a CAD model, a PDF or a plan</h1>
+            <h1>Drop a CAD model, a venue file, a PDF or a plan</h1>
             <p className="muted">
               or{' '}
               <button type="button" className="linkbtn" onClick={() => fileInput.current?.click()}>
@@ -271,6 +271,12 @@ export default function App() {
               the scale off a dimension you know, click inside a room to detect its outline
               or trace it by hand, and type a height at each corner — level, raked, raised or
               sunk.
+            </p>
+            <p className="pitch">
+              Already have a venue? Drop an ArrayCalc <code>.dbacv</code> or an L-Acoustics
+              Soundvision 3D room data <code>.txt</code> and{' '}
+              <strong>convert between the two</strong> — either one opens here, and either
+              one comes back out.
             </p>
           </div>
         </main>
@@ -311,10 +317,15 @@ export default function App() {
           aria-label="Project name"
         />
         {/*
-          Tagged experimental deliberately. The format is reproduced byte for byte from a
-          real Vectorworks export, which is good evidence, but no ArrayCAD-written file has
-          yet been through Soundvision's own importer — unlike the .dbacv side, which has
-          three ArrayCalc round trips behind it. Drop the tag once that check is done.
+          The "experimental" tag came off on 2026-08-02: a file written by this code was
+          imported into Soundvision 3.18.0.15 and every surface read back with the exact
+          coordinates written, a six-point polygon staying one surface. See
+          docs/soundvision-format.md section 6.
+
+          The tooltip still carries a warning, and that is not leftover hedging — it names a
+          DIFFERENT risk. Geometry landing correctly and a surface returning a mapping result
+          are separate claims, and a backwards surface fails the second one silently. Keep
+          this caveat until a prediction has actually been run over an imported surface.
         */}
         <button
           type="button"
@@ -322,12 +333,12 @@ export default function App() {
           disabled={!result || result.objects.length === 0}
           title={
             'Soundvision 3D room data — import with 3D room data > Import 3D room data.\n\n' +
-            'Experimental: the format is reproduced byte for byte from a real Vectorworks ' +
-            'export, but no ArrayCAD file has yet been confirmed to import. Check the venue ' +
-            'in Soundvision before trusting a design to it.'
+            'Geometry is confirmed to import correctly into Soundvision 3.18.0.15. Not yet ' +
+            'confirmed: that an imported surface returns a mapping result — a face wound the ' +
+            'wrong way predicts nothing, silently. Check a mapping before trusting a design.'
           }
         >
-          Export .txt (experimental)
+          Export .txt
         </button>
         <button
           type="button"
@@ -681,6 +692,12 @@ function Topbar({ children }: { children?: React.ReactNode }) {
         ArrayCAD <em>CAD → ArrayCalc</em>
       </span>
       {children}
+      {/* Opens the shared About dialog — see public/about.js, which delegates
+          this attribute from the document, so nothing needs importing here.
+          Inside Topbar rather than at each call site, so it is on both screens. */}
+      <button type="button" className="topbar-about" data-stoatworks-about>
+        About
+      </button>
     </header>
   )
 }

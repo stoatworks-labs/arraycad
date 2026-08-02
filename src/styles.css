@@ -72,6 +72,12 @@ code {
   flex: 0 0 auto;
 }
 
+/* Pushed to the far right of the topbar on both screens — the landing screen has
+   no other topbar content, so `margin-left: auto` does the work of a spacer. */
+.topbar-about {
+  margin-left: auto;
+}
+
 .brand {
   font-weight: 650;
   letter-spacing: -0.01em;
