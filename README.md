@@ -2,7 +2,7 @@
 
 **Turn a CAD venue model into a d&b ArrayCalc venue file.**
 
-Drop in a DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles back
+Drop in a DWG, DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles back
 into flat planes, lets you throw away everything ArrayCalc does not need, lets you say
 what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 
@@ -16,9 +16,19 @@ click inside a room to detect its outline, and type a height at each corner. See
 
 Browser only. No backend, no upload: the file never leaves your machine.
 
-**[Try it →](https://arraycad.stoatworks-labs.com)**  ·  **[Watch the 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)**
+**[Try it →](https://arraycad.stoatworks-labs.com)**
+
+### Watch
+
+| | |
+|---|---|
+| [![Trace a venue off the plan](docs/video-trace-thumb.png)](https://www.youtube.com/watch?v=Ky7lkRAa8qE) | [![ArrayCalc and Soundvision](docs/video-soundvision-thumb.png)](https://www.youtube.com/watch?v=w2-KEFSz1Mk) |
+| **[Trace a venue off the plan →](https://www.youtube.com/watch?v=Ky7lkRAa8qE)** — no 3D model needed | **[ArrayCalc *and* Soundvision →](https://www.youtube.com/watch?v=w2-KEFSz1Mk)** — one reduction, two formats |
 
 [![ArrayCAD](docs/video-thumb.png)](https://www.youtube.com/watch?v=g5TH-Y7cWNs)
+
+**[The original 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)** — a CAD
+model in, flat planes out.
 
 ---
 
@@ -41,7 +51,8 @@ on it. A 12-triangle box is six. That collapse is the tool.
 
 | Format | Notes |
 |---|---|
-| **DXF** | Best for venue drawings. 3DFACE, polyface meshes, LWPOLYLINE, SOLID, CIRCLE/ARC, INSERT blocks including row/column arrays. Reads `$INSUNITS`. Closed 2D outlines can be extruded to a height, so a plan-only drawing still works. |
+| **DXF** | Best for venue drawings. 3DFACE, polyface meshes, LWPOLYLINE (including bulges), SOLID, CIRCLE/ARC, ELLIPSE, SPLINE, INSERT blocks including row/column arrays. Reads `$INSUNITS`. Loose lines and arcs are **joined back into closed outlines**, which is what makes an ordinary 2D plan usable; closed outlines can then be extruded to a height. |
+| **DWG** | AutoCAD's own format, read directly — no export step, no converter. R13 through R2018. Same entity support and the same outline-joining as DXF. |
 | **glTF / GLB** | Best of the mesh formats — keeps object names and hierarchy, and declares metres and Y-up, so nothing has to be guessed. |
 | **IFC** | The only format carrying real semantics. `IfcSlab`, `IfcCovering`, `IfcWall` etc. are mapped to *suggested* plane types. |
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
@@ -52,10 +63,14 @@ on it. A 12-triangle box is six. That collapse is the tool.
 
 ### Formats that need an export step first
 
-`.vwx`, `.dwg`, `.skp`, `.rvt`, `.3dm`, `.max`, `.blend` are **closed binary formats with
-no public specification**. Nothing outside their own application can read them, and no
-amount of work here changes that. Drop one in and ArrayCAD names the export to run
-instead — for Vectorworks that is glTF first, then IFC, then DXF 3D.
+`.vwx`, `.skp`, `.rvt`, `.3dm`, `.max`, `.blend` are **closed binary formats with no
+public specification**. Nothing outside their own application can read them, and no amount
+of work here changes that. Drop one in and ArrayCAD names the export to run instead — for
+Vectorworks that is glTF first, then IFC, then DXF 3D.
+
+DWG has no public specification either, but enough of it has been reverse-engineered that
+it is read here directly. It is the one format on that list that no longer needs an export
+step.
 
 ## Tracing a plan
 
