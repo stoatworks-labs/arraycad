@@ -154,6 +154,24 @@ calls the Vectorworks API is unverified. Run its probe script first. See
 5. **Watch the object count.** If it is in the hundreds, raise the merge tolerances, raise
    the minimum area, or switch to rectangle fit.
 
+### Pruning a long object list
+
+A venue is pruned by throwing away whole categories, not objects one at a time, so the
+object tree groups itself:
+
+- **Groups are named after what is in them.** A `.dbacv` names every group after its own
+  GUID; ArrayCAD reads a real name back off the children instead, so a row says `TIER 3`
+  rather than `RoomObjectGroup: {c9ab9376-…}`.
+- **A flat list gets grouped by name.** A DXF, a DWG or a flat glTF export is one long list
+  of siblings, and ArrayCAD clusters it by the structure already in the names — whether the
+  category leads (`TIER 3 - LEFT 1`) or trails a number (`25 loge`, `45 loge`).
+- **Every group folds away and selects in bulk.** The triangle beside a group hides its
+  contents; its checkbox includes or excludes everything under it at once, and shows a dash
+  when only some of it is in.
+- **Group by** switches between the automatic name grouping, grouping by the **plane type**
+  you have assigned — the quickest way to check nothing is mistyped before exporting — and
+  the raw tree with no grouping at all.
+
 ## The `.dbacv` format
 
 It is undocumented. Everything this tool knows was reverse-engineered from one real

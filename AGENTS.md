@@ -374,7 +374,48 @@ of ACadSharp), is pure TypeScript, and pulls in no WebAssembly, so unlike web-if
 nothing added to the CSP. It is behind a **dynamic import**: nobody who only opens a DXF
 should download it.
 
-## 10. Deploy
+## 10. The object tree is where pruning happens
+
+Pruning is the work this app asks of a user, and it is done by reading names. Two things
+get in the way, and both are solved in `src/lib/grouping.ts` — pure, DOM-free, tested —
+rather than inside the component.
+
+**Some groups arrive with no usable name.** A `.dbacv` names every group after its own
+GUID, so the theatre fixture shows twelve rows reading `RoomObjectGroup: {c9ab9376-…}` and
+the only way to tell them apart is to open each one. The children know what the group is:
+eleven objects all called `TIER 3 - something` make it the tier 3 group. `deriveLabel`
+reads that back off them. It works **word-wise, not character-wise** — a character-wise
+common prefix of `TIER 3 - CENTRE` and `TIER 3 - CEILING LEFT 1` is `TIER 3 - CE`, which
+reads as a typo.
+
+**Some scenes have no groups at all.** A DXF or DWG is one node per layer and a flat glTF
+export can be hundreds of siblings, so `autoGroup` clusters them by the structure already
+in the names. Two passes, because venue drawings are named both ways round: the leading
+segment catches `TIER 3 - LEFT 1` where the category leads, and a shared word catches
+`25 loge` / `45 loge` where it trails a number that means nothing on its own.
+
+Three rules in there are load-bearing, and each was a bug first:
+
+- **A number inside a *common* prefix is part of the name, never an index.** If it were an
+  index it would differ between the names and would not be common. Strip it and the three
+  tiers of a theatre merge into one indistinguishable heap.
+- **A group holding every sibling has organised nothing.** This is the common case one
+  level down, where all eleven children of the tier 3 group are of course called
+  `TIER 3 - …`. The check must be against what is still UNASSIGNED, not against the
+  original list — once the right-hand seats are taken out, the word the rest still share
+  covers all of them.
+- **Group on what the row SHOWS, not on the raw name.** Otherwise the dozen GUID groups
+  cluster into one bucket named `RoomObjectGroup` and the whole thing has made it worse.
+
+In the component: synthetic grouping is skipped where **half or more of the siblings are
+already containers** — the file organised itself and second-guessing it produces groups of
+groups. And every row standing for more than one object has a **tri-state checkbox that
+applies to all of them**. That last one is the point: a venue is pruned by throwing away
+categories. Before, a container's checkbox was `disabled` because the node has no geometry
+of its own, so the documented alt-click-to-apply-to-children could never fire on the rows
+where it mattered.
+
+## 11. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 

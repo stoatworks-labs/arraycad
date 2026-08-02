@@ -50,6 +50,9 @@ deploy `npx wrangler deploy`.
   forced in `soundvision/convert.ts` and must stay that way. See `docs/soundvision-format.md`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
+- Tree grouping lives in `src/lib/grouping.ts`, pure and DOM-free, so it is tested without
+  a browser. Group on the row's DISPLAYED label, never the raw name; a group holding every
+  remaining sibling is not a group. See AGENTS.md §10.
 - **DXF and DWG share `import/entities.ts`.** `dxf.ts` and `dwg.ts` are translations into
   `CadDocument` and hold no geometry. Do not fork the entity reduction to add a format —
   same rule as `geom/outline.ts`, same reason. See AGENTS.md §9 for the parser lies that
