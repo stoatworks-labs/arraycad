@@ -40,6 +40,9 @@ deploy `npx wrangler deploy`.
   checked them against ArrayCalc.
 - Units and axes are applied in `geom/transform.ts` and nowhere else. Importers report
   what the format states; they never guess.
+- **The origin picker never inverts the transform.** The viewport reports the point it hit
+  in venue space and `withOriginAt` subtracts it from the offset. Anything that reaches back
+  to source coordinates is a second copy of `applyTransform`. See AGENTS.md §5.
 - `ParentVenueObjectId` is derived on write from depth-first document order. Never store it.
 - Numbers go through `g17()`. Never `String(n)` — it breaks the byte-exact round trip.
 - `src/lib/` stays free of three.js (bar `import/mesh.ts`) so the pipeline tests run in node.
@@ -48,6 +51,12 @@ deploy `npx wrangler deploy`.
 - Soundvision `.xmls` is encrypted and is not writable — the target is 3D room data `.txt`.
   A surface wound clockwise is not an error there, it silently predicts nothing; winding is
   forced in `soundvision/convert.ts` and must stay that way. See `docs/soundvision-format.md`.
+- **`.dbacv` and Soundvision `.txt` are inputs as well as outputs**, which is what makes this
+  a converter between the two packages. No special path: both importers emit the ordinary
+  `ImportedScene`. `soundvisionScene.ts` strips the plug-ins' ` face` suffix off each label
+  and `convert.ts` re-applies it — break that pairing and names grow a word per round trip.
+- A `.txt` is sniffed (`isSoundvisionText`) before it is claimed. The extension declares
+  nothing, and a file that is not room data must say so rather than import as an empty venue.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
 - Tree grouping lives in `src/lib/grouping.ts`, pure and DOM-free, so it is tested without
@@ -57,6 +66,12 @@ deploy `npx wrangler deploy`.
   `CadDocument` and hold no geometry. Do not fork the entity reduction to add a format —
   same rule as `geom/outline.ts`, same reason. See AGENTS.md §9 for the parser lies that
   silently change geometry (arc sweep sign, radians vs degrees).
+- **Every closed ring becomes triangles in `geom/polygon.ts:triangulateRing`.** The CAD
+  importer's filled rings and a Soundvision surface are the same problem, so they take the
+  same path — third instance of the rule above. A centroid fan is only correct for a convex
+  ring, and both sources are routinely concave; the fan survives only as the fallback for a
+  ring too warped to project. Newell normals live in `geom/vec.ts`, not beside a caller,
+  because `geom/` must not import from `import/`.
 - DWG is read by `@node-projects/acad-ts` — **MIT and pure TypeScript**, behind a dynamic
   import. libredwg is GPL-3 and would relicense this app; npm packages that wrap it in
   WASM and claim MIT are wrong. Don't swap the dependency without checking that.

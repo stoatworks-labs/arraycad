@@ -20,6 +20,20 @@ import { PLANE_UI_HEX as PLANE_HEX } from './planeColours.ts'
 
 export type CameraPreset = 'iso' | 'plan' | 'section' | 'front'
 
+/**
+ * How near the cursor has to be, in screen pixels, for a pick to snap to a corner.
+ *
+ * Screen pixels rather than metres: the point of snapping is that the corner you can see
+ * under the cursor is the one you get, and that is a statement about the screen. A metre
+ * threshold would snap from across the room in a plan view and never snap close up.
+ */
+const SNAP_PX = 14
+
+/** Free point on a surface, and a snapped corner. Different colours, because they are
+ *  different claims about what you are about to get. */
+const PICK_FREE_HEX = 0xffd166
+const PICK_SNAP_HEX = 0x4cc9f0
+
 interface Props {
   nodes: ImportedNode[]
   decisions: Record<string, { include: boolean; planeType: PlaneType; name: string }>
@@ -30,6 +44,10 @@ interface Props {
   onSelect: (id: string, additive: boolean) => void
   preset: CameraPreset
   presetNonce: number
+  /** While true a click sets the venue origin instead of selecting an object. */
+  pickOrigin?: boolean
+  /** The picked point, in venue space — feed it to `withOriginAt`. */
+  onPickOrigin?: (p: { x: number; y: number; z: number }) => void
 }
 
 /** Flat triangle list -> a BufferGeometry with normals, ready to render. */
@@ -72,6 +90,7 @@ export function Viewport(props: Props) {
     sourceGroup: THREE.Group
     convertedGroup: THREE.Group
     raycaster: THREE.Raycaster
+    marker: THREE.Mesh
   } | null>(null)
 
   const propsRef = useRef(props)
@@ -126,8 +145,20 @@ export function Viewport(props: Props) {
     const convertedGroup = new THREE.Group()
     scene.add(sourceGroup, convertedGroup)
 
+    // The origin picker's hover marker. `depthTest: false` deliberately: the point under
+    // the cursor is often on a far wall seen through a nearer surface, and a marker that
+    // disappears exactly when you aim at the back of the room looks like a broken tool.
+    // It is sized per frame instead of in world units — see the tick.
+    const marker = new THREE.Mesh(
+      new THREE.SphereGeometry(1, 16, 12),
+      new THREE.MeshBasicMaterial({ color: PICK_FREE_HEX, depthTest: false, transparent: true, opacity: 0.9 }),
+    )
+    marker.renderOrder = 999
+    marker.visible = false
+    scene.add(marker)
+
     const raycaster = new THREE.Raycaster()
-    state.current = { renderer, scene, camera, controls, sourceGroup, convertedGroup, raycaster }
+    state.current = { renderer, scene, camera, controls, sourceGroup, convertedGroup, raycaster, marker }
 
     const resize = () => {
       const w = el.clientWidth
@@ -145,11 +176,72 @@ export function Viewport(props: Props) {
     const tick = () => {
       raf = requestAnimationFrame(tick)
       controls.update()
+      // Hold the marker at a constant size on screen. A fixed world radius is either a
+      // speck across a 60 m room or a boulder up against a seating block, and the marker's
+      // only job is to say precisely which point is about to be taken.
+      if (marker.visible) {
+        const s = camera.position.distanceTo(marker.position) * 0.008
+        marker.scale.setScalar(Math.max(s, 1e-4))
+      }
       renderer.render(scene, camera)
     }
     tick()
 
+    /** Raycast whatever is currently on screen, snapping to a corner when there is one near. */
+    const pickAt = (ev: MouseEvent): { point: THREE.Vector3; snapped: boolean } | null => {
+      const rect = renderer.domElement.getBoundingClientRect()
+      const px = ev.clientX - rect.left
+      const py = ev.clientY - rect.top
+      const ndc = new THREE.Vector2((px / rect.width) * 2 - 1, -(py / rect.height) * 2 + 1)
+      raycaster.setFromCamera(ndc, camera)
+
+      // Raycast what the user can actually see. In "Planes" view the source meshes are
+      // hidden, and picking a point off an invisible surface is picking blind — the
+      // converted planes are in the same venue space, so they answer the same question.
+      const targets: THREE.Object3D[] = []
+      if (sourceGroup.visible) targets.push(...sourceGroup.children)
+      if (convertedGroup.visible) {
+        targets.push(...convertedGroup.children.filter((o) => (o as THREE.Mesh).isMesh))
+      }
+      const hit = raycaster.intersectObjects(targets, true)[0]
+      if (!hit) return null
+      return nearestCorner(hit, camera, rect, px, py) ?? { point: hit.point.clone(), snapped: false }
+    }
+
+    // OrbitControls has no click event of its own, so releasing a drag fires one here.
+    // Without this guard an orbit that ends over the model selects it — and, once the
+    // origin picker existed, moved the whole venue.
+    let downAt: { x: number; y: number } | null = null
+    const onPointerDown = (ev: PointerEvent) => {
+      downAt = { x: ev.clientX, y: ev.clientY }
+    }
+    const dragged = (ev: MouseEvent) =>
+      downAt !== null && Math.hypot(ev.clientX - downAt.x, ev.clientY - downAt.y) > 4
+
+    const onMove = (ev: PointerEvent) => {
+      if (!propsRef.current.pickOrigin) return
+      const p = pickAt(ev)
+      marker.visible = p !== null
+      if (p) {
+        marker.position.copy(p.point)
+        ;(marker.material as THREE.MeshBasicMaterial).color.setHex(
+          p.snapped ? PICK_SNAP_HEX : PICK_FREE_HEX,
+        )
+      }
+    }
+    const onLeave = () => {
+      marker.visible = false
+    }
+
     const onClick = (ev: MouseEvent) => {
+      if (dragged(ev)) return
+      if (propsRef.current.pickOrigin) {
+        const p = pickAt(ev)
+        // Picking is modal: a click that lands on nothing must not fall through and change
+        // the selection instead, or the model moves when you meant to aim.
+        if (p) propsRef.current.onPickOrigin?.({ x: p.point.x, y: p.point.y, z: p.point.z })
+        return
+      }
       const rect = renderer.domElement.getBoundingClientRect()
       const ndc = new THREE.Vector2(
         ((ev.clientX - rect.left) / rect.width) * 2 - 1,
@@ -161,22 +253,51 @@ export function Viewport(props: Props) {
       if (id) propsRef.current.onSelect(id, ev.shiftKey || ev.metaKey)
     }
     renderer.domElement.addEventListener('click', onClick)
+    renderer.domElement.addEventListener('pointerdown', onPointerDown)
+    renderer.domElement.addEventListener('pointermove', onMove)
+    renderer.domElement.addEventListener('pointerleave', onLeave)
 
     return () => {
       cancelAnimationFrame(raf)
       ro.disconnect()
       renderer.domElement.removeEventListener('click', onClick)
+      renderer.domElement.removeEventListener('pointerdown', onPointerDown)
+      renderer.domElement.removeEventListener('pointermove', onMove)
+      renderer.domElement.removeEventListener('pointerleave', onLeave)
+      marker.geometry.dispose()
+      ;(marker.material as THREE.Material).dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)
       state.current = null
     }
   }, [])
 
+  // Leaving the picker with the cursor still over the canvas would otherwise strand the
+  // marker on screen, pointing at a venue origin that is no longer being chosen.
+  useEffect(() => {
+    const s = state.current
+    if (s && !props.pickOrigin) s.marker.visible = false
+  }, [props.pickOrigin])
+
   // --- source geometry ------------------------------------------------------
   const sourceKey = useMemo(
     () => props.nodes.map((n) => n.id).join(',') + JSON.stringify(props.transform),
     [props.nodes, props.transform],
   )
+
+  /**
+   * Everything about the placement EXCEPT the offset.
+   *
+   * A change to any of it resizes, reshapes or re-aims the model and wants the camera
+   * re-fitted. A change to the offset alone only slides the whole model through the venue,
+   * and re-fitting there would undo the very thing an origin pick is for: the model would
+   * jump back under the crosshair instead of the axes moving to the point that was picked.
+   */
+  const placementKey =
+    props.nodes.map((n) => n.id).join(',') +
+    `|${props.transform.unitsPerMetre}|${props.transform.upAxis}|${props.transform.headingDeg}|${props.transform.flipX}`
+  const lastPlacement = useRef<string | null>(null)
+  const lastOffset = useRef(props.transform.offset)
 
   useEffect(() => {
     const s = state.current
@@ -207,7 +328,24 @@ export function Viewport(props: Props) {
       }
     }
     walk(props.nodes)
-    fitCamera(s.camera, s.controls, s.sourceGroup)
+
+    const off = props.transform.offset
+    if (lastPlacement.current !== placementKey) {
+      fitCamera(s.camera, s.controls, s.sourceGroup)
+    } else {
+      // Carry the camera along with the model, so the room stays where it was on screen
+      // and the axes gizmo is what visibly moves to the new origin.
+      const d = new THREE.Vector3(
+        off.x - lastOffset.current.x,
+        off.y - lastOffset.current.y,
+        off.z - lastOffset.current.z,
+      )
+      s.camera.position.add(d)
+      s.controls.target.add(d)
+      s.controls.update()
+    }
+    lastPlacement.current = placementKey
+    lastOffset.current = off
   }, [sourceKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- per-frame appearance: colour, visibility, selection -------------------
@@ -235,7 +373,11 @@ export function Viewport(props: Props) {
       }
       mat.needsUpdate = true
     }
-  }, [props.decisions, props.selection, props.view])
+    // `sourceKey` is in here because a rebuild makes new materials in the default colour and
+    // nothing else would repaint them: every placement change used to wash the whole model
+    // to one pale grey until the next click on the tree. Declared after the rebuild effect,
+    // so it runs after it.
+  }, [props.decisions, props.selection, props.view, sourceKey])
 
   // --- converted planes -----------------------------------------------------
   useEffect(() => {
@@ -295,7 +437,44 @@ export function Viewport(props: Props) {
     s.controls.update()
   }, [props.preset, props.presetNonce])
 
-  return <div className="viewport" ref={mount} />
+  return <div className={`viewport${props.pickOrigin ? ' picking' : ''}`} ref={mount} />
+}
+
+/**
+ * The corner of the hit triangle nearest the cursor on screen, if one is within `SNAP_PX`.
+ *
+ * Both groups are drawn already transformed into venue space and sit at the scene root, so
+ * a vertex read straight off the buffer is a venue coordinate — the same numbers the
+ * exporter writes. `localToWorld` is still applied rather than assumed: a group transform
+ * added later would otherwise put the origin somewhere plausible and wrong.
+ */
+function nearestCorner(
+  hit: THREE.Intersection,
+  camera: THREE.PerspectiveCamera,
+  rect: DOMRect,
+  px: number,
+  py: number,
+): { point: THREE.Vector3; snapped: boolean } | null {
+  const face = hit.face
+  const geom = (hit.object as THREE.Mesh).geometry as THREE.BufferGeometry | undefined
+  const pos = geom?.getAttribute('position')
+  if (!face || !pos) return null
+
+  let best: THREE.Vector3 | null = null
+  let bestD = SNAP_PX
+  for (const i of [face.a, face.b, face.c]) {
+    const v = new THREE.Vector3().fromBufferAttribute(pos, i)
+    hit.object.localToWorld(v)
+    const ndc = v.clone().project(camera)
+    const sx = ((ndc.x + 1) / 2) * rect.width
+    const sy = ((1 - ndc.y) / 2) * rect.height
+    const d = Math.hypot(sx - px, sy - py)
+    if (d < bestD) {
+      bestD = d
+      best = v
+    }
+  }
+  return best ? { point: best, snapped: true } : null
 }
 
 function fitCamera(camera: THREE.PerspectiveCamera, controls: OrbitControls, group: THREE.Group) {

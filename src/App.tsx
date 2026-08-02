@@ -15,7 +15,7 @@ import { writeSoundvision } from './lib/soundvision/write.ts'
 import { type TraceDocument, buildTraceScene } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
-import { UNIT_PRESETS } from './lib/geom/transform.ts'
+import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
 import {
   type Settings,
   type ViewMode,
@@ -65,6 +65,7 @@ export default function App() {
   const [ramp, setRamp] = useState({ from: 0, to: 1, zFrom: 0, zTo: 1, flat: 0 })
   const [preset, setPreset] = useState<CameraPreset>('iso')
   const [presetNonce, setPresetNonce] = useState(0)
+  const [pickOrigin, setPickOrigin] = useState(false)
   const [error, setError] = useState<{ message: string; advice: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -78,6 +79,8 @@ export default function App() {
   const tracedScene = useMemo(() => (settledDoc ? buildTraceScene(settledDoc) : null), [settledDoc])
   const scene = traceDoc ? tracedScene : importedScene
   const tracing = traceDoc !== null
+  /** Whether the 3D view is on screen at all — while tracing the drawing can have it all. */
+  const modelVisible = !traceDoc || traceView !== 'drawing'
 
   const nodesById = useMemo(() => {
     const m = new Map<string, ImportedNode>()
@@ -93,11 +96,28 @@ export default function App() {
     setDecisions((prev) => (tracing ? mergeDecisions(prev, scene) : seedDecisions(scene)))
   }, [scene, tracing])
 
+  // The origin picker is modal and belongs to the 3D view. Escape leaves it, and so does
+  // anything that takes the view away: an armed tool with nothing to click under it is a
+  // trap, and the only sign of it would be a click that moved the venue.
+  useEffect(() => {
+    if (!pickOrigin) return
+    if (!modelVisible) {
+      setPickOrigin(false)
+      return
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setPickOrigin(false)
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [pickOrigin, modelVisible])
+
   const { result, running } = useConversion(scene, decisions, settings)
 
   const load = useCallback(async (file: File) => {
     setBusy(true)
     setError(null)
+    setPickOrigin(false)
     try {
       if (isTraceFile(file.name)) {
         const doc = await loadTraceSource(file)
@@ -174,6 +194,18 @@ export default function App() {
 
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => (s ? { ...s, ...patch } : s))
+  }, [])
+
+  /**
+   * Take a point clicked in the 3D view as the venue origin.
+   *
+   * One shot. The result is immediately visible — the axes land on the point picked — and
+   * the click after that nearly always means "select that object", so leaving the tool
+   * armed would move the venue again just as the user goes back to work.
+   */
+  const takeOrigin = useCallback((p: { x: number; y: number; z: number }) => {
+    setSettings((s) => (s ? { ...s, transform: withOriginAt(s.transform, p) } : s))
+    setPickOrigin(false)
   }, [])
 
   const patchDoc = useCallback((updater: (d: TraceDocument) => TraceDocument) => {
@@ -446,6 +478,8 @@ export default function App() {
                 onSelect={select}
                 preset={preset}
                 presetNonce={presetNonce}
+                pickOrigin={pickOrigin}
+                onPickOrigin={takeOrigin}
               />
             )}
           </div>
@@ -539,6 +573,36 @@ export default function App() {
                 onChange={(v) => patchSettings({ transform: { ...settings.transform, headingDeg: v } })}
               />
             </Field>
+
+            <div className="origin-head">
+              <span className="field-label">Origin</span>
+              <button
+                type="button"
+                className={`tool${pickOrigin ? ' on' : ''}`}
+                disabled={!modelVisible}
+                onClick={() => setPickOrigin((v) => !v)}
+                title={
+                  modelVisible
+                    ? 'Click a point on the model in the 3D view to put the venue origin there.'
+                    : 'Show the 3D view to pick an origin — the drawing has its own Set origin tool.'
+                }
+              >
+                {pickOrigin ? 'Click a point…' : 'Pick in view'}
+              </button>
+            </div>
+            {pickOrigin ? (
+              <p className="hint">
+                Click any point on the model and it becomes 0, 0, 0 — the axes move there.
+                Near a corner it snaps to the corner and the marker turns blue. Esc cancels.
+                Set <strong>Heading</strong> first: turning the room afterwards swings it
+                about the model's own datum and carries the origin off zero.
+              </p>
+            ) : (
+              <p className="hint">
+                Where the model sits relative to the venue origin. Type it, or pick a point
+                off the model itself.
+              </p>
+            )}
 
             <div className="row3">
               <Field label="Offset X">

@@ -19,6 +19,12 @@ It writes **L-Acoustics Soundvision** too, as a 3D room data `.txt`. Soundvision
 outside, so the target is the unencrypted interchange format its own SketchUp and
 Vectorworks plug-ins produce. See `docs/soundvision-format.md`.
 
+**Both venue formats are also inputs**, which makes the tool a converter *between the two
+prediction packages* and not only into them. `.dbacv` in / `.txt` out, or the reverse. There
+is no special path for it: `dbacvScene.ts` and `soundvisionScene.ts` produce the ordinary
+`ImportedScene`, and the reduction, the tree, the pruning and the plane typing are the same
+ones a DXF gets. Adding a third venue format means adding a third importer and nothing else.
+
 It also **traces one off a plan**. A PDF or an image has no model in it at all, so the
 tracer builds one: the user calibrates the sheet, outlines regions (by hand or by flood
 fill), and types a height at each corner. What comes out is the same `ImportedScene` every
@@ -38,6 +44,7 @@ src/
     dwg.ts              acad-ts -> CadDocument. A translation, no geometry
     ifc.ts              web-ifc wasm; the only source of plane-type suggestions
     dbacvScene.ts       an existing venue, tessellated, so it can be pruned
+    soundvisionScene.ts an existing Soundvision room, ditto. With dbacvScene, §1's converter
     index.ts            extension dispatcher + the closed-format guidance table
   lib/trace/            THE TRACER: a 2D drawing -> an ImportedScene. See §8
     types.ts            the trace document; regions live in PIXELS, never metres
@@ -162,6 +169,23 @@ flips any near-horizontal face still pointing down. Vertical faces are deliberat
 alone: a wall has no correct side without knowing which way the room is. Same family as the
 Y-up handedness trap below, and tested the same way.
 
+### A Soundvision label carries a suffix, so the importer must take it off
+
+The stock plug-ins label every face `"<layer name> face"` and `soundvision/convert.ts`
+writes the same, deliberately, so an ArrayCAD export reads the way a Vectorworks one does.
+Which means `import/soundvisionScene.ts` has to strip ` face` back off the node name. Skip
+it and a room that goes out and comes back is labelled `"Seating face face"`, and the trip
+after that `"Seating face face face"` — a fault that is invisible on the first conversion
+and obvious on the third. `pipeline.test.ts` runs three round trips for exactly this.
+
+### A `.txt` has to be sniffed before it is claimed
+
+`.dbacv`, `.dxf` and the rest name their format; `.txt` names nothing. `isSoundvisionText`
+looks for one `"Label",` row, which is the only thing Soundvision's own parser needs, and
+the dispatcher raises a proper `ImportError` when it is missing. Without the sniff a
+shopping list imports as a venue with no objects in it, which reads as a bug in the
+reduction rather than as the wrong file.
+
 ### Soundvision `.xmls` cannot be written, and that is not a gap to close
 
 It is AES-256-CBC with a fixed key and IV that the application assembles at runtime rather
@@ -192,6 +216,30 @@ area, and the entity silently vanishes at the `minArea` check. Tested.
 Source `-Z` becomes venue `+Y`. The lazy swap (`+Y → +Y`) mirrors the room, and a mirrored
 auditorium is invisible in a symmetric venue until it is on site. There is a determinant
 test for this.
+
+### Setting the origin is a subtraction in venue space, not an inverse transform
+
+`Pick in view` hands the viewport's raycast hit — already in venue space, because that is
+what the viewport draws — to `withOriginAt`, which only does `offset - p`. The tempting
+alternative is to invert units, up axis, heading and mirror to reach the source point, and
+that is a **second copy of `applyTransform`** that will drift from the first; the same rule
+as "units and axes are applied in exactly one place" wearing a different hat. Consequences
+that follow from the offset being applied last:
+
+- **Heading has to be set before the origin.** The rotation happens about the *source*
+  datum, so turning the room afterwards carries the picked point off zero. The panel says
+  so; do not "fix" it by rotating about the offset, which breaks the composition above.
+- **The camera follows a change of offset instead of re-fitting.** Re-fitting there snaps
+  the model back under the crosshair and it looks as though nothing was picked. `Viewport`
+  keeps a `placementKey` of everything *except* the offset for exactly this.
+- The result is rounded to the millimetre, so the number fields stay legible. That is the
+  whole error budget of a pick, and the test asserts it.
+
+### A mesh rebuild loses its colours
+
+`Viewport` builds source meshes with a default material and colours them in a *separate*
+effect. That effect must therefore also depend on `sourceKey`, or every placement change
+washes the whole model to one grey until something else happens to touch the tree.
 
 ### The debounced conversion lags the scene
 
@@ -257,11 +305,27 @@ The ones that matter most:
   against a real 7,194-face Vectorworks export (1.0 MB, 29,760 coordinates); that file is a
   client drawing and is not in the repo.
 
-**Nothing ArrayCAD writes has yet been opened in Soundvision.** The `.dbacv` side has three
-ArrayCalc round trips behind it; the Soundvision side has a byte-exact reproduction of a
-real export, which is strong but is not the same thing. Until someone runs *3D room data →
-Import 3D room data* on an ArrayCAD file, treat the header attribution line and the `'up'`
-winding default as the likeliest things to need revisiting.
+**Both writers have now been through the real application.** The `.dbacv` side has three
+ArrayCalc round trips behind it. The Soundvision side was checked on 2026-08-02 against
+**Soundvision 3.18.0.15**: a four-surface probe written by `writeSoundvision` went through
+*Import 3D room data* and every point read back off the Properties panel exactly as
+written, a six-point polygon stayed ONE surface, and a vertical wall stayed vertical. See
+`docs/soundvision-format.md` §6 for the table.
+
+Two things that check settled, and one it did not:
+
+- The `written by ArrayCAD` header line is fine. Stop treating it as a risk.
+- Soundvision strips the trailing ` face` from a label itself, so both ends agree with
+  `import/soundvisionScene.ts` and a round trip is name-stable.
+- **Whether a surface actually predicts is still unverified.** Geometry landing right and a
+  surface returning a mapping result are different claims, and §5's winding trap is exactly
+  a correctly-shaped surface that silently returns nothing. That needs a source on the
+  scene and a prediction run. The `'up'` default is still the likeliest thing to revisit.
+
+Note also that the text format is **inbound only** — 3.18.0.15's room-data toolbar offers
+*Import 3D room data* but its *Save as* writes the encrypted `.xmls`. So the writer can
+never be proved the way `theatre.dbacv` proves the ArrayCalc one; reading the Properties
+panel back is the available substitute.
 
 ## 8. The tracer
 

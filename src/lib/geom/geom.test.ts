@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
 import { boundaryLoops, convexHull, dropCollinear, isConvex, levelAlignedRect, minAreaRect, simplifyClosed, toFaces } from './polygon.ts'
-import { applyTransform, boundsOf, guessUnits } from './transform.ts'
+import { applyTransform, boundsOf, guessUnits, withOriginAt } from './transform.ts'
 import { planeBasis, toPlane2D } from './vec.ts'
 import { DEFAULT_CONVERT, convertNode } from './convert.ts'
 import { PlaneType, Shape } from '../dbacv/types.ts'
@@ -268,6 +268,50 @@ describe('transform', () => {
   it('bounds a node tree including children', () => {
     const b = boundsOf([{ ...node([0, 0, 0]), children: [node([5, 6, 7], 'c')] }])!
     expect(b.max).toEqual({ x: 5, y: 6, z: 7 })
+  })
+})
+
+describe('withOriginAt', () => {
+  // A picked point comes back from the viewport in venue space, so the awkward transform is
+  // what the test has to survive: millimetres, Y-up, an off-axis heading, a mirror and an
+  // offset already set. If the maths ever grows an inverse of any of that, this fails.
+  const awkward = {
+    unitsPerMetre: 0.001,
+    upAxis: 'y' as const,
+    headingDeg: 37,
+    offset: { x: 4, y: -11.5, z: 2.25 },
+    flipX: true,
+  }
+  const source = new Float64Array([13400, 900, -22750])
+
+  it('puts the picked point on zero', () => {
+    const picked = applyTransform(source, awkward)
+    const t = withOriginAt(awkward, { x: picked[0], y: picked[1], z: picked[2] })
+    const moved = applyTransform(source, t)
+    // Half a millimetre is the rounding below, and is the whole error budget.
+    expect(Math.hypot(moved[0], moved[1], moved[2])).toBeLessThan(0.0005 * Math.sqrt(3))
+  })
+
+  it('picking the same point twice does not move the model again', () => {
+    // After the first pick that point IS the origin, so picking it a second time means
+    // clicking venue (0, 0, 0). Get the sign wrong and the model walks away by its own
+    // offset every time the tool is used.
+    const first = withOriginAt(awkward, { x: 6, y: -3, z: 1 })
+    const again = withOriginAt(first, { x: 0, y: 0, z: 0 })
+    expect(again.offset).toEqual(first.offset)
+  })
+
+  it('leaves everything except the offset alone', () => {
+    const t = withOriginAt(awkward, { x: 1, y: 2, z: 3 })
+    expect({ ...t, offset: null }).toEqual({ ...awkward, offset: null })
+  })
+
+  it('rounds to the millimetre, so the number fields stay readable', () => {
+    const t = withOriginAt(
+      { ...awkward, offset: { x: 0, y: 0, z: 0 } },
+      { x: 12.3000000000000025, y: -0.00004, z: 1 / 3 },
+    )
+    expect(t.offset).toEqual({ x: -12.3, y: 0, z: -0.333 })
   })
 })
 

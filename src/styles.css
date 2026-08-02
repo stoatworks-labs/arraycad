@@ -318,6 +318,11 @@ button:focus-visible {
   height: 100%;
 }
 
+/* The origin picker takes the click away from selection, so the cursor has to say so. */
+.viewport.picking canvas {
+  cursor: crosshair;
+}
+
 .view-toolbar {
   display: flex;
   align-items: center;
@@ -385,6 +390,18 @@ button:focus-visible {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 7px;
+}
+
+.origin-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.origin-head .field-label {
+  margin-bottom: 0;
 }
 
 .numwrap {
@@ -738,6 +755,11 @@ button.tool {
 
 button.tool:hover {
   color: var(--text);
+}
+
+button.tool:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
 }
 
 button.tool.on {

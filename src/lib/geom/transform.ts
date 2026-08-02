@@ -75,6 +75,35 @@ export function applyTransform(positions: Float64Array, t: TransformOptions): Fl
   return out
 }
 
+/**
+ * Put the venue origin on a point that is already in venue space.
+ *
+ * The numeric half of clicking a point in the viewport. The viewport draws
+ * `applyTransform`'s output, so a picked point p is `f(source) + offset`; asking for the
+ * origin to sit there is solving `f(source) + offset' = 0`, which is only
+ * `offset' = offset - p`. Working in venue space is what keeps this indifferent to units,
+ * up axis, heading and mirror — none of them has to be inverted, and a picker that does
+ * invert them is a second copy of the transform waiting to drift from this one.
+ *
+ * Rounded to the millimetre. A picked point carries float dust from the projection, and
+ * `-12.300000000000002` in a field that steps in half metres reads as a bug in a room
+ * measured to the centimetre at best.
+ *
+ * The offset is applied LAST, so changing heading afterwards swings the model about the
+ * source datum and carries the picked point away from zero. Set the heading first; the UI
+ * says so.
+ */
+export function withOriginAt(
+  t: TransformOptions,
+  p: { x: number; y: number; z: number },
+): TransformOptions {
+  const mm = (v: number) => Math.round(v * 1000) / 1000
+  return {
+    ...t,
+    offset: { x: mm(t.offset.x - p.x), y: mm(t.offset.y - p.y), z: mm(t.offset.z - p.z) },
+  }
+}
+
 export interface Bounds {
   min: { x: number; y: number; z: number }
   max: { x: number; y: number; z: number }

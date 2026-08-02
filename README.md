@@ -10,6 +10,10 @@ what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 data* (`.txt`), the format its own SketchUp and Vectorworks plug-ins write. See
 [Soundvision](#soundvision).
 
+**Both formats also open**, so ArrayCAD converts between the two prediction tools: drop a
+`.dbacv` and write a Soundvision room, or drop a Soundvision `.txt` and write a `.dbacv`.
+See [Converting between ArrayCalc and Soundvision](#converting-between-arraycalc-and-soundvision).
+
 **No 3D model? Trace one off the plan.** Drop a PDF or an image instead: set the scale,
 click inside a room to detect its outline, and type a height at each corner. See
 [Tracing a plan](#tracing-a-plan).
@@ -57,7 +61,8 @@ on it. A 12-triangle box is six. That collapse is the tool.
 | **IFC** | The only format carrying real semantics. `IfcSlab`, `IfcCovering`, `IfcWall` etc. are mapped to *suggested* plane types. |
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
-| **`.dbacv`** | An existing ArrayCalc venue, for pruning and retyping. See the caveat below. |
+| **`.dbacv`** | An existing ArrayCalc venue, for pruning, retyping and converting to Soundvision. See the caveat below. |
+| **Soundvision `.txt`** | An existing 3D room data export, for the same — and for converting to `.dbacv`. Surfaces are grouped by their label, which is your CAD layer name. |
 | **PDF** | Not a model — a drawing. Opens the tracer. A vector PDF also gives its real drawn lines to snap to. |
 | **PNG, JPEG, WebP, GIF, BMP** | A scan or a photo of a plan. Opens the tracer; outlines are recovered from the pixels. |
 
@@ -146,6 +151,13 @@ calls the Vectorworks API is unverified. Run its probe script first. See
    against a dimension you know.
 3. **Set the datum.** ArrayCalc wants the audience towards **+X**, Y symmetric about zero,
    Z up. Use heading, offset and the mirror toggle; the drawn axes show which way is which.
+   For the offset, **Pick in view** next to *Origin* is usually quicker than typing: click
+   a point on the model — centre stage, the front edge of the stalls — and it becomes 0, 0,
+   0, with the axes moving there. The marker turns blue and snaps when the cursor is near a
+   corner, so a corner lands exactly rather than a millimetre off it, and picking works on
+   the converted planes as well as on the source. Esc cancels. Set the **heading** before
+   the origin: the room turns about the model's own datum, which carries the picked point
+   off zero.
 4. **Choose a fit.** *Rectangle* collapses each region to one rectangle, aligned to the
    level direction of its own plane so it is always writable as a single ArrayCalc quad —
    one object per region, and usually what you want for seating. *Follow outline* is
@@ -229,9 +241,55 @@ Two things to know:
 The grammar, the evidence behind it and what is still unverified are in
 **[docs/soundvision-format.md](docs/soundvision-format.md)**.
 
-> ⚠️ **Not yet confirmed inside Soundvision.** The writer reproduces a real 7,194-face
-> Vectorworks export byte for byte, which is strong evidence, but no ArrayCAD-written file
-> has been through *Import 3D room data* yet. Check one before trusting a whole design to it.
+### Confirmed inside Soundvision
+
+An ArrayCAD-written file was imported into **Soundvision 3.18.0.15 (2026.2)** on 2026-08-02
+and read back surface by surface. A 20 × 12 m floor, a rake rising 0 → 3 m, a **six-sided
+polygon** and a vertical wall all arrived with the exact coordinates written, in order. The
+hexagon came in as **one surface of six points**, which is the whole reason this target
+suits the reduction better than `.dbacv`. Soundvision also strips the ` face` suffix from a
+label itself, so names round-trip unchanged.
+
+> ⚠️ **Geometry is confirmed; acoustic orientation is not.** A surface can land in exactly
+> the right place and still return no mapping result if it is wound the wrong way — that is
+> the trap described above, and it is silent. ArrayCAD orients every face, but no prediction
+> has yet been run over an imported surface to prove it. Check a mapping before trusting a
+> whole design to it.
+
+## Converting between ArrayCalc and Soundvision
+
+Neither application will open the other's venue, so a room modelled for one normally gets
+redrawn by hand for the other — a day's work that also guarantees the two predictions are
+of subtly different buildings.
+
+Both formats are inputs here, so the conversion is just an import and an export:
+
+| You have | Drop it in | Press |
+|---|---|---|
+| A d&b ArrayCalc venue | `.dbacv` | **Export .txt (experimental)** → *3D room data → Import 3D room data* |
+| A Soundvision room | 3D room data `.txt` | **Export .dbacv** |
+
+Nothing special happens in between: the venue takes the same road a CAD model does —
+tessellate, weld, merge coplanar regions, recover outlines, write the other format — so
+you get the same tree, the same pruning and the same plane typing on the way through.
+
+What that means in practice:
+
+- **It is not a byte-preserving translation, and should not be.** The two formats do not
+  describe the same things. ArrayCalc has boxes and arc segments and plane types;
+  Soundvision has free polygons and a label. Going either way, geometry is rebuilt from
+  planes — see [Re-importing a `.dbacv` is lossy](#re-importing-a-dbacv-is-lossy).
+- **Soundvision → ArrayCalc loses nothing that was there**, because 3D room data carries no
+  plane types or listening levels to lose. You set those here, once, on the way through.
+- **ArrayCalc → Soundvision keeps more shape than the reverse**, because a Soundvision
+  surface is a free polygon while an ArrayCalc quad must be a symmetric trapezoid.
+- **Surfaces come in grouped by their label.** L-Acoustics' own plug-ins write
+  `"<layer name> face"`, so a room exported from Vectorworks arrives with the CAD layer
+  tree intact and pruneable. The ` face` suffix is stripped on the way in and re-applied on
+  the way out, so a name does not grow a word on every trip.
+
+> ⚠️ The Soundvision caveat above applies to this route too: the geometry is confirmed to
+> import, but no prediction has yet been run over an imported surface.
 
 ## Develop
 
