@@ -8,7 +8,7 @@ Command reference. For the model, the invariants and the traps, read
 ```bash
 npm install
 npm run dev          # vite dev server
-npm test             # vitest — 153 tests
+npm test             # vitest
 npm run test:watch
 npm run build        # tsc -b && vite build -> dist/
 npm run preview      # serve the built dist/ (does NOT apply _headers)
@@ -50,6 +50,16 @@ deploy `npx wrangler deploy`.
   and you change it in both places — the shared test cases are what catch the drift.
 - `vectorworks/arraycad/vwbridge.py` is the only code here that has never been executed.
   Its defensive `_call` wrapping is load-bearing; don't tidy it away.
+- **Tracing keeps regions in PIXELS.** `trace/calibrate.ts` is the only place the sheet
+  scale is applied, for the same reason `geom/transform.ts` owns units. Venue Y is
+  `origin.y - py`, because raster rows run down and the venue runs up.
+- `trace/source.ts` is the only browser-bound module under `lib/` besides `import/mesh.ts`,
+  and is deliberately not re-exported from `trace/index.ts` — importing it drags in pdf.js
+  and a DOM, and every other trace module has to stay testable in node.
+- The `constructPath` argument shape in `trace/pdfPaths.ts` is pdf.js **internals**, pinned
+  to v5. It is validated before use; a bump that changes it must show up as a warning and
+  no geometry, never as wrong geometry.
+- Regenerate the demo plan with `python3 scripts/make_demo_plan.py`.
 
 ## The fixture is the ground truth
 

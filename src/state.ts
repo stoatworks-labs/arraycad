@@ -65,6 +65,30 @@ export function seedDecisions(scene: ImportedScene): Decisions {
   return out
 }
 
+/**
+ * Re-seed decisions for a scene that is still being edited.
+ *
+ * `seedDecisions` is right for a file, which arrives once and does not change. A traced
+ * drawing does: every corner dragged rebuilds the scene, and re-seeding it would throw
+ * away the include and plane-type choices already made. Existing ids keep their decision;
+ * only the name is refreshed, because a traced region is renamed on the drawing rather
+ * than in the tree.
+ */
+export function mergeDecisions(prev: Decisions, scene: ImportedScene): Decisions {
+  const out: Decisions = {}
+  for (const n of flattenNodes(scene.nodes)) {
+    const old = prev[n.id]
+    out[n.id] = old
+      ? { ...old, name: n.name }
+      : {
+          include: n.positions.length > 0,
+          planeType: n.suggestedPlaneType ?? PlaneType.Listening,
+          name: n.name,
+        }
+  }
+  return out
+}
+
 /** Settings the importer can decide for us, so the user starts from the file's own facts. */
 export function settingsForScene(scene: ImportedScene): Settings {
   const bounds = boundsOf(scene.nodes)

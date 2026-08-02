@@ -10,15 +10,7 @@ import { useMemo, useState } from 'react'
 import { PLANE_TYPES, PlaneType } from '../lib/dbacv/types.ts'
 import type { ImportedNode } from '../lib/import/index.ts'
 import type { Decisions } from '../state.ts'
-
-const PLANE_DOT: Record<number, string> = {
-  [PlaneType.None]: '#8899aa',
-  [PlaneType.Listening]: '#f0a04b',
-  [PlaneType.Surface]: '#5ec98a',
-  [PlaneType.Type3]: '#999999',
-  [PlaneType.Stage]: '#b07be0',
-  [PlaneType.PositioningArea]: '#00c0ae',
-}
+import { PLANE_UI_COLOUR as PLANE_DOT } from './planeColours.ts'
 
 interface Props {
   nodes: ImportedNode[]

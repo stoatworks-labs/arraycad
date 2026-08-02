@@ -633,3 +633,309 @@ button.tag {
     grid-template-columns: 240px 1fr 290px;
   }
 }
+
+/* ---------------------------------------------------------------- tracing */
+
+/* The centre column holds the drawing, the 3D view, or both stacked. */
+.stage {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.stage > * {
+  flex: 1;
+  min-height: 0;
+  min-width: 0;
+}
+
+.stage.split > * + * {
+  border-top: 1px solid var(--line);
+}
+
+/* A trace side panel is several stacked panels, not one tree that fills the column. */
+.left.tracing .panel,
+.left.tracing .panel-body {
+  flex: 0 0 auto;
+  display: block;
+}
+
+.trace {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.trace-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--line-soft);
+  background: var(--navy-800);
+  flex: 0 0 auto;
+}
+
+.trace-toolbar .check.inline {
+  margin-top: 0;
+  white-space: nowrap;
+}
+
+button.tool {
+  background: var(--navy-700);
+  color: var(--text-dim);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+button.tool:hover {
+  color: var(--text);
+}
+
+button.tool.on {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: #04121b;
+  font-weight: 600;
+}
+
+/* Nothing is at the right size until the scale is set, so the button says so. */
+button.tool.urgent:not(.on) {
+  border-color: var(--warn);
+  color: var(--warn);
+}
+
+.trace-canvas-wrap {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+}
+
+/* The element's box comes from CSS; only its backing store is set in script, from this
+   box. See the note in TraceEditor's paint effect for why that direction matters. */
+.trace-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+}
+
+.trace-canvas.tool-draw,
+.trace-canvas.tool-scale,
+.trace-canvas.tool-origin {
+  cursor: crosshair;
+}
+
+.trace-canvas.tool-wand {
+  cursor: cell;
+}
+
+.trace-hint {
+  position: absolute;
+  left: 12px;
+  top: 10px;
+  right: 12px;
+  max-width: 62ch;
+  font-size: 11.5px;
+  line-height: 1.45;
+  color: var(--text-dim);
+  background: rgba(10, 20, 32, 0.82);
+  border: 1px solid var(--line-soft);
+  border-radius: var(--radius);
+  padding: 6px 9px;
+  pointer-events: none;
+}
+
+.trace-dialog {
+  position: absolute;
+  left: 50%;
+  bottom: 46px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--navy-700);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 8px 11px;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+}
+
+.trace-dialog input {
+  width: 84px;
+}
+
+/* ---------------------------------------------------------------- regions */
+
+.region-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 40vh;
+  overflow-y: auto;
+}
+
+.region-list li {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 4px 2px;
+  border-radius: 5px;
+}
+
+.region-list li.on {
+  background: var(--navy-600);
+}
+
+.region-list .eye,
+.danger-btn {
+  background: none;
+  border: 0;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0 3px;
+  font-size: 13px;
+  line-height: 1;
+}
+
+.region-list .eye:hover {
+  color: var(--text);
+}
+
+.danger-btn:hover {
+  color: var(--danger);
+}
+
+.danger-btn.wide {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 5px 10px;
+  font-size: 12.5px;
+}
+
+.region-name {
+  flex: 1;
+  background: none;
+  border: 0;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 0;
+}
+
+.region-area {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-faint);
+}
+
+/* ---------------------------------------------------------------- heights */
+
+.height-table {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 5px 8px;
+  margin: 6px 0 10px;
+  max-height: 30vh;
+  overflow-y: auto;
+}
+
+.height-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.corner-no {
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+  width: 16px;
+  text-align: right;
+  flex: 0 0 auto;
+}
+
+.height-row .numwrap {
+  flex: 1;
+  min-width: 0;
+}
+
+.row-inline {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 6px 0;
+}
+
+.row-inline .prefix {
+  font-family: var(--mono);
+  color: var(--text-dim);
+}
+
+.ramp {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin: 8px 0 4px;
+}
+
+.ramp .hint {
+  margin: 0;
+}
+
+.ramp select {
+  padding: 3px 5px;
+}
+
+.ramp .numwrap {
+  width: 78px;
+}
+
+.surface-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-dim);
+  border-top: 1px solid var(--line-soft);
+  padding-top: 8px;
+  margin-top: 4px;
+}
+
+.surface-stats em {
+  color: var(--text-faint);
+  font-style: normal;
+  display: inline-block;
+  min-width: 15ch;
+}
+
+.cal-readout {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.cal-readout strong {
+  font-size: 16px;
+  color: var(--text);
+}
+
+.cal-readout em {
+  font-style: normal;
+  color: var(--text-faint);
+  font-size: 11px;
+}

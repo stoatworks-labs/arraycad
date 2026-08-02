@@ -14,6 +14,11 @@ shape as blend-calc, pixel-peeker and aspect-calc.
 It imports a CAD model, reduces its triangles to flat planes, lets the user prune and
 classify them, and writes a `.dbacv`.
 
+It also **traces one off a plan**. A PDF or an image has no model in it at all, so the
+tracer builds one: the user calibrates the sheet, outlines regions (by hand or by flood
+fill), and types a height at each corner. What comes out is the same `ImportedScene` every
+importer produces, so from there the road is identical. See §8.
+
 ## 2. Layout
 
 ```
@@ -26,21 +31,31 @@ src/
     ifc.ts              web-ifc wasm; the only source of plane-type suggestions
     dbacvScene.ts       an existing venue, tessellated, so it can be pruned
     index.ts            extension dispatcher + the closed-format guidance table
+  lib/trace/            THE TRACER: a 2D drawing -> an ImportedScene. See §8
+    types.ts            the trace document; regions live in PIXELS, never metres
+    source.ts           PDF/image -> raster + vector paths. The only browser-bound module
+    raster.ts           pixels -> the ink mask everything else reads
+    detect.ts           flood fill, boundary recovery, contours, the snap index
+    pdfPaths.ts         pdf.js operator list -> polylines. Version-fragile, guarded
+    calibrate.ts        pixels -> metres. The ONLY place the sheet scale is applied
+    heights.ts          typed corner heights -> a least-squares surface
+    build.ts            regions -> ImportedScene, and from there the ordinary pipeline
   lib/geom/             THE ENGINE
     vec.ts              small vector maths, deliberately three-free
     planarize.ts        weld + coplanar flood fill. The module that makes this possible
     polygon.ts          boundary loops, simplification, quad/triangle fitting
     transform.ts        units, up-axis, datum. The ONLY place these are applied
     convert.ts          the pipeline: ImportedNode -> RoomObject
-  components/           Viewport (three.js), Tree, Inspector, ui
+  components/           Viewport (three.js), Tree, Inspector, TraceEditor, TracePanel, ui
   state.ts              decisions, settings, the debounced conversion hook
 vectorworks/            a SECOND implementation, in Python 3.9, for the VW plug-in
 test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
 docs/dbacv-format.md    everything known about the format, and what is not known
 ```
 
-**`src/lib/` is pure and three-free** (except `import/mesh.ts`, which needs the loaders).
-The whole conversion runs in node, which is why 153 tests can cover it without a browser.
+**`src/lib/` is pure and three-free** (except `import/mesh.ts`, which needs the loaders,
+and `trace/source.ts`, which needs a canvas and pdf.js). The whole conversion runs in node,
+which is why the whole suite runs in node without a browser.
 
 ## 3. The one thing to understand
 
@@ -152,6 +167,14 @@ Unique to this app in the fleet. web-ifc instantiates a WebAssembly module. With
 **IFC import fails and nothing else does**, which looks like an IFC bug rather than a
 policy problem. It is in `public/_headers`.
 
+### A canvas element's box must come from CSS, never from React state
+
+`TraceEditor` sets only the canvas *backing store*, read from `clientWidth`/`clientHeight`
+at paint time; the box itself is `width: 100%` in the stylesheet. The obvious alternative —
+keeping the size in state and writing `style.width` from it — lets the element's box and
+its pixels desynchronise after a layout change, and then **every click lands somewhere
+other than where the cursor is**, with nothing on screen to say so.
+
 ## 6. The Vectorworks plug-in is a deliberate second implementation
 
 `vectorworks/` contains a Python 3.9 port of the `.dbacv` writer and the core of the
@@ -177,7 +200,7 @@ a named diagnostic rather than wrong geometry. Do not "tidy" that wrapping away.
 
 ## 7. Testing
 
-153 TypeScript tests plus 80 Python tests, none of which need a browser or Vectorworks.
+TypeScript tests plus 80 Python tests, none of which need a browser or Vectorworks.
 
 The ones that matter most:
 
@@ -188,8 +211,68 @@ The ones that matter most:
 - `geom.test.ts` — synthetic shapes where the answer is known: a box is six regions, a
   split rectangle is one, a cylinder is not one.
 - `guards.test.ts` — degenerate input that must not throw or hang.
+- `trace.test.ts` — synthetic *drawings*: a mask built by hand, so "a rectangular room
+  detects as four corners" is an exact assertion rather than a tolerance on a real scan.
 
-## 8. Deploy
+## 8. The tracer
+
+`lib/trace/` builds a model where there was none. The rule that keeps it honest:
+
+> **A traced region is stored in PIXELS, and converted to metres in exactly one place.**
+
+`calibrate.ts`, and nothing else. Same reason `geom/transform.ts` owns units for 3D
+imports: re-measuring the scale after an hour of tracing then re-scales the whole venue
+and moves nothing relative to the drawing it was traced from.
+
+`build.ts` is the join. It emits the same `ImportedScene` every importer produces, so
+weld → coplanar regions → outline → canonical quad all run untouched, and the tests that
+guard that road cover traced geometry for free.
+
+### Traps
+
+**Raster rows run DOWN; venue Y runs UP.** `pxToVenue` is `origin.y - py`, not the other
+way. Getting it wrong mirrors the auditorium left for right, which is invisible in a
+symmetric venue until the delays are hung on the wrong side. `build.ts` additionally
+forces every region counter-clockwise in venue XY so its normal points up regardless of
+which way round the user clicked — otherwise whether a floor faces the ceiling depends on
+click order and nothing would ever say so.
+
+**Four typed heights are only coplanar by luck.** 0, 0, 2.4, 2.5 describes a warped
+surface, and warped comes out of the planarizer as several objects with a seam. Hence the
+default `plane` height mode: least-squares fit, every corner moved onto it, and the
+residual reported so a real step is not quietly flattened. `free` mode is the escape
+hatch and says what it will cost.
+
+**Self-intersection is checked BEFORE area.** A symmetric bow tie has two halves of equal
+and opposite area, so its shoelace total is zero; check area first and the only thing the
+user is told about a crossed outline is "encloses no area".
+
+**Flood fill is 4-connected over the paper, not 8.** Eight would squeeze diagonally
+between two ink pixels a person reads as a continuous wall. And it always reports
+`touchedBorder` / `coverage` rather than silently returning the whole sheet — a doorway or
+a broken hairline is the normal case, not an error.
+
+**`pdfPaths.ts` is version-fragile by nature.** `OPS` is pdf.js's public API; the argument
+*shape* of `constructPath` is not, and the `DrawOP` codes are pinned from pdf.js v5
+internals. The buffer is validated before it is walked, and anything unrecognised returns
+no paths plus a warning — never invented geometry. If a `pdfjs-dist` major bump makes
+every PDF report "no vector geometry", check `DrawOPS` in `pdf.worker.mjs`. Raster contour
+detection is the always-works fallback and is only less exact.
+
+**Only `source.ts` touches a browser.** It is not re-exported from `trace/index.ts`,
+because importing it pulls in pdf.js and a DOM and the whole point of the split is that
+everything else runs in node under test. pdf.js itself sits behind a **dynamic import** in
+`pdfSource.ts` — 400 kB that nobody dropping a DXF should download — which is why the
+build emits a separate `pdfSource-*.js` chunk.
+
+**A PDF will not finish loading in a hidden tab.** `page.render()` continues on
+`requestAnimationFrame`, which a backgrounded tab does not fire, so the promise simply
+never settles and the UI sits on "Reading…" until the tab is looked at again. Harmless for
+a real user, and *not* a bug to go hunting — but it makes automated verification through a
+headless or hidden browser pane look like a hang in the loader. Bring the page to the
+front before testing PDF import.
+
+## 9. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 

@@ -6,6 +6,10 @@ Drop in a DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles 
 into flat planes, lets you throw away everything ArrayCalc does not need, lets you say
 what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 
+**No 3D model? Trace one off the plan.** Drop a PDF or an image instead: set the scale,
+click inside a room to detect its outline, and type a height at each corner. See
+[Tracing a plan](#tracing-a-plan).
+
 Browser only. No backend, no upload: the file never leaves your machine.
 
 **[Try it →](https://arraycad.stoatworks-labs.com)**  ·  **[Watch the 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)**
@@ -39,6 +43,8 @@ on it. A 12-triangle box is six. That collapse is the tool.
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
 | **`.dbacv`** | An existing ArrayCalc venue, for pruning and retyping. See the caveat below. |
+| **PDF** | Not a model — a drawing. Opens the tracer. A vector PDF also gives its real drawn lines to snap to. |
+| **PNG, JPEG, WebP, GIF, BMP** | A scan or a photo of a plan. Opens the tracer; outlines are recovered from the pixels. |
 
 ### Formats that need an export step first
 
@@ -46,6 +52,53 @@ on it. A 12-triangle box is six. That collapse is the tool.
 no public specification**. Nothing outside their own application can read them, and no
 amount of work here changes that. Drop one in and ArrayCAD names the export to run
 instead — for Vectorworks that is glTF first, then IFC, then DXF 3D.
+
+## Tracing a plan
+
+Most venues that need a design have a **plan**, not a model. A PDF or an image opens a
+tracer instead of the reducer, and the rest of the app is unchanged: a traced region
+becomes exactly the same intermediate geometry a CAD import produces, so it goes through
+the same conversion, the same inspector and the same writer.
+
+Try it on **[`demo/demo-plan.pdf`](demo/demo-plan.pdf)** — a synthetic 1:200 venue with a
+stage, a pit, two raked stalls blocks, columns and a balcony.
+
+1. **Set the scale.** A drawing has no units. Either click each end of a dimension you
+   know and type its real length, or — on a vector PDF — type the paper scale from the
+   title block (`1:200`) and get an exact answer with no clicking. Measure across the
+   *longest* dimension on the sheet: click accuracy is fixed, so spreading it over a
+   longer line makes the error smaller.
+2. **Set the origin** if you want it somewhere specific. Venue +X runs right across the
+   sheet and +Y up it; **Heading** under Placement aims the room down +X afterwards.
+3. **Get the outlines.** *Detect region* floods the enclosed area under the cursor and
+   returns its outline — including any holes, so a column in the stalls comes out as a
+   hole rather than being ignored. *Trace* draws one corner by corner, snapping to the
+   drawing's own lines. Drag corners to adjust, alt-click one to delete it, click a
+   midpoint to add one.
+4. **Type the heights.** Every corner carries its own height in metres, so a level floor,
+   a raked block, a raised balcony and a sunken pit (negative) are all the same operation.
+   *Ramp* does the arithmetic: pick a front corner and a back corner, give each a height,
+   and the rest follow the slope.
+
+### Two ways to read the heights
+
+| | |
+|---|---|
+| **Single plane** *(default)* | Fits one flat plane through the typed heights and puts every corner on it. Always **one** ArrayCalc object. A level floor and a constant rake are both exact; anything else is moved, and you are told by how much. |
+| **Exactly as typed** | Uses the heights as they are. Right for a genuinely stepped or dished surface, but the result is not flat, so it comes out as several ArrayCalc objects. |
+
+### What tracing cannot do for you
+
+- **Accuracy is the scale you set.** A dimension misread by 5% makes the whole venue 5%
+  wrong, and nothing downstream can tell. Check a second known dimension afterwards.
+- **A raster plan is only as good as its render.** Pages are rasterised to 2400 px on the
+  long edge, so on an A1 sheet one pixel is about 25 mm of building. Vector PDFs snap to
+  the real lines and do not have this limit.
+- **Region detect needs the area to be closed.** A doorway, a dashed balcony edge or a
+  broken hairline lets the fill escape; it says so rather than silently returning the whole
+  page. Raise *thicken lines* to bridge small gaps, or trace it by hand.
+- **Seat rows seal a room.** On a plan with the seating drawn in, a flood fill stops at the
+  first row. Trace the block outline instead — it is four clicks.
 
 ## Vectorworks plug-in
 

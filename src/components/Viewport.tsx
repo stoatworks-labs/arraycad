@@ -16,17 +16,9 @@ import { type RoomObject, PlaneType, Shape } from '../lib/dbacv/types.ts'
 import { type ImportedNode } from '../lib/import/index.ts'
 import { applyTransform, type TransformOptions } from '../lib/geom/transform.ts'
 import type { ViewMode } from '../state.ts'
+import { PLANE_UI_HEX as PLANE_HEX } from './planeColours.ts'
 
 export type CameraPreset = 'iso' | 'plan' | 'section' | 'front'
-
-const PLANE_HEX: Record<number, number> = {
-  [PlaneType.None]: 0x8899aa,
-  [PlaneType.Listening]: 0xf0a04b,
-  [PlaneType.Surface]: 0x5ec98a,
-  [PlaneType.Type3]: 0x999999,
-  [PlaneType.Stage]: 0xb07be0,
-  [PlaneType.PositioningArea]: 0x00c0ae,
-}
 
 interface Props {
   nodes: ImportedNode[]

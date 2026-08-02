@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { type VenueFile } from './lib/dbacv/types.ts'
 import { formatDbacvDate, writeDbacv } from './lib/dbacv/write.ts'
 import {
@@ -10,27 +10,55 @@ import {
   flattenNodes,
   importFile,
 } from './lib/import/index.ts'
+import { type TraceDocument, buildTraceScene } from './lib/trace/index.ts'
+import type { InkMaskOptions } from './lib/trace/raster.ts'
+import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
 import { UNIT_PRESETS } from './lib/geom/transform.ts'
 import {
   type Settings,
   type ViewMode,
+  DEFAULT_SETTINGS,
+  mergeDecisions,
   seedDecisions,
   settingsForScene,
   subtreeIds,
   useConversion,
+  useDebounced,
 } from './state.ts'
 import { type CameraPreset, Viewport } from './components/Viewport.tsx'
 import { Tree } from './components/Tree.tsx'
 import { Inspector } from './components/Inspector.tsx'
+import { type TraceTool, TraceEditor } from './components/TraceEditor.tsx'
+import { TracePanel } from './components/TracePanel.tsx'
 import { Field, NumberInput, Panel, Segmented, Stat } from './components/ui.tsx'
 import type { Decisions, NodeDecision } from './state.ts'
 
+const ALL_EXTENSIONS = [...ACCEPTED_EXTENSIONS, ...TRACE_EXTENSIONS]
+
+/** What the centre of the screen shows while tracing. */
+type TraceView = 'drawing' | 'model' | 'both'
+
+function download(text: string, filename: string, mime: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: mime }))
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.click()
+  URL.revokeObjectURL(url)
+}
+
 export default function App() {
-  const [scene, setScene] = useState<ImportedScene | null>(null)
+  const [importedScene, setImportedScene] = useState<ImportedScene | null>(null)
+  const [traceDoc, setTraceDoc] = useState<TraceDocument | null>(null)
+  const [traceFile, setTraceFile] = useState<File | null>(null)
   const [decisions, setDecisions] = useState<Decisions>({})
   const [settings, setSettings] = useState<Settings | null>(null)
   const [selection, setSelection] = useState<string[]>([])
   const [view, setView] = useState<ViewMode>('both')
+  const [traceView, setTraceView] = useState<TraceView>('drawing')
+  const [traceTool, setTraceTool] = useState<TraceTool>('select')
+  const [detect, setDetect] = useState<InkMaskOptions>({ threshold: 'auto', invert: false, lineThickenPx: 1 })
+  const [ramp, setRamp] = useState({ from: 0, to: 1, zFrom: 0, zTo: 1, flat: 0 })
   const [preset, setPreset] = useState<CameraPreset>('iso')
   const [presetNonce, setPresetNonce] = useState(0)
   const [error, setError] = useState<{ message: string; advice: string } | null>(null)
@@ -39,11 +67,27 @@ export default function App() {
   const fileInput = useRef<HTMLInputElement>(null)
   const [projectName, setProjectName] = useState('Untitled')
 
+  // Tracing rebuilds the scene on every dragged corner, so the build is debounced rather
+  // than run per pointer event. The 3D preview lags the drawing by a frame or two, which
+  // is the right trade: the drawing itself is repainted immediately.
+  const settledDoc = useDebounced(traceDoc, 150)
+  const tracedScene = useMemo(() => (settledDoc ? buildTraceScene(settledDoc) : null), [settledDoc])
+  const scene = traceDoc ? tracedScene : importedScene
+  const tracing = traceDoc !== null
+
   const nodesById = useMemo(() => {
     const m = new Map<string, ImportedNode>()
     if (scene) for (const n of flattenNodes(scene.nodes)) m.set(n.id, n)
     return m
   }, [scene])
+
+  useEffect(() => {
+    if (!scene) {
+      setDecisions({})
+      return
+    }
+    setDecisions((prev) => (tracing ? mergeDecisions(prev, scene) : seedDecisions(scene)))
+  }, [scene, tracing])
 
   const { result, running } = useConversion(scene, decisions, settings)
 
@@ -51,21 +95,58 @@ export default function App() {
     setBusy(true)
     setError(null)
     try {
-      const s = await importFile(file)
-      setScene(s)
-      setDecisions(seedDecisions(s))
-      setSettings(settingsForScene(s))
+      if (isTraceFile(file.name)) {
+        const doc = await loadTraceSource(file)
+        setTraceDoc(doc)
+        setTraceFile(file)
+        setImportedScene(null)
+        setTraceView('drawing')
+        setTraceTool(doc.calibration.source.kind === 'unset' ? 'scale' : 'select')
+        // A trace is authored in metres with Z up by construction, so there is nothing for
+        // the units guess to do — but heading, offset and mirror still matter.
+        setSettings({
+          ...DEFAULT_SETTINGS,
+          transform: { ...DEFAULT_SETTINGS.transform, unitsPerMetre: 1, upAxis: 'z' },
+          // The outline is exactly what the user drew; there is no CAD noise to shave off.
+          simplifyTolerance: 0,
+        })
+      } else {
+        const s = await importFile(file)
+        setImportedScene(s)
+        setTraceDoc(null)
+        setTraceFile(null)
+        setSettings(settingsForScene(s))
+      }
       setSelection([])
-      setProjectName(s.sourceName || 'Untitled')
+      setProjectName(file.name.replace(/\.[^.]+$/, '') || 'Untitled')
       setPresetNonce((n) => n + 1)
     } catch (e) {
       if (e instanceof ImportError) setError({ message: e.message, advice: e.advice })
       else setError({ message: (e as Error).message, advice: '' })
-      setScene(null)
+      setImportedScene(null)
+      setTraceDoc(null)
     } finally {
       setBusy(false)
     }
   }, [])
+
+  /** Move to another page of the same PDF, keeping nothing — a new page is a new drawing. */
+  const loadPage = useCallback(
+    async (index: number) => {
+      if (!traceFile) return
+      setBusy(true)
+      try {
+        const doc = await loadTraceSource(traceFile, { pageIndex: index })
+        setTraceDoc(doc)
+        setSelection([])
+      } catch (e) {
+        setError({ message: (e as Error).message, advice: '' })
+      } finally {
+        setBusy(false)
+      }
+    },
+    [traceFile],
+  )
 
   const updateDecisions = useCallback((ids: string[], patch: Partial<NodeDecision>) => {
     setDecisions((prev) => {
@@ -91,6 +172,10 @@ export default function App() {
     setSettings((s) => (s ? { ...s, ...patch } : s))
   }, [])
 
+  const patchDoc = useCallback((updater: (d: TraceDocument) => TraceDocument) => {
+    setTraceDoc((d) => (d ? updater(d) : d))
+  }, [])
+
   const exportFile = useCallback(() => {
     if (!result || result.objects.length === 0) return
     const venue: VenueFile = {
@@ -105,13 +190,7 @@ export default function App() {
       venueComments: `Converted from ${scene?.format ?? 'CAD'} by ArrayCAD.`,
       objects: result.objects,
     }
-    const blob = new Blob([writeDbacv(venue)], { type: 'application/xml' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `${projectName || 'venue'}.dbacv`
-    a.click()
-    URL.revokeObjectURL(url)
+    download(writeDbacv(venue), `${projectName || 'venue'}.dbacv`, 'application/xml')
   }, [result, projectName, scene])
 
   // ---------------------------------------------------------------- render
@@ -135,7 +214,7 @@ export default function App() {
           }}
         >
           <div className="drop-inner">
-            <h1>Drop a CAD model</h1>
+            <h1>Drop a CAD model, a PDF or a plan</h1>
             <p className="muted">
               or{' '}
               <button type="button" className="linkbtn" onClick={() => fileInput.current?.click()}>
@@ -146,13 +225,13 @@ export default function App() {
               ref={fileInput}
               type="file"
               hidden
-              accept={ACCEPTED_EXTENSIONS.join(',')}
+              accept={ALL_EXTENSIONS.join(',')}
               onChange={(e) => {
                 const f = e.target.files?.[0]
                 if (f) void load(f)
               }}
             />
-            <p className="formats">{ACCEPTED_EXTENSIONS.join('  ·  ')}</p>
+            <p className="formats">{ALL_EXTENSIONS.join('  ·  ')}</p>
             {busy && <p className="muted">Reading…</p>}
             {error && (
               <div className="error">
@@ -166,6 +245,12 @@ export default function App() {
               ArrayCalc does not need, and lets you say what each surface is — then writes a{' '}
               <code>.dbacv</code>.
             </p>
+            <p className="pitch">
+              No 3D model? Drop a <strong>PDF or an image of the plan</strong> instead. Set
+              the scale off a dimension you know, click inside a room to detect its outline
+              or trace it by hand, and type a height at each corner — level, raked, raised or
+              sunk.
+            </p>
           </div>
         </main>
       </div>
@@ -173,6 +258,10 @@ export default function App() {
   }
 
   const totalTris = countTriangles(scene.nodes)
+  const includedIds = new Set(Object.entries(decisions).filter(([, d]) => d.include).map(([id]) => id))
+  const traceSelected = selection.length === 1 && traceDoc?.regions.some((r) => r.id === selection[0])
+    ? selection[0]
+    : null
 
   return (
     <div className="app">
@@ -187,7 +276,7 @@ export default function App() {
           ref={fileInput}
           type="file"
           hidden
-          accept={ACCEPTED_EXTENSIONS.join(',')}
+          accept={ALL_EXTENSIONS.join(',')}
           onChange={(e) => {
             const f = e.target.files?.[0]
             if (f) void load(f)
@@ -211,60 +300,114 @@ export default function App() {
       </Topbar>
 
       <div className="layout">
-        <aside className="left">
-          <Panel title="Objects">
-            <Tree
-              nodes={scene.nodes}
+        <aside className={traceDoc ? 'left tracing' : 'left'}>
+          {traceDoc ? (
+            <TracePanel
+              doc={traceDoc}
+              onChange={patchDoc}
+              selected={traceSelected}
+              onSelect={(id) => setSelection(id ? [id] : [])}
               decisions={decisions}
-              selection={selection}
-              onSelect={select}
-              onUpdate={updateDecisions}
-              subtreeIds={subtreeIds}
+              onUpdateDecisions={updateDecisions}
+              detect={detect}
+              onDetect={(p) => setDetect((d) => ({ ...d, ...p }))}
+              onPage={(i) => void loadPage(i)}
+              ramp={ramp}
+              onRamp={(p) => setRamp((r) => ({ ...r, ...p }))}
             />
-          </Panel>
+          ) : (
+            <Panel title="Objects">
+              <Tree
+                nodes={scene.nodes}
+                decisions={decisions}
+                selection={selection}
+                onSelect={select}
+                onUpdate={updateDecisions}
+                subtreeIds={subtreeIds}
+              />
+            </Panel>
+          )}
         </aside>
 
         <main className="centre">
           <div className="view-toolbar">
-            <Segmented
-              value={view}
-              onChange={setView}
-              options={[
-                { value: 'source', label: 'Source' },
-                { value: 'converted', label: 'Planes' },
-                { value: 'both', label: 'Both' },
-              ]}
-            />
+            {traceDoc ? (
+              <Segmented
+                value={traceView}
+                onChange={setTraceView}
+                options={[
+                  { value: 'drawing', label: 'Drawing' },
+                  { value: 'model', label: '3D' },
+                  { value: 'both', label: 'Both' },
+                ]}
+              />
+            ) : (
+              <Segmented
+                value={view}
+                onChange={setView}
+                options={[
+                  { value: 'source', label: 'Source' },
+                  { value: 'converted', label: 'Planes' },
+                  { value: 'both', label: 'Both' },
+                ]}
+              />
+            )}
             <span className="spacer" />
-            <Segmented
-              value={preset}
-              onChange={(p) => {
-                setPreset(p)
-                setPresetNonce((n) => n + 1)
-              }}
-              options={[
-                { value: 'iso', label: 'Iso' },
-                { value: 'plan', label: 'Plan' },
-                { value: 'section', label: 'Section' },
-                { value: 'front', label: 'Front' },
-              ]}
-            />
+            {(!traceDoc || traceView !== 'drawing') && (
+              <Segmented
+                value={preset}
+                onChange={(p) => {
+                  setPreset(p)
+                  setPresetNonce((n) => n + 1)
+                }}
+                options={[
+                  { value: 'iso', label: 'Iso' },
+                  { value: 'plan', label: 'Plan' },
+                  { value: 'section', label: 'Section' },
+                  { value: 'front', label: 'Front' },
+                ]}
+              />
+            )}
           </div>
 
-          <Viewport
-            nodes={scene.nodes}
-            decisions={decisions}
-            converted={result?.objects ?? []}
-            transform={settings.transform}
-            view={view}
-            selection={selection}
-            onSelect={select}
-            preset={preset}
-            presetNonce={presetNonce}
-          />
+          <div className={`stage${traceDoc && traceView === 'both' ? ' split' : ''}`}>
+            {traceDoc && traceView !== 'model' && (
+              <TraceEditor
+                doc={traceDoc}
+                onChange={patchDoc}
+                tool={traceTool}
+                onTool={setTraceTool}
+                selected={traceSelected}
+                onSelect={(id) => setSelection(id ? [id] : [])}
+                detect={detect}
+                planeTypeOf={(id) => decisions[id]?.planeType ?? traceDoc.regions.find((r) => r.id === id)!.planeType}
+                includedIds={includedIds}
+              />
+            )}
+            {(!traceDoc || traceView !== 'drawing') && (
+              <Viewport
+                nodes={scene.nodes}
+                decisions={decisions}
+                converted={result?.objects ?? []}
+                transform={settings.transform}
+                view={traceDoc ? 'converted' : view}
+                selection={selection}
+                onSelect={select}
+                preset={preset}
+                presetNonce={presetNonce}
+              />
+            )}
+          </div>
 
           <div className="stats">
-            <Stat label="source triangles" value={totalTris.toLocaleString()} />
+            <Stat
+              label={traceDoc ? 'traced corners' : 'source triangles'}
+              value={
+                traceDoc
+                  ? traceDoc.regions.reduce((n, r) => n + r.vertices.length, 0).toLocaleString()
+                  : totalTris.toLocaleString()
+              }
+            />
             <Stat label="flat regions found" value={(result?.stats.regionsFound ?? 0).toLocaleString()} />
             <Stat
               label="ArrayCalc objects"
@@ -293,39 +436,49 @@ export default function App() {
           </Panel>
 
           <Panel title="Placement">
-            <Field label="Source units" hint="What one unit in the source file means.">
-              <select
-                value={settings.transform.unitsPerMetre}
-                onChange={(e) =>
-                  patchSettings({
-                    transform: { ...settings.transform, unitsPerMetre: Number(e.target.value) },
-                  })
-                }
-              >
-                {UNIT_PRESETS.map((u) => (
-                  <option key={u.label} value={u.unitsPerMetre}>
-                    {u.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            {scene.unitsPerMetre === undefined && (
-              <p className="hint warn-text">
-                This format does not declare its units — the value above is a guess from the
-                model's overall size. Check it against a dimension you know.
+            {traceDoc ? (
+              <p className="hint">
+                A traced drawing is already in metres with Z up — the scale is set on the
+                drawing itself. Heading, offset and mirror below still apply, and are how the
+                room gets aimed down the venue +X axis.
               </p>
-            )}
+            ) : (
+              <>
+                <Field label="Source units" hint="What one unit in the source file means.">
+                  <select
+                    value={settings.transform.unitsPerMetre}
+                    onChange={(e) =>
+                      patchSettings({
+                        transform: { ...settings.transform, unitsPerMetre: Number(e.target.value) },
+                      })
+                    }
+                  >
+                    {UNIT_PRESETS.map((u) => (
+                      <option key={u.label} value={u.unitsPerMetre}>
+                        {u.label}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                {scene.unitsPerMetre === undefined && (
+                  <p className="hint warn-text">
+                    This format does not declare its units — the value above is a guess from the
+                    model's overall size. Check it against a dimension you know.
+                  </p>
+                )}
 
-            <Field label="Up axis" hint="Which source axis points up. ArrayCalc is Z-up.">
-              <Segmented
-                value={settings.transform.upAxis}
-                onChange={(v) => patchSettings({ transform: { ...settings.transform, upAxis: v } })}
-                options={[
-                  { value: 'z', label: 'Z up' },
-                  { value: 'y', label: 'Y up' },
-                ]}
-              />
-            </Field>
+                <Field label="Up axis" hint="Which source axis points up. ArrayCalc is Z-up.">
+                  <Segmented
+                    value={settings.transform.upAxis}
+                    onChange={(v) => patchSettings({ transform: { ...settings.transform, upAxis: v } })}
+                    options={[
+                      { value: 'z', label: 'Z up' },
+                      { value: 'y', label: 'Y up' },
+                    ]}
+                  />
+                </Field>
+              </>
+            )}
 
             <Field label="Heading" hint="Rotate about the vertical so the audience faces +X.">
               <NumberInput

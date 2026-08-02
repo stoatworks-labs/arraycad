@@ -101,7 +101,7 @@ export function dropCollinear(poly: Pt2[], tol: number): Pt2[] {
 }
 
 /** Douglas-Peucker on an open chain. */
-function dpChain(pts: Pt2[], tol: number): Pt2[] {
+export function dpChain(pts: Pt2[], tol: number): Pt2[] {
   if (pts.length < 3) return pts
   const first = pts[0]
   const last = pts[pts.length - 1]
