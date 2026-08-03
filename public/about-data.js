@@ -12,7 +12,7 @@
 window.STOATWORKS_ABOUT = Object.assign({
   "name": "ArrayCAD",
   "slug": "arraycad",
-  "version": "v0.1.0",
+  "version": "v0.2.0",
   "hook": "A CAD model or a PDF plan in, ArrayCalc or Soundvision out",
   "licence": "",
   "guide": "",
