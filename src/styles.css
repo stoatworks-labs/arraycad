@@ -17,6 +17,11 @@
   --radius: 8px;
   --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
   color-scheme: dark;
+
+  /* Read by the vendored support footer, which otherwise draws its links in
+     plain body text and reads as prose rather than as links. Same token, same
+     reason, as pixel-peeker. */
+  --sw-support-accent: var(--accent);
 }
 
 * {
@@ -24,26 +29,54 @@
 }
 
 /*
- * The tool still fills the viewport exactly (see `.app` below) — but the page
- * itself is allowed to scroll past it, because the support footer is appended
- * after #root and `overflow: hidden` here made it unreachable. Height moved off
- * html/body/#root and onto `.app` as 100vh: leaving `height: 100%` here while
- * body grew past the viewport left `.app`'s percentage height resolving against
- * an auto-height parent, which collapses the layout. Same fix, same reason, as
- * the worked example at the top of pixel-peeker/src/styles.css.
+ * The page is one column exactly the height of the viewport: the tool, then the
+ * support footer, both on screen, never scrolled to.
+ *
+ * The footer is appended after #root by the vendored script, so it is a sibling
+ * of the app and not something the app can lay out. It used to sit below the
+ * fold — `.app` was `height: 100vh` and the body was allowed to scroll past it —
+ * which meant nobody saw the funding links without scrolling a tool that has no
+ * reason to be scrolled.
+ *
+ * Height therefore lives here, as `min-height` on the body, and `.app` claims
+ * what is left with `flex: 1`. Do NOT put `height: 100%` back on html/body/#root
+ * and leave `.app` on a percentage: `.app`'s percentage then resolves against an
+ * auto-height parent and collapses the layout. That is the trap recorded at the
+ * top of pixel-peeker/src/styles.css, and it is why the height is expressed as
+ * flex and not as a percentage anywhere in this chain.
+ *
+ * `height`, not `min-height`. A flex container whose own height is indefinite
+ * sizes to its content, so its items never shrink — with `min-height: 100vh`
+ * here the app kept its natural height, the body grew past the viewport and the
+ * footer went back below the fold on exactly the short viewports this was meant
+ * to fix (measured: 104px of it still unreachable at 720px tall). A definite
+ * height is what makes `flex: 1` below mean "what is left" rather than "what I
+ * happen to need". Nothing is lost to it: everything that can run out of room
+ * scrolls inside itself instead — `.dropzone`, `.left`, `.right`.
  */
 body {
   margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
   background: var(--navy-900);
   color: var(--text);
   font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
+#root {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 .app {
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  flex: 1;
+  min-height: 0;
 }
 
 .spacer {
@@ -206,10 +239,16 @@ button:focus-visible {
 
 /* ---------------------------------------------------------------- dropzone */
 
+/* `safe center` and not plain `center`: this card is taller than the viewport on
+   a short window once the support footer has taken its band, and a centred grid
+   item that overflows its area overflows it in BOTH directions — the heading
+   scrolls off the top and cannot be scrolled back to. `safe` falls back to
+   start-alignment at exactly the point that would happen. */
 .dropzone {
   flex: 1;
+  min-height: 0;
   display: grid;
-  place-items: center;
+  place-items: safe center;
   padding: 24px;
   overflow: auto;
 }
@@ -1111,4 +1150,70 @@ button.ghost:hover:not(:disabled) {
 .rat-stats .warn,
 .rat-stats.warn {
   color: var(--warn);
+}
+
+/* ------------------------------------------------------- support footer
+
+ * The footer itself is `public/support-footer.js`, vendored from
+ * stoatworks-backend and never edited here. What IS ours is how much of the
+ * page it is allowed to take, and that differs by screen:
+ *
+ *   Landing (`.dropzone`)  the footer stands at full height. That screen is
+ *                          centred content with slack around it, so the ~149px
+ *                          costs nothing — it just re-centres — and it is the
+ *                          screen a first-time visitor actually lands on.
+ *
+ *   Working (`.layout`)    collapsed to a single ~40px band: the lead line and
+ *                          the four funding chips, on one row. A converting
+ *                          user needs the 3D view and both panels more than
+ *                          they need three lines of prose, but the links stay
+ *                          on screen rather than below a fold nobody scrolls.
+ *
+ * Collapsing rather than adding a second strip of our own is deliberate: the
+ * funding URLs then still have exactly one definition, in the vendored file.
+ * A hand-rolled ArrayCAD strip would be this repo's third copy of them, after
+ * support-footer.js and about.js — which is precisely the "four dead links
+ * waiting to happen" the master file's own header warns about.
+ *
+ * The cost of that choice: these rules reach into the vendored footer's class
+ * names. A master change that renames `.sw-support__say`, `__note`, `__ask` or
+ * `__links` will not break the sync — the vendored copy stays byte-identical —
+ * it will quietly restore the tall footer on the working screen. If a re-sync
+ * ever changes the footer's markup, re-check this block.
+ */
+/* The row is built on `.sw-support` itself, NOT on `.sw-support__inner`. The
+   master styles an `__inner` wrapper that its build() never actually creates —
+   `footer.append(say, list)` — so that whole rule is dead on every app that
+   vendors the footer, and a compact layout hung off it silently does nothing.
+   Reported upstream; if a fixed master ever adds the wrapper for real, these
+   two declarations move onto it. */
+body:has(.layout) .sw-support {
+  margin-top: 0;
+  padding: 0.5rem 1rem;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.4rem 1rem;
+}
+
+/* The note ("no drawing you import is uploaded") and the ask are the two lines
+   that are pure prose. Both are still on the landing screen, where someone is
+   deciding whether to hand this tool a drawing at all — which is the moment the
+   note is actually load-bearing. */
+body:has(.layout) .sw-support__note,
+body:has(.layout) .sw-support__ask {
+  display: none;
+}
+
+body:has(.layout) .sw-support__say {
+  max-width: none;
+}
+
+/* Chips to the right of the lead when they fit, under it when they don't. The
+   master dropped a two-column footer because four chips beside 46rem of prose
+   only fit in a narrow band of widths; here the prose is one short sentence, so
+   the pair fits from roughly 60rem up and wraps cleanly below that. */
+body:has(.layout) .sw-support__links {
+  margin-left: auto;
 }
