@@ -23,13 +23,17 @@ import {
   conversionEntries,
   convertOptions,
   mergeDecisions,
+  newRationalisation,
+  rationalisedAreas,
   seedDecisions,
   settingsForScene,
   subtreeIds,
   useConversion,
   useDebounced,
+  useRationalisations,
 } from './state.ts'
-import { type CameraPreset, Viewport } from './components/Viewport.tsx'
+import { type CameraPreset, type ViewportTool, Viewport } from './components/Viewport.tsx'
+import { RationalisePanel } from './components/RationalisePanel.tsx'
 import { Tree } from './components/Tree.tsx'
 import { Inspector } from './components/Inspector.tsx'
 import { type TraceTool, TraceEditor } from './components/TraceEditor.tsx'
@@ -65,7 +69,8 @@ export default function App() {
   const [ramp, setRamp] = useState({ from: 0, to: 1, zFrom: 0, zTo: 1, flat: 0 })
   const [preset, setPreset] = useState<CameraPreset>('iso')
   const [presetNonce, setPresetNonce] = useState(0)
-  const [pickOrigin, setPickOrigin] = useState(false)
+  const [tool, setTool] = useState<ViewportTool>(null)
+  const [drawnPoints, setDrawnPoints] = useState<[number, number][]>([])
   const [error, setError] = useState<{ message: string; advice: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [dragOver, setDragOver] = useState(false)
@@ -96,28 +101,36 @@ export default function App() {
     setDecisions((prev) => (tracing ? mergeDecisions(prev, scene) : seedDecisions(scene)))
   }, [scene, tracing])
 
-  // The origin picker is modal and belongs to the 3D view. Escape leaves it, and so does
+  const { rationalisations, add: addRationalisation, update: updateRationalisation, remove: removeRationalisation } =
+    useRationalisations(scene)
+
+  // Every viewport tool is modal and belongs to the 3D view. Escape leaves, and so does
   // anything that takes the view away: an armed tool with nothing to click under it is a
   // trap, and the only sign of it would be a click that moved the venue.
+  //
+  // The area tool owns Escape itself, to clear a half-drawn ring rather than disarm — one
+  // stray corner should cost a keypress, not the whole outline.
   useEffect(() => {
-    if (!pickOrigin) return
+    if (!tool) return
     if (!modelVisible) {
-      setPickOrigin(false)
+      setTool(null)
       return
     }
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') setPickOrigin(false)
+      if (e.key === 'Escape' && tool !== 'area') setTool(null)
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [pickOrigin, modelVisible])
+  }, [tool, modelVisible])
 
-  const { result, running } = useConversion(scene, decisions, settings)
+  const { result, areas, running } = useConversion(scene, decisions, settings, rationalisations)
+  const areaStats = useMemo(() => new Map(areas.map((a) => [a.id, a.stats])), [areas])
 
   const load = useCallback(async (file: File) => {
     setBusy(true)
     setError(null)
-    setPickOrigin(false)
+    setTool(null)
+    setDrawnPoints([])
     try {
       if (isTraceFile(file.name)) {
         const doc = await loadTraceSource(file)
@@ -205,7 +218,90 @@ export default function App() {
    */
   const takeOrigin = useCallback((p: { x: number; y: number; z: number }) => {
     setSettings((s) => (s ? { ...s, transform: withOriginAt(s.transform, p) } : s))
-    setPickOrigin(false)
+    setTool(null)
+  }, [])
+
+  const ratSeq = useRef(0)
+
+  /**
+   * Name a new area after what it was made from.
+   *
+   * The members' shared leading words when they have any — forty nodes called
+   * `STALLS ROW A`…`STALLS ROW T` make "STALLS", which is the name a person would have
+   * given it. Falls back to a number, never to the first member's name: "TIER 3 - CEILING
+   * LEFT 1" as the label for the whole tier reads as a mistake rather than as a summary.
+   */
+  const nameFor = useCallback(
+    (ids: string[]): string => {
+      const names = ids.map((id) => nodesById.get(id)?.name ?? '').filter(Boolean)
+      if (names.length > 0) {
+        const words = names.map((n) => n.split(/\s+/))
+        const shared: string[] = []
+        for (let i = 0; i < words[0].length; i++) {
+          const w = words[0][i]
+          if (words.every((ws) => ws[i] === w)) shared.push(w)
+          else break
+        }
+        const label = shared.join(' ').replace(/[-–—:,]+$/, '').trim()
+        if (label.length >= 2) return label
+      }
+      return `Area ${++ratSeq.current}`
+    },
+    [nodesById],
+  )
+
+  const createFromSelection = useCallback(() => {
+    if (selection.length === 0) return
+    const members = selection.filter((id) => (nodesById.get(id)?.positions.length ?? 0) > 0)
+    if (members.length === 0) return
+    addRationalisation(newRationalisation(`rat${++ratSeq.current}`, nameFor(members), members))
+    setSelection([])
+  }, [selection, nodesById, addRationalisation, nameFor])
+
+  /**
+   * A drawn area captures what is under it — narrowed by the selection when there is one.
+   *
+   * The two halves of the answer compose, and they have to. Drawing alone cannot say
+   * WHICH surfaces under the polygon are wanted: draw round a seating block and the floor
+   * beneath it, its stage edge and any structure overhead all fall inside too, and one
+   * plane fitted through seats and floor together sits between them — a listening plane
+   * half a seat height too low, which the residual reports but nobody asked for.
+   *
+   * So the tree says what kind of thing, and the polygon says where. Select the seating
+   * layer and draw round the left bank, and the clip in `capture` discards both the right
+   * bank and the floor. With nothing selected it still falls back to everything included,
+   * because that is the reasonable reading of drawing with no other instruction.
+   */
+  const createFromArea = useCallback(
+    (footprint: [number, number][]) => {
+      if (!scene || footprint.length < 3) return
+      const chosen = selection.filter((id) => (nodesById.get(id)?.positions.length ?? 0) > 0)
+      const members =
+        chosen.length > 0
+          ? chosen
+          : flattenNodes(scene.nodes)
+              .filter((n) => n.positions.length > 0 && decisions[n.id]?.include)
+              .map((n) => n.id)
+      if (members.length === 0) return
+      const id = `rat${++ratSeq.current}`
+      addRationalisation({
+        ...newRationalisation(id, chosen.length > 0 ? nameFor(chosen) : `Area ${ratSeq.current}`, members),
+        footprint,
+        // Drawing the boundary is a statement about where the area is. Following the
+        // captured geometry instead would sand the drawn corners back off again.
+        mode: 'footprint',
+        // A drawn area nearly always covers part of a node, so replacing the whole node
+        // would take the rest of the layer with it. The panel offers it; it is not assumed.
+        replaceMembers: false,
+      })
+      setTool(null)
+      setDrawnPoints([])
+    },
+    [scene, decisions, addRationalisation, selection, nodesById, nameFor],
+  )
+
+  const marqueeSelect = useCallback((ids: string[], additive: boolean) => {
+    setSelection((prev) => (additive ? [...new Set([...prev, ...ids])] : ids))
   }, [])
 
   const patchDoc = useCallback((updater: (d: TraceDocument) => TraceDocument) => {
@@ -238,13 +334,19 @@ export default function App() {
    */
   const exportSoundvision = useCallback(() => {
     if (!scene || !settings?.transform) return
-    const r = convertNodesToSoundvision(conversionEntries(scene, decisions), {
-      ...convertOptions(settings),
-      winding: 'up',
-    })
+    // Rationalised areas are recomputed here rather than taken from the live ArrayCalc
+    // result, because that result holds RoomObjects — already through the canonical quad
+    // frame and possibly split into triangles to fit it. Soundvision wants the outline
+    // whole, so it starts from the same outlines the other target did.
+    const { areas: exportAreas } = rationalisedAreas(scene, rationalisations, settings)
+    const r = convertNodesToSoundvision(
+      conversionEntries(scene, decisions, rationalisations),
+      { ...convertOptions(settings), winding: 'up' },
+      exportAreas,
+    )
     if (r.scene.faces.length === 0) return
     download(writeSoundvision(r.scene), `${projectName || 'venue'}.txt`, 'text/plain')
-  }, [scene, decisions, settings, projectName])
+  }, [scene, decisions, settings, projectName, rationalisations])
 
   // ---------------------------------------------------------------- render
 
@@ -478,8 +580,11 @@ export default function App() {
                 onSelect={select}
                 preset={preset}
                 presetNonce={presetNonce}
-                pickOrigin={pickOrigin}
+                tool={tool}
                 onPickOrigin={takeOrigin}
+                onMarquee={marqueeSelect}
+                onAreaPoints={setDrawnPoints}
+                onAreaDone={createFromArea}
               />
             )}
           </div>
@@ -519,6 +624,25 @@ export default function App() {
               onSelectMatchingTag={selectMatchingTag}
             />
           </Panel>
+
+          {/* Tracing draws its regions directly, so there is nothing scattered to gather up
+              — the tracer never produces one object per seat in the first place. */}
+          {traceDoc ? null : (
+            <Panel title="Rationalise">
+              <RationalisePanel
+                rationalisations={rationalisations}
+                statsById={areaStats}
+                selectionCount={selection.length}
+                drawingPoints={drawnPoints.length}
+                tool={tool === 'marquee' || tool === 'area' ? tool : null}
+                onTool={(t) => setTool(t)}
+                onCreateFromSelection={createFromSelection}
+                onUpdate={updateRationalisation}
+                onRemove={removeRationalisation}
+                onSelectMembers={setSelection}
+              />
+            </Panel>
+          )}
 
           <Panel title="Placement">
             {traceDoc ? (
@@ -578,19 +702,19 @@ export default function App() {
               <span className="field-label">Origin</span>
               <button
                 type="button"
-                className={`tool${pickOrigin ? ' on' : ''}`}
+                className={`tool${tool === 'origin' ? ' on' : ''}`}
                 disabled={!modelVisible}
-                onClick={() => setPickOrigin((v) => !v)}
+                onClick={() => setTool((t) => (t === 'origin' ? null : 'origin'))}
                 title={
                   modelVisible
                     ? 'Click a point on the model in the 3D view to put the venue origin there.'
                     : 'Show the 3D view to pick an origin — the drawing has its own Set origin tool.'
                 }
               >
-                {pickOrigin ? 'Click a point…' : 'Pick in view'}
+                {tool === 'origin' ? 'Click a point…' : 'Pick in view'}
               </button>
             </div>
-            {pickOrigin ? (
+            {tool === 'origin' ? (
               <p className="hint">
                 Click any point on the model and it becomes 0, 0, 0 — the axes move there.
                 Near a corner it snaps to the corner and the marker turns blue. Esc cancels.

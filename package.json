@@ -17,6 +17,7 @@
   "dependencies": {
     "@node-projects/acad-ts": "^2.4.0",
     "@types/earcut": "^3.0.0",
+    "delaunator": "^5.1.0",
     "dxf-parser": "^1.1.2",
     "earcut": "^3.2.3",
     "pdfjs-dist": "^5.7.284",

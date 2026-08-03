@@ -18,7 +18,7 @@ import {
 } from '../dbacv/types.ts'
 import { canonicalQuad, quadToTriangles } from '../dbacv/quad.ts'
 import type { ImportedNode } from '../import/types.ts'
-import { type OutlineOptions, nodeOutlines } from './outline.ts'
+import { type OutlineOptions, type RegionOutline, nodeOutlines } from './outline.ts'
 import { DEFAULT_PLANARIZE } from './planarize.ts'
 import { toFaces } from './polygon.ts'
 
@@ -139,6 +139,38 @@ export interface ConvertResult {
   warnings: string[]
 }
 
+/**
+ * Planar outlines -> RoomObjects.
+ *
+ * The last step of the road every target shares. Split out from `convertNode` because a
+ * rationalisation (`geom/rationalise.ts`) joins the pipeline holding outlines rather than
+ * triangles — it has already done its own reduction, on a selection rather than on a node —
+ * and it must land in ArrayCalc through exactly the same code, or the two ways of making a
+ * plane would drift the way §6 warns about.
+ */
+export function outlinesToObjects(
+  outlines: RegionOutline[],
+  name: string,
+  planeType: PlaneType,
+): { objects: RoomObject[]; quadsSplit: number } {
+  const objects: RoomObject[] = []
+  let quadsSplit = 0
+  let order = 1
+
+  for (const { basis, outer, holes } of outlines) {
+    for (const face of toFaces(outer, holes, basis)) {
+      const made = faceToObjects(face.points, `${name} ${order}`, planeType, order)
+      if (face.points.length === 4 && made.length === 2) quadsSplit++
+      for (const obj of made) {
+        objects.push(obj)
+        order++
+      }
+    }
+  }
+
+  return { objects, quadsSplit }
+}
+
 /** Convert a single imported node's triangle soup into RoomObjects. */
 export function convertNode(
   node: ImportedNode,
@@ -162,22 +194,22 @@ export function convertNode(
     )
   }
 
-  const objects: RoomObject[] = []
-  let order = 1
-
-  for (const { basis, outer, holes } of reduced.outlines) {
-    for (const face of toFaces(outer, holes, basis)) {
-      const made = faceToObjects(face.points, `${node.name} ${order}`, planeType, order)
-      if (face.points.length === 4 && made.length === 2) stats.quadsSplit++
-      for (const obj of made) {
-        objects.push(obj)
-        order++
-      }
-    }
-  }
-
+  const { objects, quadsSplit } = outlinesToObjects(reduced.outlines, node.name, planeType)
+  stats.quadsSplit = quadsSplit
   stats.objectsOut = objects.length
   return { objects, stats, warnings }
+}
+
+/**
+ * A rationalised area, ready to be written alongside the ordinary nodes.
+ *
+ * `geom/rationalise.ts` produced the outlines from a selection the user made; everything
+ * about how they become ArrayCalc objects is the same as for a node.
+ */
+export interface AreaEntry {
+  name: string
+  planeType: PlaneType
+  outlines: RegionOutline[]
 }
 
 /**
@@ -187,11 +219,27 @@ export function convertNode(
 export function convertNodes(
   nodes: { node: ImportedNode; planeType: PlaneType; include: boolean; name: string }[],
   opts: ConvertOptions,
+  areas: AreaEntry[] = [],
 ): ConvertResult {
   const objects: RoomObject[] = []
   const warnings: string[] = []
   const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0, quadsSplit: 0 }
   let groupOrder = 101
+
+  /** One object goes out loose; several become a group, since a group of one is noise. */
+  const emit = (made: RoomObject[], name: string) => {
+    if (made.length === 0) return
+    if (made.length === 1) {
+      made[0].name = name
+      objects.push(made[0])
+      return
+    }
+    const group = baseObject(name, PlaneType.None, groupOrder++)
+    group.shape = Shape.Group
+    group.color = cssToArgb('#ffffff')
+    group.children = made
+    objects.push(group)
+  }
 
   for (const entry of nodes) {
     if (!entry.include) continue
@@ -202,19 +250,18 @@ export function convertNodes(
     stats.regionsDropped += r.stats.regionsDropped
     stats.quadsSplit += r.stats.quadsSplit
     warnings.push(...r.warnings)
+    emit(r.objects, entry.name)
+  }
 
-    if (r.objects.length === 0) continue
-    if (r.objects.length === 1) {
-      r.objects[0].name = entry.name
-      objects.push(r.objects[0])
-      continue
-    }
-
-    const group = baseObject(entry.name, PlaneType.None, groupOrder++)
-    group.shape = Shape.Group
-    group.color = cssToArgb('#ffffff')
-    group.children = r.objects
-    objects.push(group)
+  // Rationalised areas last, so a venue reads as "the model, then the planes drawn over
+  // it". Their triangles are already counted under the nodes they were captured from —
+  // adding them again would make `trianglesIn` report more geometry than the file holds.
+  for (const area of areas) {
+    const { objects: made, quadsSplit } = outlinesToObjects(area.outlines, area.name, area.planeType)
+    stats.regionsFound += area.outlines.length
+    stats.objectsOut += made.length
+    stats.quadsSplit += quadsSplit
+    emit(made, area.name)
   }
 
   return { objects, stats, warnings }

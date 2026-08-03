@@ -25,7 +25,7 @@
  * area. That matters: the alternative walks 12 million edges on an A1 sheet.
  */
 
-import { type Pt2, dpChain, dropCollinear } from '../geom/polygon.ts'
+import { type Pt2, dpChain, dropCollinear, pointInRing } from '../geom/polygon.ts'
 import { signedArea2 } from '../geom/vec.ts'
 import type { DetectedPath, Px } from './types.ts'
 import type { Mask } from './raster.ts'
@@ -372,16 +372,9 @@ export function closestOnSegment(p: Px, a: Px, b: Px): Px {
   return [a[0] + t * vx, a[1] + t * vy]
 }
 
-/** Even-odd point-in-polygon, for hit-testing a traced region. */
-export function pointInPolygon(p: Px, poly: Px[]): boolean {
-  let inside = false
-  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
-    const [xi, yi] = poly[i]
-    const [xj, yj] = poly[j]
-    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside
-  }
-  return inside
-}
+/** Even-odd point-in-polygon, for hit-testing a traced region. The test itself is in
+ *  `geom/polygon.ts`, because a rationalisation clips its capture with the same one. */
+export const pointInPolygon = (p: Px, poly: Px[]): boolean => pointInRing(p, poly)
 
 /** Shoelace area of a pixel polygon, in square pixels. Always positive. */
 export function polygonAreaPx(poly: Px[]): number {

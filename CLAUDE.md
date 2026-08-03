@@ -48,6 +48,18 @@ deploy `npx wrangler deploy`.
 - `src/lib/` stays free of three.js (bar `import/mesh.ts`) so the pipeline tests run in node.
 - **Every output target shares `geom/outline.ts`.** ArrayCalc and Soundvision differ only in
   what they do with an outline. Do not fork the reduction to add a target.
+- **`geom/rationalise.ts` emits `RegionOutline[]`, in venue space.** That is how it reaches
+  both targets without any code of its own, and why it applies the transform once, forwards,
+  and never inverts it — same rule as the origin picker above. It must not learn to return
+  an `ImportedNode`. See AGENTS.md §11.
+- A rationalisation is a **decision keyed by node id**, recomputed from the source geometry
+  every conversion. Never let one mutate the scene, or a units change stops moving it.
+- A drawn area captures **only the selected nodes inside it** when there is a selection.
+  Capturing everything under the polygon pulls the floor into a seating plane and fits it
+  half a seat height low; the residual reports it, but the answer is still wrong.
+- `demo/demo-seats.dxf` (`python3 scripts/make_demo_seats.py`) is the fixture for all of
+  this — every seat modelled separately, 3,710 objects without rationalising. Its rake and
+  step pitch are written down in the generator, so the pipeline tests assert them.
 - Soundvision `.xmls` is encrypted and is not writable — the target is 3D room data `.txt`.
   A surface wound clockwise is not an error there, it silently predicts nothing; winding is
   forced in `soundvision/convert.ts` and must stay that way. See `docs/soundvision-format.md`.

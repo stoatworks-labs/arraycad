@@ -320,9 +320,27 @@ button:focus-visible {
   height: 100%;
 }
 
-/* The origin picker takes the click away from selection, so the cursor has to say so. */
-.viewport.picking canvas {
+/* An armed tool takes the click away from selection, so the cursor has to say so. */
+.viewport.tool-origin canvas,
+.viewport.tool-area canvas,
+.viewport.tool-marquee canvas {
   cursor: crosshair;
+}
+
+/*
+ * The marquee rectangle.
+ *
+ * `pointer-events: none` is load-bearing: the box is drawn under the cursor and over the
+ * canvas, so without it the element swallows the pointermove that is meant to be resizing
+ * it and the box sticks at whatever size it first reached.
+ */
+.marquee {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid var(--accent);
+  background: rgb(76 201 240 / 14%);
+  border-radius: 2px;
+  z-index: 2;
 }
 
 .view-toolbar {
@@ -388,10 +406,21 @@ button:focus-visible {
   vertical-align: 1px;
 }
 
+.row2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 7px;
+}
+
 .row3 {
   display: grid;
   grid-template-columns: 1fr 1fr 1fr;
   gap: 7px;
+}
+
+button.wide {
+  width: 100%;
+  justify-content: center;
 }
 
 .origin-head {
@@ -1006,4 +1035,80 @@ button.tool.urgent:not(.on) {
   font-style: normal;
   color: var(--text-faint);
   font-size: 11px;
+}
+
+/* ---------------------------------------------------------- rationalise */
+
+.rat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  margin-top: 11px;
+}
+
+.rat {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 9px 10px 10px;
+  background: var(--navy-800);
+}
+
+.rat header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 7px;
+}
+
+.rat header input {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+}
+
+button.ghost {
+  background: none;
+  border: 1px solid transparent;
+  color: var(--text-faint);
+  padding: 3px 6px;
+  font-size: 12px;
+}
+
+button.ghost:hover:not(:disabled) {
+  background: var(--navy-600);
+  color: var(--text);
+  border-color: var(--line);
+}
+
+.rat .check {
+  margin-top: 9px;
+}
+
+.rat .check em {
+  display: block;
+  font-style: normal;
+  font-size: 11px;
+  color: var(--text-faint);
+  margin-top: 1px;
+}
+
+/*
+ * The readout. Given real weight on purpose: a rationalisation is an assertion that
+ * scattered surfaces are one surface, and these three lines are how a user checks it.
+ */
+.rat-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin-top: 9px;
+  padding-top: 8px;
+  border-top: 1px solid var(--line-soft);
+  font-family: var(--mono);
+  font-size: 10.5px;
+  color: var(--text-faint);
+}
+
+.rat-stats .warn,
+.rat-stats.warn {
+  color: var(--warn);
 }

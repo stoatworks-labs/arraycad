@@ -9,7 +9,7 @@
  */
 
 import type { ImportedNode } from '../import/types.ts'
-import { type OutlineOptions, nodeOutlines } from '../geom/outline.ts'
+import { type OutlineOptions, type RegionOutline, nodeOutlines } from '../geom/outline.ts'
 import { DEFAULT_PLANARIZE } from '../geom/planarize.ts'
 import { toFaces } from '../geom/polygon.ts'
 import { fromPlane2D, signedArea2 } from '../geom/vec.ts'
@@ -58,18 +58,22 @@ const emptyStats = (): SoundvisionStats => ({
   regionsTriangulated: 0,
 })
 
-/** Convert one node's triangle soup into Soundvision faces. */
-export function convertNodeToFaces(
-  node: ImportedNode,
+/**
+ * Planar outlines -> Soundvision faces.
+ *
+ * Split out from `convertNodeToFaces` for the same reason as `outlinesToObjects` on the
+ * ArrayCalc side: a rationalisation arrives holding outlines rather than a node, and must
+ * become surfaces through this code and no other.
+ */
+export function outlinesToFaces(
+  outlines: RegionOutline[],
   label: string,
-  opts: SoundvisionConvertOptions,
-): { faces: SoundvisionFace[]; stats: SoundvisionStats; warnings: string[] } {
-  const reduced = nodeOutlines(node, opts)
-  const warnings = reduced.warnings
-  const stats: SoundvisionStats = { ...reduced.stats, facesOut: 0, regionsTriangulated: 0 }
+  winding: Winding,
+): { faces: SoundvisionFace[]; regionsTriangulated: number } {
   const faces: SoundvisionFace[] = []
+  let regionsTriangulated = 0
 
-  for (const { basis, outer, holes } of reduced.outlines) {
+  for (const { basis, outer, holes } of outlines) {
     if (holes.length === 0) {
       // The whole point of this target: one region, one surface, outline intact.
       //
@@ -86,15 +90,35 @@ export function convertNodeToFaces(
     // A Soundvision surface is a single ring, so a region with a hole in it cannot be one
     // surface. Triangulating preserves the hole; discarding it would silently fill in a
     // stage pit or a lighting void.
-    stats.regionsTriangulated++
+    regionsTriangulated++
     for (const face of toFaces(outer, holes, basis)) {
       faces.push({ label, points: face.points })
     }
   }
 
-  for (const face of faces) face.points = orientFace(face.points, opts.winding)
-  stats.facesOut = faces.length
-  return { faces, stats, warnings }
+  for (const face of faces) face.points = orientFace(face.points, winding)
+  return { faces, regionsTriangulated }
+}
+
+/** Convert one node's triangle soup into Soundvision faces. */
+export function convertNodeToFaces(
+  node: ImportedNode,
+  label: string,
+  opts: SoundvisionConvertOptions,
+): { faces: SoundvisionFace[]; stats: SoundvisionStats; warnings: string[] } {
+  const reduced = nodeOutlines(node, opts)
+  const { faces, regionsTriangulated } = outlinesToFaces(reduced.outlines, label, opts.winding)
+  return {
+    faces,
+    stats: { ...reduced.stats, facesOut: faces.length, regionsTriangulated },
+    warnings: reduced.warnings,
+  }
+}
+
+/** A rationalised area, ready to be written alongside the ordinary nodes. */
+export interface AreaEntry {
+  name: string
+  outlines: RegionOutline[]
 }
 
 /**
@@ -108,6 +132,7 @@ export function convertNodeToFaces(
 export function convertNodesToSoundvision(
   nodes: { node: ImportedNode; include: boolean; name: string }[],
   opts: SoundvisionConvertOptions = DEFAULT_SOUNDVISION_CONVERT,
+  areas: AreaEntry[] = [],
 ): SoundvisionResult {
   const faces: SoundvisionFace[] = []
   const warnings: string[] = []
@@ -124,6 +149,16 @@ export function convertNodesToSoundvision(
     stats.facesOut += r.stats.facesOut
     stats.regionsTriangulated += r.stats.regionsTriangulated
     warnings.push(...r.warnings)
+    faces.push(...r.faces)
+  }
+
+  // A rationalised area's triangles are already counted under the nodes it was captured
+  // from, so only the faces it adds are new.
+  for (const area of areas) {
+    const r = outlinesToFaces(area.outlines, `${area.name} face`, opts.winding)
+    stats.regionsFound += area.outlines.length
+    stats.facesOut += r.faces.length
+    stats.regionsTriangulated += r.regionsTriangulated
     faces.push(...r.faces)
   }
 

@@ -270,6 +270,24 @@ export function convexHull(pts: Pt2[]): Pt2[] {
   return lower.concat(upper)
 }
 
+/**
+ * Even-odd point-in-polygon.
+ *
+ * Lives here rather than beside either caller because both want it: the tracer hit-tests a
+ * traced region against the cursor, and a rationalisation clips its capture to the area the
+ * user drew round. `trace/detect.ts` delegates to this — a second copy of a parity test is
+ * the kind of duplicate that stays correct for years and then disagrees on an edge case.
+ */
+export function pointInRing(p: Pt2, ring: Pt2[]): boolean {
+  let inside = false
+  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) {
+    const [xi, yi] = ring[i]
+    const [xj, yj] = ring[j]
+    if (yi > p[1] !== yj > p[1] && p[0] < ((xj - xi) * (p[1] - yi)) / (yj - yi) + xi) inside = !inside
+  }
+  return inside
+}
+
 /** A face ready to become a RoomObject: 3 or 4 points, in world space. */
 export interface Face {
   points: Vec3[]

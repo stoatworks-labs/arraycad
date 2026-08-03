@@ -18,6 +18,10 @@ See [Converting between ArrayCalc and Soundvision](#converting-between-arraycalc
 click inside a room to detect its outline, and type a height at each corner. See
 [Tracing a plan](#tracing-a-plan).
 
+**Every seat modelled separately?** Select them or draw round them, and replace the lot with
+the one seating plane they stand for. See
+[Rationalising a seat-by-seat plan](#rationalising-a-seat-by-seat-plan).
+
 Browser only. No backend, no upload: the file never leaves your machine.
 
 **[Try it →](https://arraycad.stoatworks-labs.com)**
@@ -50,6 +54,16 @@ import  →  weld  →  coplanar regions  →  outline  →  simplify  →  quad
 
 The whole of a raked seating deck is one plane, however many triangles the CAD model spent
 on it. A 12-triangle box is six. That collapse is the tool.
+
+There is one thing that reduction cannot do, because it merges surfaces that **touch**. If
+the plan models every seat individually — which architects' models routinely do — then four
+hundred seats really are four hundred separate surfaces, and no tolerance setting will merge
+them, because the gap between two seats is not a crack to be closed. The demo file for this
+imports as **3,710 ArrayCalc objects**.
+
+**Rationalise** is the answer to that: select the seats, or draw round them, and replace the
+lot with the one plane they stand for. See [Rationalising a seat-by-seat
+plan](#rationalising-a-seat-by-seat-plan).
 
 ## Supported inputs
 
@@ -123,6 +137,70 @@ stage, a pit, two raked stalls blocks, columns and a balcony.
   page. Raise *thicken lines* to bridge small gaps, or trace it by hand.
 - **Seat rows seal a room.** On a plan with the seating drawn in, a flood fill stops at the
   first row. Trace the block outline instead — it is four clicks.
+
+## Rationalising a seat-by-seat plan
+
+An architect's model draws every seat. A sound designer wants the seating *area*. The
+**Rationalise** panel turns the first into the second.
+
+Pick what to gather up, in whichever way suits the drawing:
+
+- **Select in the tree** — right when each seat, or each block, is its own object, as in a
+  glTF or IFC export.
+- **Box select** — drag a rectangle in the 3D view over the objects you want.
+- **Draw an area** — click the corners of the region in the view. This is the one that
+  matters for a DXF or DWG, where the whole house is usually on **one layer** and no amount
+  of pruning in the tree separates the stalls from the balcony.
+
+Then it fits a single plane through what it captured and gives you its outline.
+
+Two settings decide most of the result:
+
+- **Capture** — *Upward faces* (the default) keeps only surfaces pointing up, so a modelled
+  seat reduces to its pan rather than dragging the plane down inside the seat. *All faces*
+  is for a wall or a bare rake.
+- **Outline** — *Follow* traces the seating and bridges gaps up to a distance you set. Set
+  it to the row pitch: it joins seat to seat and row to row, and leaves an aisle wider than
+  the pitch standing as an aisle. *Hull* is the convex hull, fine for a rectangular block
+  and wrong for a horseshoe. *Rectangle* squares it off, which a Positioning area must be.
+
+**Combine the tree and the drawing.** If you select the seating layer first and then draw,
+only the seating inside your outline is captured. Draw with nothing selected and it takes
+everything under the polygon — including the floor beneath the seats, which fits the plane
+half a seat height too low. The panel says which it is about to do.
+
+### Read the numbers underneath
+
+Every area reports what the reduction cost, because "these four hundred seats are one
+surface" is your assertion and not the geometry's:
+
+```
+432 of 5,184 triangles
+46.7 m² of surface → 129.4 m² 
+up to 0.02 m off plane
+```
+
+The first line is how much survived the capture filter. The second is real seat surface
+against the area it now stands for — much larger, and rightly so, since the air between the
+seats is the point; wildly larger usually means two blocks got caught in one go. **The third
+is the one to look at.** A smooth rake reads a centimetre or two. A rake modelled as steps
+reads half a tread, which is expected. Metres means you have captured two tiers and should
+rationalise them separately — and it says so.
+
+Separate areas are kept separate. Two blocks either side of a gangway come back as two
+planes with a note saying nothing bridged them, rather than one plane paved across the
+traffic route.
+
+**Replace the originals** is on for a tree selection and off for a drawn area, since a
+drawn area usually covers only part of a layer. Turn it off to see the new plane and the
+seats it came from together before committing.
+
+Nothing here edits the model. A rationalisation is a decision, recomputed from the source
+geometry every time — change the units afterwards and it moves with the room; delete it and
+the seats come back.
+
+Try it on `demo/demo-seats.dxf` (regenerate with `python3 scripts/make_demo_seats.py`):
+3,710 objects on import, 16 once both seating blocks are rationalised.
 
 ## Vectorworks plug-in
 

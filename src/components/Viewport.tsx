@@ -21,6 +21,15 @@ import { PLANE_UI_HEX as PLANE_HEX } from './planeColours.ts'
 export type CameraPreset = 'iso' | 'plan' | 'section' | 'front'
 
 /**
+ * What a click in the viewport means.
+ *
+ * One enum rather than a flag per tool. They are mutually exclusive by nature — a click is
+ * one thing — and separate booleans are the shape that eventually lets two be true at once,
+ * where the only symptom is that aiming at the model moves the venue.
+ */
+export type ViewportTool = 'origin' | 'marquee' | 'area' | null
+
+/**
  * How near the cursor has to be, in screen pixels, for a pick to snap to a corner.
  *
  * Screen pixels rather than metres: the point of snapping is that the corner you can see
@@ -34,6 +43,18 @@ const SNAP_PX = 14
 const PICK_FREE_HEX = 0xffd166
 const PICK_SNAP_HEX = 0x4cc9f0
 
+/** The area polygon being drawn. */
+const AREA_HEX = 0xffd166
+
+/**
+ * How near the first corner a click has to land, in METRES, to close the ring.
+ *
+ * Metres and not screen pixels, unlike the corner snap. A corner snap is a claim about
+ * what is under the cursor and so belongs to the screen; closing a ring is a claim about
+ * the venue, and it must not become easier or harder as the user zooms while drawing.
+ */
+const CLOSE_METRES = 0.75
+
 interface Props {
   nodes: ImportedNode[]
   decisions: Record<string, { include: boolean; planeType: PlaneType; name: string }>
@@ -44,10 +65,16 @@ interface Props {
   onSelect: (id: string, additive: boolean) => void
   preset: CameraPreset
   presetNonce: number
-  /** While true a click sets the venue origin instead of selecting an object. */
-  pickOrigin?: boolean
+  /** What a click does. Null is the ordinary select-an-object behaviour. */
+  tool?: ViewportTool
   /** The picked point, in venue space — feed it to `withOriginAt`. */
   onPickOrigin?: (p: { x: number; y: number; z: number }) => void
+  /** Every node with geometry inside the dragged box. */
+  onMarquee?: (ids: string[], additive: boolean) => void
+  /** The area polygon as it is drawn, in venue XY. Empty once it is finished or abandoned. */
+  onAreaPoints?: (pts: [number, number][]) => void
+  /** A closed area, in venue XY. */
+  onAreaDone?: (pts: [number, number][]) => void
 }
 
 /** Flat triangle list -> a BufferGeometry with normals, ready to render. */
@@ -91,10 +118,15 @@ export function Viewport(props: Props) {
     convertedGroup: THREE.Group
     raycaster: THREE.Raycaster
     marker: THREE.Mesh
+    marqueeEl: HTMLDivElement
+    areaGroup: THREE.Group
   } | null>(null)
 
   const propsRef = useRef(props)
   propsRef.current = props
+
+  /** Set by the setup effect, so leaving the area tool can throw away a half-drawn ring. */
+  const clearArea = useRef<(() => void) | null>(null)
 
   // --- one-time scene setup -------------------------------------------------
   useEffect(() => {
@@ -157,8 +189,32 @@ export function Viewport(props: Props) {
     marker.visible = false
     scene.add(marker)
 
+    // The area polygon under construction. Drawn in the scene rather than as a 2D overlay
+    // so it sits in the room at the height it is being drawn at, and an orbit mid-draw
+    // shows it lying on the seating instead of floating over the picture.
+    const areaGroup = new THREE.Group()
+    scene.add(areaGroup)
+
+    // The marquee is a plain DOM rectangle. A screen-space box has no business being in the
+    // 3D scene, and drawing it there would make it fight the depth buffer for no gain.
+    const marqueeEl = document.createElement('div')
+    marqueeEl.className = 'marquee'
+    marqueeEl.style.display = 'none'
+    el.appendChild(marqueeEl)
+
     const raycaster = new THREE.Raycaster()
-    state.current = { renderer, scene, camera, controls, sourceGroup, convertedGroup, raycaster, marker }
+    state.current = {
+      renderer,
+      scene,
+      camera,
+      controls,
+      sourceGroup,
+      convertedGroup,
+      raycaster,
+      marker,
+      marqueeEl,
+      areaGroup,
+    }
 
     const resize = () => {
       const w = el.clientWidth
@@ -208,18 +264,152 @@ export function Viewport(props: Props) {
       return nearestCorner(hit, camera, rect, px, py) ?? { point: hit.point.clone(), snapped: false }
     }
 
+    /**
+     * The venue XY under the cursor, for drawing an area.
+     *
+     * Prefers a real hit on the model, so clicking a seat gives that seat's position. When
+     * the click misses — going round the outside of a block, which is the normal way to
+     * draw a boundary — it falls back to a HORIZONTAL plane at the height the drawing is
+     * already happening at. Falling back to z = 0 instead would be quietly wrong: under
+     * perspective, a ray aimed just past a balcony 8 m up meets the floor many metres
+     * further out, so alternate corners of the same area would land on different scales.
+     */
+    let areaHeight: number | null = null
+    const groundAt = (ev: MouseEvent): [number, number] | null => {
+      const rect = renderer.domElement.getBoundingClientRect()
+      const ndc = new THREE.Vector2(
+        ((ev.clientX - rect.left) / rect.width) * 2 - 1,
+        -((ev.clientY - rect.top) / rect.height) * 2 + 1,
+      )
+      raycaster.setFromCamera(ndc, camera)
+
+      const hit = raycaster.intersectObjects(sourceGroup.children, true)[0]
+      if (hit) {
+        if (areaHeight === null) areaHeight = hit.point.z
+        return [hit.point.x, hit.point.y]
+      }
+
+      if (areaHeight === null) {
+        const box = new THREE.Box3().setFromObject(sourceGroup)
+        areaHeight = box.isEmpty() ? 0 : box.getCenter(new THREE.Vector3()).z
+      }
+      const plane = new THREE.Plane(new THREE.Vector3(0, 0, 1), -areaHeight)
+      const at = raycaster.ray.intersectPlane(plane, new THREE.Vector3())
+      return at ? [at.x, at.y] : null
+    }
+
+    let areaPts: [number, number][] = []
+    const redrawArea = () => {
+      areaGroup.traverse((o) => {
+        const m = o as THREE.Mesh | THREE.Line
+        if (m.geometry) m.geometry.dispose()
+      })
+      areaGroup.clear()
+      if (areaPts.length === 0) return
+      const z = (areaHeight ?? 0) + 0.02
+      const pts = areaPts.map(([x, y]) => new THREE.Vector3(x, y, z))
+      // Closed while there are at least three, so the shape being enclosed is legible
+      // before it is committed rather than only afterwards.
+      const loop = areaPts.length >= 3 ? [...pts, pts[0]] : pts
+      const line = new THREE.Line(
+        new THREE.BufferGeometry().setFromPoints(loop),
+        new THREE.LineBasicMaterial({ color: AREA_HEX, depthTest: false }),
+      )
+      line.renderOrder = 998
+      areaGroup.add(line)
+      const dots = new THREE.Points(
+        new THREE.BufferGeometry().setFromPoints(pts),
+        new THREE.PointsMaterial({ color: AREA_HEX, size: 8, sizeAttenuation: false, depthTest: false }),
+      )
+      dots.renderOrder = 999
+      areaGroup.add(dots)
+      propsRef.current.onAreaPoints?.([...areaPts])
+    }
+    const resetArea = () => {
+      areaPts = []
+      areaHeight = null
+      redrawArea()
+      propsRef.current.onAreaPoints?.([])
+    }
+    const finishArea = () => {
+      if (areaPts.length >= 3) propsRef.current.onAreaDone?.([...areaPts])
+      resetArea()
+    }
+
+    /** Node ids with at least one vertex inside a screen-space rectangle. */
+    const idsInBox = (x0: number, y0: number, x1: number, y1: number): string[] => {
+      const rect = renderer.domElement.getBoundingClientRect()
+      const lo = { x: Math.min(x0, x1), y: Math.min(y0, y1) }
+      const hi = { x: Math.max(x0, x1), y: Math.max(y0, y1) }
+      const out: string[] = []
+      const v = new THREE.Vector3()
+
+      for (const child of sourceGroup.children) {
+        const mesh = child as THREE.Mesh
+        const id = mesh.userData.nodeId as string | undefined
+        const pos = (mesh.geometry as THREE.BufferGeometry).getAttribute('position')
+        if (!id || !pos) continue
+        // A vertex, not the centroid or the bounding box: a marquee over half a room must
+        // catch the layer that is half inside it, and a bounding-box test would also catch
+        // every layer that merely spans the box — which on a one-node-per-layer DXF is all
+        // of them.
+        for (let i = 0; i < pos.count; i++) {
+          v.fromBufferAttribute(pos, i)
+          mesh.localToWorld(v)
+          v.project(camera)
+          const sx = ((v.x + 1) / 2) * rect.width
+          const sy = ((1 - v.y) / 2) * rect.height
+          if (v.z < 1 && sx >= lo.x && sx <= hi.x && sy >= lo.y && sy <= hi.y) {
+            out.push(id)
+            break
+          }
+        }
+      }
+      return out
+    }
+
     // OrbitControls has no click event of its own, so releasing a drag fires one here.
     // Without this guard an orbit that ends over the model selects it — and, once the
     // origin picker existed, moved the whole venue.
     let downAt: { x: number; y: number } | null = null
+    let boxFrom: { x: number; y: number } | null = null
+
     const onPointerDown = (ev: PointerEvent) => {
       downAt = { x: ev.clientX, y: ev.clientY }
+      if (propsRef.current.tool !== 'marquee') return
+      const rect = renderer.domElement.getBoundingClientRect()
+      boxFrom = { x: ev.clientX - rect.left, y: ev.clientY - rect.top }
+      // OrbitControls owns the left button, so a marquee has to take it away for the
+      // duration. Restored on pointerup, including the one that lands outside the canvas.
+      controls.enabled = false
+      marqueeEl.style.display = 'block'
+      marqueeEl.style.left = `${boxFrom.x}px`
+      marqueeEl.style.top = `${boxFrom.y}px`
+      marqueeEl.style.width = '0px'
+      marqueeEl.style.height = '0px'
     }
+
     const dragged = (ev: MouseEvent) =>
       downAt !== null && Math.hypot(ev.clientX - downAt.x, ev.clientY - downAt.y) > 4
 
     const onMove = (ev: PointerEvent) => {
-      if (!propsRef.current.pickOrigin) return
+      const tool = propsRef.current.tool
+
+      if (boxFrom) {
+        const rect = renderer.domElement.getBoundingClientRect()
+        const x = ev.clientX - rect.left
+        const y = ev.clientY - rect.top
+        marqueeEl.style.left = `${Math.min(boxFrom.x, x)}px`
+        marqueeEl.style.top = `${Math.min(boxFrom.y, y)}px`
+        marqueeEl.style.width = `${Math.abs(x - boxFrom.x)}px`
+        marqueeEl.style.height = `${Math.abs(y - boxFrom.y)}px`
+        return
+      }
+
+      if (tool !== 'origin') {
+        marker.visible = false
+        return
+      }
       const p = pickAt(ev)
       marker.visible = p !== null
       if (p) {
@@ -229,19 +419,53 @@ export function Viewport(props: Props) {
         )
       }
     }
+
+    const onPointerUp = (ev: PointerEvent) => {
+      if (!boxFrom) return
+      const rect = renderer.domElement.getBoundingClientRect()
+      const x = ev.clientX - rect.left
+      const y = ev.clientY - rect.top
+      const from = boxFrom
+      boxFrom = null
+      marqueeEl.style.display = 'none'
+      controls.enabled = true
+      // A box of nothing is a click that missed, not a request to select nothing.
+      if (Math.hypot(x - from.x, y - from.y) < 4) return
+      propsRef.current.onMarquee?.(idsInBox(from.x, from.y, x, y), ev.shiftKey || ev.metaKey)
+    }
+
     const onLeave = () => {
       marker.visible = false
     }
 
     const onClick = (ev: MouseEvent) => {
       if (dragged(ev)) return
-      if (propsRef.current.pickOrigin) {
+      const tool = propsRef.current.tool
+
+      if (tool === 'origin') {
         const p = pickAt(ev)
         // Picking is modal: a click that lands on nothing must not fall through and change
         // the selection instead, or the model moves when you meant to aim.
         if (p) propsRef.current.onPickOrigin?.({ x: p.point.x, y: p.point.y, z: p.point.z })
         return
       }
+
+      if (tool === 'area') {
+        const p = groundAt(ev)
+        if (!p) return
+        // Clicking the first point again closes the ring, which is what every drawing tool
+        // does and what a hand reaches for before it reaches for a keyboard.
+        if (areaPts.length >= 3 && Math.hypot(p[0] - areaPts[0][0], p[1] - areaPts[0][1]) < CLOSE_METRES) {
+          finishArea()
+          return
+        }
+        areaPts.push(p)
+        redrawArea()
+        return
+      }
+
+      if (tool === 'marquee') return
+
       const rect = renderer.domElement.getBoundingClientRect()
       const ndc = new THREE.Vector2(
         ((ev.clientX - rect.left) / rect.width) * 2 - 1,
@@ -252,10 +476,26 @@ export function Viewport(props: Props) {
       const id = hits[0]?.object.userData.nodeId as string | undefined
       if (id) propsRef.current.onSelect(id, ev.shiftKey || ev.metaKey)
     }
+
+    const onKey = (ev: KeyboardEvent) => {
+      if (propsRef.current.tool !== 'area') return
+      if (ev.key === 'Enter') finishArea()
+      else if (ev.key === 'Escape') resetArea()
+      else if (ev.key === 'Backspace' || ev.key === 'Delete') {
+        areaPts.pop()
+        redrawArea()
+      }
+    }
+
     renderer.domElement.addEventListener('click', onClick)
     renderer.domElement.addEventListener('pointerdown', onPointerDown)
     renderer.domElement.addEventListener('pointermove', onMove)
     renderer.domElement.addEventListener('pointerleave', onLeave)
+    // On window, not the canvas: a marquee released past the edge of the viewport must
+    // still finish, or the controls stay disabled and the view appears to have frozen.
+    window.addEventListener('pointerup', onPointerUp)
+    window.addEventListener('keydown', onKey)
+    clearArea.current = resetArea
 
     return () => {
       cancelAnimationFrame(raf)
@@ -264,20 +504,35 @@ export function Viewport(props: Props) {
       renderer.domElement.removeEventListener('pointerdown', onPointerDown)
       renderer.domElement.removeEventListener('pointermove', onMove)
       renderer.domElement.removeEventListener('pointerleave', onLeave)
+      window.removeEventListener('pointerup', onPointerUp)
+      window.removeEventListener('keydown', onKey)
+      clearArea.current = null
+      areaGroup.traverse((o) => {
+        const m = o as THREE.Mesh
+        if (m.geometry) m.geometry.dispose()
+      })
       marker.geometry.dispose()
       ;(marker.material as THREE.Material).dispose()
       renderer.dispose()
       el.removeChild(renderer.domElement)
+      el.removeChild(marqueeEl)
       state.current = null
     }
   }, [])
 
-  // Leaving the picker with the cursor still over the canvas would otherwise strand the
-  // marker on screen, pointing at a venue origin that is no longer being chosen.
+  // Leaving a tool with the cursor still over the canvas would otherwise strand its
+  // furniture on screen — a marker pointing at a venue origin nobody is choosing any more,
+  // or three corners of an area that is no longer being drawn.
   useEffect(() => {
     const s = state.current
-    if (s && !props.pickOrigin) s.marker.visible = false
-  }, [props.pickOrigin])
+    if (!s) return
+    if (props.tool !== 'origin') s.marker.visible = false
+    if (props.tool !== 'area') clearArea.current?.()
+    if (props.tool !== 'marquee') {
+      s.controls.enabled = true
+      s.marqueeEl.style.display = 'none'
+    }
+  }, [props.tool])
 
   // --- source geometry ------------------------------------------------------
   const sourceKey = useMemo(
@@ -437,7 +692,7 @@ export function Viewport(props: Props) {
     s.controls.update()
   }, [props.preset, props.presetNonce])
 
-  return <div className={`viewport${props.pickOrigin ? ' picking' : ''}`} ref={mount} />
+  return <div className={`viewport${props.tool ? ` tool-${props.tool}` : ''}`} ref={mount} />
 }
 
 /**
