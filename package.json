@@ -1,6 +1,6 @@
 {
   "name": "arraycad",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "description": "Convert CAD venue models into d&b ArrayCalc venue files — import, prune, assign plane types, export .dbacv.",
