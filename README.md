@@ -28,12 +28,15 @@ Browser only. No backend, no upload: the file never leaves your machine.
 
 ### Watch
 
+[![468 modelled seats into one seating plane](docs/video-rationalise-thumb.png)](https://www.youtube.com/watch?v=HFZKeIwCB5k)
+
+**[468 modelled seats into one seating plane →](https://www.youtube.com/watch?v=HFZKeIwCB5k)** —
+the one case coplanar merging cannot touch, and what to do about it. 3,710 objects down to 16.
+
 | | |
 |---|---|
 | [![Trace a venue off the plan](docs/video-trace-thumb.png)](https://www.youtube.com/watch?v=Ky7lkRAa8qE) | [![ArrayCalc and Soundvision](docs/video-soundvision-thumb.png)](https://www.youtube.com/watch?v=w2-KEFSz1Mk) |
 | **[Trace a venue off the plan →](https://www.youtube.com/watch?v=Ky7lkRAa8qE)** — no 3D model needed | **[ArrayCalc *and* Soundvision →](https://www.youtube.com/watch?v=w2-KEFSz1Mk)** — one reduction, two formats |
-
-[![ArrayCAD](docs/video-thumb.png)](https://www.youtube.com/watch?v=g5TH-Y7cWNs)
 
 **[The original 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)** — a CAD
 model in, flat planes out.
