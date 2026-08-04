@@ -95,6 +95,7 @@ export function importSoundvisionAsScene(text: string, filename: string): Import
   return {
     // Read by the .dbacv writer for its venue comment, so it says what this came from.
     format: 'Soundvision 3D room data',
+    alreadyAVenue: true,
     sourceName: filename.replace(/\.[^.]+$/, ''),
     // Soundvision works in metres with Z up, and geometry that will be read as metres by
     // Soundvision is in metres by definition. The header's `LengthUnit` row is a comment

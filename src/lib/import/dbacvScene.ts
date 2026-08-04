@@ -163,6 +163,7 @@ export function importDbacvAsScene(
   const venue = parseDbacv(xml, parser)
   return {
     format: 'ArrayCalc venue',
+    alreadyAVenue: true,
     sourceName: filename.replace(/\.[^.]+$/, ''),
     unitsPerMetre: 1,
     upAxis: 'z',

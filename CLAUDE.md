@@ -79,6 +79,9 @@ deploy `npx wrangler deploy`.
   tree and undone by one click. Clutter beats every other category and seating loses to all
   of them; whole-word matching only. Seating is found BEFORE the "too small" test, or a
   seat modelled as a flat pan is left out as trim. See AGENTS.md §12.
+- **Preparation never runs on a file that is already a venue.** The three venue importers
+  set `alreadyAVenue` and `prepareScene` hands back an empty plan. `LIGHTING BRIDGE` is a
+  real ArrayCalc plane, not rigging, and the clutter vocabulary cannot tell the difference.
 - **`prepare/simplify.ts` re-cuts geometry, and refuses more than it accepts.** A region
   that is only nearly flat, or that has a nearly-parallel neighbour, is left alone — the
   second because re-cutting one tier of a raked fan changes which triangles its NEIGHBOURS

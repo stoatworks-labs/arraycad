@@ -9,7 +9,17 @@
 import { describe, expect, it } from 'vitest'
 import { PlaneType } from './lib/dbacv/types.ts'
 import type { ImportedNode, ImportedScene } from './lib/import/types.ts'
-import { DEFAULT_SETTINGS, applyPlan, conversionEntries, newRationalisation, rationalisedAreas, rationalisationsFromPlan, seedDecisions } from './state.ts'
+import {
+  DEFAULT_PREPARE_SETTINGS,
+  DEFAULT_SETTINGS,
+  applyPlan,
+  conversionEntries,
+  newRationalisation,
+  prepareScene,
+  rationalisationsFromPlan,
+  rationalisedAreas,
+  seedDecisions,
+} from './state.ts'
 import { preparePlan } from './lib/prepare/index.ts'
 
 let seq = 0
@@ -50,6 +60,30 @@ describe('applying a plan', () => {
     const s = scene([node('DIMENSIONS', deck(10, 10))])
     const seeded = seedDecisions(s)
     expect(applyPlan(seeded, null)).toEqual(seeded)
+  })
+})
+
+describe('a file that is already a venue', () => {
+  /**
+   * An ArrayCalc, Soundvision or EASE Focus project has been through a designer already.
+   * Its objects are the ones they chose, its names are the ones they gave, and a pass that
+   * reads `LIGHTING BRIDGE` as rigging would drop a plane somebody put there on purpose.
+   */
+  it('is left exactly as its author built it', () => {
+    const s: ImportedScene = {
+      ...scene([node('LIGHTING BRIDGE', deck(6, 2, 7)), node('SOUNDSCAPE', deck(4, 3, 1))]),
+      format: 'ArrayCalc venue',
+      alreadyAVenue: true,
+    }
+    const prepared = prepareScene(s, settings.transform, DEFAULT_PREPARE_SETTINGS)
+
+    expect(prepared.scene).toBe(s)
+    expect(prepared.plan.exclude.size).toBe(0)
+    expect(prepared.plan.seating).toEqual([])
+    expect(prepared.simplify).toBeNull()
+    // And the same file WITHOUT the flag would indeed have thrown the bridge away, which
+    // is what makes the flag load-bearing rather than decorative.
+    expect(preparePlan(s, settings.transform).exclude.size).toBe(1)
   })
 })
 

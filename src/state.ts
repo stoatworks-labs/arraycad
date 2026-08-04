@@ -33,6 +33,7 @@ import {
   type SimplifyStats,
   DEFAULT_PREPARE,
   DEFAULT_SIMPLIFY,
+  EMPTY_PLAN,
   preparePlan,
   simplifyScene,
 } from './lib/prepare/index.ts'
@@ -181,6 +182,13 @@ export function prepareScene(
   transform: TransformOptions,
   options: PrepareSettings,
 ): Prepared {
+  // A file that is already a venue is left exactly as its author built it. See
+  // `ImportedScene.alreadyAVenue` — there is nothing here to improve on, and plenty to
+  // damage.
+  if (raw.alreadyAVenue) {
+    return { raw, scene: raw, plan: EMPTY_PLAN, simplify: null, options, transform }
+  }
+
   const simplified = options.simplifyHeavy
     ? simplifyScene(raw, transform, DEFAULT_SIMPLIFY)
     : { scene: raw, stats: null }

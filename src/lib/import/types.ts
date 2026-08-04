@@ -38,6 +38,17 @@ export interface ImportedScene {
   unitsPerMetre?: number
   /** When the format states its up axis. Undefined means the user must choose. */
   upAxis?: 'y' | 'z'
+  /**
+   * This file is ALREADY a venue: an ArrayCalc, Soundvision or EASE Focus project.
+   *
+   * Every object in one of those was put there by whoever built it. There is no clutter
+   * to leave out, nothing to classify that is not already classified, and no scattering
+   * of seats to gather — the person who made the file did all of that. So `prepare/`
+   * leaves it alone rather than second-guessing a finished design: a venue whose author
+   * named a plane `LIGHTING BRIDGE` meant it to be there, and an automatic pass reading
+   * that name as rigging would quietly drop it on the way in.
+   */
+  alreadyAVenue?: boolean
   nodes: ImportedNode[]
   /** Non-fatal problems worth showing: skipped entities, unsupported features. */
   warnings: string[]

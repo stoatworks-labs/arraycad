@@ -81,6 +81,7 @@ export function importEaseFocusAsScene(bytes: Uint8Array, filename: string): Imp
 
   return {
     format: `EASE Focus project${writtenBy ? ` (${writtenBy.trim()})` : ''}`,
+    alreadyAVenue: true,
     sourceName: filename.replace(/\.[^.]+$/, ''),
     // EASE Focus is metres with Z up throughout; the format carries no unit declaration
     // and the application offers no unit setting.

@@ -585,6 +585,12 @@ that silently left out forty objects is indistinguishable from an importer that 
 
 ### What has to stay true
 
+- **A file that is ALREADY a venue gets none of this.** `.dbacv`, Soundvision `.txt` and
+  `.fc3` importers set `ImportedScene.alreadyAVenue`, and `prepareScene` returns an empty
+  plan for them. Every object in one of those was put there by a designer: there is no
+  clutter to find, nothing to classify that is not classified, and no seating left
+  scattered. Run the vocabulary over one and it reads `LIGHTING BRIDGE` — a real ArrayCalc
+  plane type 2 — as rigging and drops it on the way in.
 - **A plan is applied as `Decisions` and `Rationalisation[]`, never as a scene edit.**
   Everything it does is therefore visible in the tree, ghosted rather than hidden in the
   viewport, and undone by one click — the same rule as §4 and §11 and for the same reason.

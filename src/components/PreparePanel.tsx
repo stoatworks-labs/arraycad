@@ -44,6 +44,19 @@ export function PreparePanel({ prepared, busy, onChange }: Props) {
   const { options, plan, simplify } = prepared
   const cut = simplify && simplify.trianglesIn > 0 ? 1 - simplify.trianglesOut / simplify.trianglesIn : 0
 
+  // A file that is already a venue gets none of this, and saying so is better than five
+  // checkboxes that do nothing when ticked. Whoever built it already decided what belongs
+  // in it; there is no clutter to find and no seating left scattered.
+  if (prepared.raw.alreadyAVenue) {
+    return (
+      <p className="hint">
+        {prepared.raw.format} is already a venue — every object in it was put there by
+        whoever built it, so nothing is left out, reclassified or flattened on the way in.
+        Prune it in the tree, or gather anything you want to in <strong>Rationalise</strong>.
+      </p>
+    )
+  }
+
   return (
     <>
       <p className="hint">
