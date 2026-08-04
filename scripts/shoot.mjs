@@ -119,12 +119,46 @@ async function clickText(send, label) {
   await sleep(400)
 }
 
-/** Click a row in the object tree by the name it shows. */
+/**
+ * Open a collapsed group in the object tree.
+ *
+ * The row's `.twisty` button, not the row: clicking the row selects the group,
+ * which leaves it shut and its children unreachable. Already-open groups are
+ * left alone rather than toggled closed.
+ */
+async function expandTreeGroup(send, name) {
+  const found = await evaluate(
+    send,
+    `(() => { const r = [...document.querySelectorAll('.tree-row')]
+        .find(el => (el.querySelector('.tree-name')?.textContent ?? '')
+          .trim() === ${JSON.stringify(name)});
+      const t = r?.querySelector('button.twisty');
+      if (!t || t.getAttribute('aria-label') !== 'Expand') return null;
+      const b = t.getBoundingClientRect();
+      return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; })()`,
+  )
+  if (!found) return false
+  const common = { x: found.x, y: found.y, button: 'left', clickCount: 1 }
+  await send('Input.dispatchMouseEvent', { type: 'mousePressed', ...common })
+  await send('Input.dispatchMouseEvent', { type: 'mouseReleased', ...common })
+  await sleep(400)
+  return true
+}
+
+/**
+ * Click a row in the object tree by the name it shows.
+ *
+ * Matched on `.tree-name`, not on the row's whole innerText: a row also carries
+ * a disclosure triangle and, once grouping landed, a child count, so
+ * "STALLS - MAIN 1" is rendered as "▸STALLS - MAIN10" and a naive prefix test on
+ * the row text matches nothing.
+ */
 async function clickTreeRow(send, prefix) {
   const found = await evaluate(
     send,
     `(() => { const r = [...document.querySelectorAll('.tree-row')]
-        .find(el => el.innerText.trim().startsWith(${JSON.stringify(prefix)}));
+        .find(el => (el.querySelector('.tree-name')?.textContent ?? '')
+          .trim().startsWith(${JSON.stringify(prefix)}));
       if (!r) return null;
       const b = r.getBoundingClientRect();
       return { x: b.left + b.width * 0.6, y: b.top + b.height / 2 }; })()`,
@@ -229,6 +263,11 @@ async function main() {
     await dropFixture(send, '/test/fixtures/theatre.dbacv', 'theatre.dbacv')
     await clickText(send, 'Rectangle')
     await sleep(1200)
+    // The STALLS - MAIN objects are collapsed into one group row, so the group
+    // is opened before a leaf inside it can be selected. Selecting the group
+    // itself would not do — the inspector's plane type is a property of one
+    // object, and showing it is the whole point of this shot.
+    await expandTreeGroup(send, 'STALLS - MAIN')
     await clickTreeRow(send, 'STALLS - MAIN 1')
     await shoot(send, join(OUT, 'arraycad.png'))
 
