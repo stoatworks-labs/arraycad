@@ -36,15 +36,19 @@ Browser only. No backend, no upload: the file never leaves your machine.
 
 ### Watch
 
-[![468 modelled seats into one seating plane](docs/video-rationalise-thumb.png)](https://www.youtube.com/watch?v=HFZKeIwCB5k)
+[![3,710 objects down to 17, on the drop](docs/video-prepare-thumb.png)](https://www.youtube.com/watch?v=HZ3ln72t0HA)
 
-**[468 modelled seats into one seating plane →](https://www.youtube.com/watch?v=HFZKeIwCB5k)** —
-the one case coplanar merging cannot touch, and what to do about it. 3,710 objects down to 16.
+**[3,710 objects down to 17, on the drop →](https://www.youtube.com/watch?v=HZ3ln72t0HA)** —
+what the layer names already tell it, read as the file opens. The box is unticked on camera,
+because work that was saved is invisible and work being undone is not.
 
 | | |
 |---|---|
-| [![Trace a venue off the plan](docs/video-trace-thumb.png)](https://www.youtube.com/watch?v=Ky7lkRAa8qE) | [![ArrayCalc and Soundvision](docs/video-soundvision-thumb.png)](https://www.youtube.com/watch?v=w2-KEFSz1Mk) |
-| **[Trace a venue off the plan →](https://www.youtube.com/watch?v=Ky7lkRAa8qE)** — no 3D model needed | **[ArrayCalc *and* Soundvision →](https://www.youtube.com/watch?v=w2-KEFSz1Mk)** — one reduction, two formats |
+| [![468 modelled seats into one seating plane](docs/video-rationalise-thumb.png)](https://www.youtube.com/watch?v=HFZKeIwCB5k) | [![Trace a venue off the plan](docs/video-trace-thumb.png)](https://www.youtube.com/watch?v=Ky7lkRAa8qE) |
+| **[468 seats into one seating plane →](https://www.youtube.com/watch?v=HFZKeIwCB5k)** — doing it by hand, and why it is an assertion | **[Trace a venue off the plan →](https://www.youtube.com/watch?v=Ky7lkRAa8qE)** — no 3D model needed |
+
+**[ArrayCalc *and* Soundvision →](https://www.youtube.com/watch?v=w2-KEFSz1Mk)** — one
+reduction, two formats.
 
 **[The original 50-second tour →](https://www.youtube.com/watch?v=g5TH-Y7cWNs)** — a CAD
 model in, flat planes out.
