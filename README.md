@@ -26,6 +26,10 @@ click inside a room to detect its outline, and type a height at each corner. See
 the one seating plane they stand for. See
 [Rationalising a seat-by-seat plan](#rationalising-a-seat-by-seat-plan).
 
+**Most of that happens as the file opens.** Clutter left out, plane types read off the
+names, banks of seats flattened, meshed surfaces re-cut — all of it visible, all of it one
+click from being put back. See [Preparing a model on import](#preparing-a-model-on-import).
+
 Browser only. No backend, no upload: the file never leaves your machine.
 
 **[Try it →](https://arraycad.stoatworks-labs.com)**
@@ -70,7 +74,8 @@ imports as **3,710 ArrayCalc objects**.
 
 **Rationalise** is the answer to that: select the seats, or draw round them, and replace the
 lot with the one plane they stand for. See [Rationalising a seat-by-seat
-plan](#rationalising-a-seat-by-seat-plan).
+plan](#rationalising-a-seat-by-seat-plan). On import, ArrayCAD will offer to do it for you —
+see [Preparing a model on import](#preparing-a-model-on-import).
 
 ## Supported inputs
 
@@ -146,6 +151,30 @@ stage, a pit, two raked stalls blocks, columns and a balcony.
 - **Seat rows seal a room.** On a plan with the seating drawn in, a flood fill stops at the
   first row. Trace the block outline instead — it is four clicks.
 
+## Preparing a model on import
+
+Most of the first ten minutes with a new file is work the drawing already describes. The
+**Prepare** panel does it as the file opens, and every part of it is a decision you can see
+and undo — nothing is deleted, and the objects it leaves out stay in the tree, ghosted in
+the view, one click from coming back.
+
+| | |
+|---|---|
+| **Leave out clutter** | Objects named as something other than a room surface: dimensions, text, lighting bars, truss, cable, ductwork, furniture, people — and modelled loudspeakers, since ArrayCalc and Soundvision place their own. Whole words only, so `TEXTURED PANEL` stays and `TEXT` goes. |
+| **Leave out tiny objects** | Brackets, fixings, trim and stray facets, under a surface area you set. Seating is exempt: a seat pan is 0.2 m². |
+| **Flatten seating into audience planes** | Banks of seats become the plane they stand for — the same thing the Rationalise panel does by hand, and editable there afterwards. Found by name, and by repetition: hundreds of alike, small, upward-facing objects a metre apart are a bank of chairs whatever they are called. Tiers separated in height become separate planes. |
+| **Guess plane types from names** | `STAGE` becomes a stage, `WALL` and `CEILING` become surfaces. |
+| **Re-cut heavy objects** | A meshed flat wall is hundreds of triangles describing one rectangle. Re-cutting it from its own outline gives the same shape with a fraction of the triangles — a faster viewport and a faster conversion. Anything not genuinely flat, or with a hole in it, is left alone. |
+
+The panel then reports what it actually did to *your* model, with counts. On
+`demo/demo-venue.dxf` that is 3,206 triangles down to 1,322, the lighting bars left out and
+the balcony seating flattened: **116 ArrayCalc objects become 52** before you have touched
+anything. On `demo/demo-seats.dxf`, the seat-by-seat plan, it is **3,710 objects down to
+17**.
+
+Untick a box and it re-runs from the file as imported. It reads the model once, when it
+opens, using the units in force then — so if the unit guess was wrong, fix it and re-run.
+
 ## Rationalising a seat-by-seat plan
 
 An architect's model draws every seat. A sound designer wants the seating *area*. The
@@ -208,7 +237,9 @@ geometry every time — change the units afterwards and it moves with the room; 
 the seats come back.
 
 Try it on `demo/demo-seats.dxf` (regenerate with `python3 scripts/make_demo_seats.py`):
-3,710 objects on import, 16 once both seating blocks are rationalised.
+3,710 objects without it, 16 once both seating blocks are rationalised — or 17 the moment
+you drop the file, since [Prepare](#preparing-a-model-on-import) recognises both blocks by
+name and does it for you.
 
 ## Vectorworks plug-in
 

@@ -27,6 +27,15 @@ import {
   DEFAULT_RATIONALISE,
   rationalise,
 } from './lib/geom/rationalise.ts'
+import {
+  type PrepareOptions,
+  type PreparePlan,
+  type SimplifyStats,
+  DEFAULT_PREPARE,
+  DEFAULT_SIMPLIFY,
+  preparePlan,
+  simplifyScene,
+} from './lib/prepare/index.ts'
 import { type TransformOptions, boundsOf, guessUnits } from './lib/geom/transform.ts'
 
 export interface NodeDecision {
@@ -127,6 +136,95 @@ export function mergeDecisions(prev: Decisions, scene: ImportedScene): Decisions
   return out
 }
 
+/**
+ * Preparation: the checkboxes, and what one run of them produced.
+ *
+ * `simplifyHeavy` sits beside the plan's options rather than inside them because it is the
+ * one that changes GEOMETRY rather than decisions — see `lib/prepare/simplify.ts`. It is
+ * also the reason a `Prepared` keeps the scene it made: re-running with the box unticked
+ * has to go back to the file as imported, so the raw scene is kept beside the prepared one.
+ */
+export interface PrepareSettings extends PrepareOptions {
+  simplifyHeavy: boolean
+}
+
+export const DEFAULT_PREPARE_SETTINGS: PrepareSettings = { ...DEFAULT_PREPARE, simplifyHeavy: true }
+
+export interface Prepared {
+  /** The scene as the importer produced it. Kept so preparation can be re-run or undone. */
+  raw: ImportedScene
+  /** What the app works in: `raw`, re-cut if `simplifyHeavy` was on. */
+  scene: ImportedScene
+  plan: PreparePlan
+  simplify: SimplifyStats | null
+  options: PrepareSettings
+  /**
+   * The transform the plan was decided against.
+   *
+   * Recorded because a plan's thresholds are in metres and the unit setting behind them may
+   * have been a guess. Showing what it assumed is what makes "re-run" a meaningful offer
+   * rather than a mystery button.
+   */
+  transform: TransformOptions
+}
+
+/**
+ * Run preparation over a freshly imported scene.
+ *
+ * The order is deliberate: re-cut first, then read. Both halves are independent — the plan
+ * reads names, sizes and spacings, none of which a re-cut changes — but running the plan on
+ * the smaller scene keeps every id it hands back pointing at the nodes the app will actually
+ * be holding.
+ */
+export function prepareScene(
+  raw: ImportedScene,
+  transform: TransformOptions,
+  options: PrepareSettings,
+): Prepared {
+  const simplified = options.simplifyHeavy
+    ? simplifyScene(raw, transform, DEFAULT_SIMPLIFY)
+    : { scene: raw, stats: null }
+  const scene = simplified.scene
+  return {
+    raw,
+    scene,
+    plan: preparePlan(scene, transform, options),
+    simplify: simplified.stats,
+    options,
+    transform,
+  }
+}
+
+/** Fold a plan's exclusions and plane types into the seeded decisions. */
+export function applyPlan(decisions: Decisions, plan: PreparePlan | null): Decisions {
+  if (!plan) return decisions
+  const out: Decisions = {}
+  for (const [id, d] of Object.entries(decisions)) {
+    out[id] = {
+      ...d,
+      include: d.include && !plan.exclude.has(id),
+      planeType: plan.planeTypes.get(id) ?? d.planeType,
+    }
+  }
+  return out
+}
+
+/**
+ * The rationalisations a plan asks for.
+ *
+ * Ordinary ones in every respect — the same record the panel edits and the same one the
+ * user makes by hand — so a prepared seating area can be renamed, re-typed, loosened,
+ * tightened or deleted exactly like a drawn one. The `prep` id prefix only keeps them from
+ * colliding with the panel's own counter.
+ */
+export function rationalisationsFromPlan(plan: PreparePlan | null): Rationalisation[] {
+  if (!plan) return []
+  return plan.seating.map((c, i) => ({
+    ...newRationalisation(`prep${i + 1}`, c.name, c.memberIds),
+    gapMetres: c.gapMetres,
+  }))
+}
+
 /** Settings the importer can decide for us, so the user starts from the file's own facts. */
 export function settingsForScene(scene: ImportedScene): Settings {
   const bounds = boundsOf(scene.nodes)
@@ -192,7 +290,14 @@ export function conversionEntries(
     })
 }
 
-/** Nodes that a rationalisation is standing in for, and which therefore go out of the venue. */
+/**
+ * Nodes that a rationalisation is standing in for, and which therefore go out of the venue.
+ *
+ * Only ever handed the rationalisations that actually PRODUCED something — see
+ * `rationalisedAreas`. A rationalisation that captured nothing stands in for nothing, and
+ * letting it replace its members would take a seating block out of the venue and put
+ * nothing back.
+ */
 export function replacedNodeIds(rationalisations: Rationalisation[]): Set<string> {
   const out = new Set<string>()
   for (const r of rationalisations) {
@@ -230,10 +335,11 @@ export function rationalisedAreas(
   scene: ImportedScene,
   rationalisations: Rationalisation[],
   settings: Settings,
-): { areas: RationalisedArea[]; warnings: string[] } {
+): { areas: RationalisedArea[]; warnings: string[]; effective: Rationalisation[] } {
   const byId = new Map(flattenNodes(scene.nodes).map((n) => [n.id, n]))
   const areas: RationalisedArea[] = []
   const warnings: string[] = []
+  const effective: Rationalisation[] = []
 
   for (const r of rationalisations) {
     const members = r.memberIds.map((id) => byId.get(id)).filter((n): n is ImportedNode => !!n)
@@ -266,12 +372,23 @@ export function rationalisedAreas(
         `"${r.name}" replaces its source objects, but ${result.stats.trianglesOutside} of their triangles fall outside the drawn area and are not represented by it. Draw an area for those too, or turn off "replace originals".`,
       )
     }
-    if (result.outlines.length === 0) continue
+    if (result.outlines.length === 0) {
+      // Nothing came out. Say so where the consequence is, not only in the geometry
+      // warnings: the members are staying in the venue, which is the opposite of what
+      // "replace the originals" was asked to do, and the object count will show it.
+      if (r.replaceMembers) {
+        warnings.push(
+          `"${r.name}" produced no area, so the objects it was meant to replace were left in the venue rather than removed.`,
+        )
+      }
+      continue
+    }
 
+    effective.push(r)
     areas.push({ id: r.id, name: r.name, planeType: r.planeType, outlines: result.outlines, stats: result.stats })
   }
 
-  return { areas, warnings }
+  return { areas, warnings, effective }
 }
 
 /** Settings -> the options every target's reduction takes. */
@@ -316,7 +433,7 @@ export function useConversion(
     if (!scene || !debouncedSettings?.transform) return { result: null, areas: [] as RationalisedArea[] }
     const r = rationalisedAreas(scene, debouncedRats, debouncedSettings)
     const converted = convertNodes(
-      conversionEntries(scene, debouncedDecisions, debouncedRats),
+      conversionEntries(scene, debouncedDecisions, r.effective),
       convertOptions(debouncedSettings),
       r.areas,
     )
@@ -338,15 +455,24 @@ export function useConversion(
 /**
  * Rationalisations, keyed by id, with the same immutability rule as `useDecisions`.
  *
- * Cleared on a new scene: a rationalisation names node ids, and the ids in the next file
- * mean something else entirely.
+ * Reset on a new scene: a rationalisation names node ids, and the ids in the next file mean
+ * something else entirely. Reset TO `seed` rather than to nothing, because preparation
+ * arrives with a set of them — and through a ref, so a render passing an equal seed does
+ * not re-seed over work already done to it.
+ *
+ * `resetOn` is the thing that means "start again", and it is NOT the scene. Re-running
+ * preparation with a box unticked usually hands back the very same scene object — nothing
+ * about the geometry changed, only what was decided about it — and keying this on the scene
+ * left the audience planes standing after the box that made them was cleared.
  */
-export function useRationalisations(scene: ImportedScene | null) {
+export function useRationalisations(resetOn: unknown, seed: Rationalisation[] = []) {
   const [rationalisations, setRationalisations] = useState<Rationalisation[]>([])
+  const seedRef = useRef(seed)
+  seedRef.current = seed
 
   useEffect(() => {
-    setRationalisations([])
-  }, [scene])
+    setRationalisations(seedRef.current)
+  }, [resetOn])
 
   const add = useCallback((r: Rationalisation) => {
     setRationalisations((prev) => [...prev, r])

@@ -3,7 +3,6 @@ import { type VenueFile } from './lib/dbacv/types.ts'
 import { formatDbacvDate, writeDbacv } from './lib/dbacv/write.ts'
 import {
   type ImportedNode,
-  type ImportedScene,
   ACCEPTED_EXTENSIONS,
   ImportError,
   countTriangles,
@@ -19,13 +18,19 @@ import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
 import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
 import {
+  type PrepareSettings,
+  type Prepared,
   type Settings,
   type ViewMode,
+  DEFAULT_PREPARE_SETTINGS,
   DEFAULT_SETTINGS,
+  applyPlan,
   conversionEntries,
   convertOptions,
   mergeDecisions,
   newRationalisation,
+  prepareScene,
+  rationalisationsFromPlan,
   rationalisedAreas,
   seedDecisions,
   settingsForScene,
@@ -35,6 +40,7 @@ import {
   useRationalisations,
 } from './state.ts'
 import { type CameraPreset, type ViewportTool, Viewport } from './components/Viewport.tsx'
+import { PreparePanel } from './components/PreparePanel.tsx'
 import { RationalisePanel } from './components/RationalisePanel.tsx'
 import { Tree } from './components/Tree.tsx'
 import { Inspector } from './components/Inspector.tsx'
@@ -58,7 +64,8 @@ function download(content: string | Uint8Array, filename: string, mime: string) 
 }
 
 export default function App() {
-  const [importedScene, setImportedScene] = useState<ImportedScene | null>(null)
+  const [prepared, setPrepared] = useState<Prepared | null>(null)
+  const [prepareOptions, setPrepareOptions] = useState<PrepareSettings>(DEFAULT_PREPARE_SETTINGS)
   const [traceDoc, setTraceDoc] = useState<TraceDocument | null>(null)
   const [traceFile, setTraceFile] = useState<File | null>(null)
   const [decisions, setDecisions] = useState<Decisions>({})
@@ -84,7 +91,7 @@ export default function App() {
   // is the right trade: the drawing itself is repainted immediately.
   const settledDoc = useDebounced(traceDoc, 150)
   const tracedScene = useMemo(() => (settledDoc ? buildTraceScene(settledDoc) : null), [settledDoc])
-  const scene = traceDoc ? tracedScene : importedScene
+  const scene = traceDoc ? tracedScene : prepared?.scene ?? null
   const tracing = traceDoc !== null
   /** Whether the 3D view is on screen at all — while tracing the drawing can have it all. */
   const modelVisible = !traceDoc || traceView !== 'drawing'
@@ -95,16 +102,28 @@ export default function App() {
     return m
   }, [scene])
 
+  /**
+   * Preparation is a set of decisions about the scene, so it is seeded here with the rest.
+   *
+   * `prepared` is in the dependencies as well as the scene, and has to be: re-running
+   * preparation with a box unticked leaves the scene object untouched whenever nothing was
+   * re-cut, so keying on the scene alone would tick the box and change nothing.
+   */
   useEffect(() => {
     if (!scene) {
       setDecisions({})
       return
     }
-    setDecisions((prev) => (tracing ? mergeDecisions(prev, scene) : seedDecisions(scene)))
-  }, [scene, tracing])
+    setDecisions((prev) =>
+      tracing ? mergeDecisions(prev, scene) : applyPlan(seedDecisions(scene), prepared?.plan ?? null),
+    )
+  }, [scene, tracing, prepared])
 
   const { rationalisations, add: addRationalisation, update: updateRationalisation, remove: removeRationalisation } =
-    useRationalisations(scene)
+    useRationalisations(
+      prepared ?? scene,
+      useMemo(() => rationalisationsFromPlan(prepared?.plan ?? null), [prepared]),
+    )
 
   // Every viewport tool is modal and belongs to the 3D view. Escape leaves, and so does
   // anything that takes the view away: an armed tool with nothing to click under it is a
@@ -128,46 +147,83 @@ export default function App() {
   const { result, areas, running } = useConversion(scene, decisions, settings, rationalisations)
   const areaStats = useMemo(() => new Map(areas.map((a) => [a.id, a.stats])), [areas])
 
-  const load = useCallback(async (file: File) => {
-    setBusy(true)
-    setError(null)
-    setTool(null)
-    setDrawnPoints([])
-    try {
-      if (isTraceFile(file.name)) {
-        const doc = await loadTraceSource(file)
-        setTraceDoc(doc)
-        setTraceFile(file)
-        setImportedScene(null)
-        setTraceView('drawing')
-        setTraceTool(doc.calibration.source.kind === 'unset' ? 'scale' : 'select')
-        // A trace is authored in metres with Z up by construction, so there is nothing for
-        // the units guess to do — but heading, offset and mirror still matter.
-        setSettings({
-          ...DEFAULT_SETTINGS,
-          transform: { ...DEFAULT_SETTINGS.transform, unitsPerMetre: 1, upAxis: 'z' },
-          // The outline is exactly what the user drew; there is no CAD noise to shave off.
-          simplifyTolerance: 0,
-        })
-      } else {
-        const s = await importFile(file)
-        setImportedScene(s)
+  const load = useCallback(
+    async (file: File) => {
+      setBusy(true)
+      setError(null)
+      setTool(null)
+      setDrawnPoints([])
+      try {
+        if (isTraceFile(file.name)) {
+          const doc = await loadTraceSource(file)
+          setTraceDoc(doc)
+          setTraceFile(file)
+          setPrepared(null)
+          setTraceView('drawing')
+          setTraceTool(doc.calibration.source.kind === 'unset' ? 'scale' : 'select')
+          // A trace is authored in metres with Z up by construction, so there is nothing for
+          // the units guess to do — but heading, offset and mirror still matter.
+          setSettings({
+            ...DEFAULT_SETTINGS,
+            transform: { ...DEFAULT_SETTINGS.transform, unitsPerMetre: 1, upAxis: 'z' },
+            // The outline is exactly what the user drew; there is no CAD noise to shave off.
+            simplifyTolerance: 0,
+          })
+        } else {
+          const s = await importFile(file)
+          // The settings the file itself implies, decided BEFORE preparation, because
+          // preparation's thresholds are in metres and it needs the scale to read them.
+          const seeded = settingsForScene(s)
+          setSettings(seeded)
+          setPrepared(prepareScene(s, seeded.transform, prepareOptions))
+          setTraceDoc(null)
+          setTraceFile(null)
+        }
+        setSelection([])
+        setProjectName(file.name.replace(/\.[^.]+$/, '') || 'Untitled')
+        setPresetNonce((n) => n + 1)
+      } catch (e) {
+        if (e instanceof ImportError) setError({ message: e.message, advice: e.advice })
+        else setError({ message: (e as Error).message, advice: '' })
+        setPrepared(null)
         setTraceDoc(null)
-        setTraceFile(null)
-        setSettings(settingsForScene(s))
+      } finally {
+        setBusy(false)
       }
-      setSelection([])
-      setProjectName(file.name.replace(/\.[^.]+$/, '') || 'Untitled')
-      setPresetNonce((n) => n + 1)
-    } catch (e) {
-      if (e instanceof ImportError) setError({ message: e.message, advice: e.advice })
-      else setError({ message: (e as Error).message, advice: '' })
-      setImportedScene(null)
-      setTraceDoc(null)
-    } finally {
-      setBusy(false)
-    }
-  }, [])
+    },
+    [prepareOptions],
+  )
+
+  /**
+   * Re-run preparation with a box ticked or unticked.
+   *
+   * From the RAW scene every time, never from the prepared one: re-cutting is the only part
+   * that touches geometry, and running it twice over its own output would keep the second
+   * run's tolerances working on the first run's triangles. Against the CURRENT transform,
+   * not the one the import guessed — fixing the units and re-running is the whole reason
+   * this is offered rather than being a one-shot at import.
+   *
+   * Pruning already done by hand is thrown away with it, which is why nothing calls this
+   * except a deliberate click on a checkbox.
+   */
+  const rerunPreparation = useCallback(
+    (patch: Partial<PrepareSettings>) => {
+      const options = { ...prepareOptions, ...patch }
+      setPrepareOptions(options)
+      if (!prepared || !settings) return
+      setBusy(true)
+      // Out of the click handler: re-cutting a large model blocks the main thread, and the
+      // checkbox should be seen to tick before the tab stops answering.
+      setTimeout(() => {
+        try {
+          setPrepared(prepareScene(prepared.raw, settings.transform, options))
+        } finally {
+          setBusy(false)
+        }
+      }, 0)
+    },
+    [prepareOptions, prepared, settings],
+  )
 
   /** Move to another page of the same PDF, keeping nothing — a new page is a new drawing. */
   const loadPage = useCallback(
@@ -340,9 +396,9 @@ export default function App() {
     // result, because that result holds RoomObjects — already through the canonical quad
     // frame and possibly split into triangles to fit it. Soundvision wants the outline
     // whole, so it starts from the same outlines the other target did.
-    const { areas: exportAreas } = rationalisedAreas(scene, rationalisations, settings)
+    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
     const r = convertNodesToSoundvision(
-      conversionEntries(scene, decisions, rationalisations),
+      conversionEntries(scene, decisions, effective),
       { ...convertOptions(settings), winding: 'up' },
       exportAreas,
     )
@@ -359,9 +415,9 @@ export default function App() {
    */
   const exportEaseFocus = useCallback(() => {
     if (!scene || !settings?.transform) return
-    const { areas: exportAreas } = rationalisedAreas(scene, rationalisations, settings)
+    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
     const r = convertNodesToEaseFocus(
-      conversionEntries(scene, decisions, rationalisations),
+      conversionEntries(scene, decisions, effective),
       convertOptions(settings),
       exportAreas,
       projectName || 'ArrayCAD export',
@@ -665,6 +721,14 @@ export default function App() {
               onSelectMatchingTag={selectMatchingTag}
             />
           </Panel>
+
+          {/* A traced drawing has nothing to prepare: the user drew exactly the regions they
+              wanted, so there is no clutter to leave out and nothing repeated to gather. */}
+          {traceDoc || !prepared ? null : (
+            <Panel title="Prepare">
+              <PreparePanel prepared={prepared} busy={busy} onChange={rerunPreparation} />
+            </Panel>
+          )}
 
           {/* Tracing draws its regions directly, so there is nothing scattered to gather up
               — the tracer never produces one object per seat in the first place. */}

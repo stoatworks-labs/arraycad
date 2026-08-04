@@ -563,7 +563,100 @@ nothing added to the CSP and carries none of the licence problem libredwg would 
 component boundaries then come back from `polygon.ts:boundaryLoops`, the same routine the
 coplanar regions use, so a horseshoe balcony's inner void arrives as a hole for free.
 
-## 12. Deploy
+## 12. Preparation: the work the file already describes
+
+`src/lib/prepare/` runs once, the moment a model is imported, and answers what the drawing
+already says. A theatre arrives as several thousand objects of which a few dozen are room
+surfaces; the rest are dimensions, lighting bars, cable trays and four hundred separately
+modelled seats. Every one of them is drawn, picked against and converted until somebody
+prunes it. The names in the file describe most of that, and reading them costs nothing.
+
+It is two halves, kept apart on purpose:
+
+```
+plan.ts       reads the model and produces DECISIONS. No geometry is touched.
+vocabulary.ts the word lists behind it, as plain data
+simplify.ts   re-cuts heavy objects into fewer triangles. The same shape, less of it.
+```
+
+The panel (`components/PreparePanel.tsx`) is five checkboxes and a report. The report is the
+important half: every line says what happened to THIS model with a count, because a pass
+that silently left out forty objects is indistinguishable from an importer that lost them.
+
+### What has to stay true
+
+- **A plan is applied as `Decisions` and `Rationalisation[]`, never as a scene edit.**
+  Everything it does is therefore visible in the tree, ghosted rather than hidden in the
+  viewport, and undone by one click — the same rule as §4 and §11 and for the same reason.
+- **It is decided once, at import, against the transform in force then.** The thresholds are
+  in metres and the unit setting behind them may have been a guess. Changing the units later
+  does not silently re-run it; the panel re-runs on request, from the RAW scene, and says so.
+- **Clutter first, seating last.** `STAGE LIGHTING` is a lighting bar over a stage, and
+  `FLOOR - STALLS` is the concrete under the stalls. The category that excludes wins over
+  the categories that classify, and the category that claims the most — seating, which turns
+  hundreds of objects into one fitted plane — wins only when nothing else in the name
+  disagrees.
+- **Whole words only.** `TEXT` is annotation; `TEXTURED PANEL` is a surface. A substring
+  match would leave a real surface out of the venue, which is the one failure this must not
+  have.
+- **Seating is detected before the size test, not after.** A seat modelled as a flat pan has
+  about 0.2 m² of surface — below any sensible "too small to matter" threshold. Testing size
+  first leaves out the entire audience one seat at a time and reports it as trim.
+- **Seats do not tile their own floor.** A packed block covers under half its footprint; a
+  raked deck covers all of it. That ratio is what keeps a deck merely NAMED `SEATING` out of
+  the flattening — and flattening a deck does not just gain nothing, it can lose the deck
+  (see the bridging gap below).
+- **A rationalisation that produced nothing must not replace anything.** `rationalisedAreas`
+  returns the ones that did, and only those reach `replacedNodeIds`. Without it a capture
+  that came back empty took its source objects out of the venue and put nothing back: an
+  auditorium with no audience in it and a lower object count than before. This protects a
+  hand-drawn area exactly as much as a prepared one.
+- **The bridging gap is the row pitch OR the mesh, whichever is coarser.** Nothing can be
+  bridged more finely than the geometry that draws it: a deck cut into 1.3 m squares has no
+  two corners closer than that, and a 0.9 m gap over it joins nothing at all. Erring coarse
+  paves a gangway narrower than the mesh, which is reported; erring fine loses the surface,
+  which is a silent hole.
+- **The row pitch is the fourth nearest neighbour, at the lower quartile.** The two nearest
+  seats are the ones either side — the column pitch — and bridging only that leaves every row
+  its own area. The quartile rather than the median because a seat on the edge of a block
+  has no neighbours on one side, so its fourth nearest is a diagonal, and on a small block
+  the edges outnumber the middle.
+
+### Re-cutting, and the two things that make it unsafe
+
+`simplify.ts` is `planarize` run early and written back: merge a meshed flat wall into the
+region it already forms, re-cut that region from its own boundary, keep the outline exactly.
+It is not a decimator — there is no error metric and no vertex budget. The demo venue goes
+from 3,206 triangles to 1,322 with an identical converted venue, which is the claim the pass
+rests on and what `prepare.test.ts` asserts.
+
+Both of its guards were found by getting it wrong, and neither is obvious:
+
+1. **A region that is only NEARLY flat must not be re-cut.** `findCoplanarRegions`
+   deliberately tolerates 20 mm of bulge, so a "region" can be a shallow dome or a stepped
+   rake. Its own small triangles are each nearly flat; a re-cut joining ring points ten
+   metres apart is not.
+2. **A region with a nearly-parallel NEIGHBOUR must not be re-cut either, and this is the
+   subtle one — the region that changes is not the region that was re-cut.** The demo
+   venue's balcony is a fan of raked tiers two or three degrees apart, separate regions only
+   because the flood fill's running plane drifts out of tolerance as it walks. Which
+   triangle lands in which tier is decided by the tessellation itself, so re-cutting one
+   tier shuffled the areas of its neighbours: eleven regions became fourteen. Fewer
+   triangles, a different room. A faceted vault is safe by contrast, because each facet is
+   exactly the plane it claims to be — so the rule is only to refuse where a bulging
+   neighbour is involved.
+
+It also refuses a region with a hole (re-cutting from the outer ring alone fills the
+doorway), a ring the triangulator can only fan, and any output triangle that comes back more
+than a degree off the region it came from.
+
+**The Vectorworks plug-in has no equivalent and does not need one.** §6's no-forking rule is
+about the reduction and the writer, which the plug-in reimplements and which must not drift.
+Preparation is a different kind of thing: it exists because an exported file has thrown away
+what the plug-in can still read directly out of the drawing — the class names, the object
+types, the seating solids. Inside Vectorworks the answer is available rather than inferred.
+
+## 13. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 

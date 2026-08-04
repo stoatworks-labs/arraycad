@@ -69,6 +69,21 @@ deploy `npx wrangler deploy`.
   an `ImportedNode`. See AGENTS.md §11.
 - A rationalisation is a **decision keyed by node id**, recomputed from the source geometry
   every conversion. Never let one mutate the scene, or a units change stops moving it.
+- **A rationalisation that produced no area must not replace its members.**
+  `rationalisedAreas` returns the `effective` ones and only those reach `replacedNodeIds`.
+  Skip it and an empty capture takes the seating out of the venue and puts nothing back —
+  an auditorium with no audience and a *lower* object count than before. Applies to a
+  hand-drawn area as much as a prepared one.
+- **`src/lib/prepare/` decides what the file already says, once, at import.** It emits
+  decisions and rationalisations, never a scene edit, so every part of it is visible in the
+  tree and undone by one click. Clutter beats every other category and seating loses to all
+  of them; whole-word matching only. Seating is found BEFORE the "too small" test, or a
+  seat modelled as a flat pan is left out as trim. See AGENTS.md §12.
+- **`prepare/simplify.ts` re-cuts geometry, and refuses more than it accepts.** A region
+  that is only nearly flat, or that has a nearly-parallel neighbour, is left alone — the
+  second because re-cutting one tier of a raked fan changes which triangles its NEIGHBOURS
+  keep. Fewer triangles, a different room. Don't loosen either guard without re-running the
+  demo-venue object-count test that catches it.
 - A drawn area captures **only the selected nodes inside it** when there is a selection.
   Capturing everything under the polygon pulls the floor into a seating plane and fits it
   half a seat height low; the residual reports it, but the answer is still wrong.
