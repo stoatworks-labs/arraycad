@@ -10,9 +10,13 @@ what each surface *is* — listening, surface, stage — and writes a `.dbacv`.
 data* (`.txt`), the format its own SketchUp and Vectorworks plug-ins write. See
 [Soundvision](#soundvision).
 
-**Both formats also open**, so ArrayCAD converts between the two prediction tools: drop a
-`.dbacv` and write a Soundvision room, or drop a Soundvision `.txt` and write a `.dbacv`.
-See [Converting between ArrayCalc and Soundvision](#converting-between-arraycalc-and-soundvision).
+**And AFMG EASE Focus 3** (`.fc3`). EASE Focus has no geometry import at all — you type
+coordinates or trace over a picture — so writing the project file is the only way in. See
+[EASE Focus](#ease-focus).
+
+**All three formats also open**, so ArrayCAD converts between the three prediction tools:
+drop any one, write any other. See
+[Converting between the prediction tools](#converting-between-the-prediction-tools).
 
 **No 3D model? Trace one off the plan.** Drop a PDF or an image instead: set the scale,
 click inside a room to detect its outline, and type a height at each corner. See
@@ -80,6 +84,7 @@ plan](#rationalising-a-seat-by-seat-plan).
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
 | **`.dbacv`** | An existing ArrayCalc venue, for pruning, retyping and converting to Soundvision. See the caveat below. |
 | **Soundvision `.txt`** | An existing 3D room data export, for the same — and for converting to `.dbacv`. Surfaces are grouped by their label, which is your CAD layer name. |
+| **EASE Focus `.fc3`** | An existing EASE Focus 3 project. Audience zones arrive as raked planes, one object per profile segment. `.fc2` must be re-saved as `.fc3` in EASE Focus first. |
 | **PDF** | Not a model — a drawing. Opens the tracer. A vector PDF also gives its real drawn lines to snap to. |
 | **PNG, JPEG, WebP, GIF, BMP** | A scan or a photo of a plan. Opens the tracer; outlines are recovered from the pixels. |
 
@@ -337,18 +342,51 @@ label itself, so names round-trip unchanged.
 > has yet been run over an imported surface to prove it. Check a mapping before trusting a
 > whole design to it.
 
-## Converting between ArrayCalc and Soundvision
+## EASE Focus
 
-Neither application will open the other's venue, so a room modelled for one normally gets
-redrawn by hand for the other — a day's work that also guarantees the two predictions are
-of subtly different buildings.
+**Export .fc3**, then open it in EASE Focus 3 — *File → Open*. There is no import step
+because **EASE Focus has no geometry import**: its own guide offers typed coordinates
+(including polar, for a laser-and-inclinometer survey) or a picture to trace over, and
+nothing else. Opening the project file is the way in.
 
-Both formats are inputs here, so the conversion is just an import and an export:
+The catch is the model. EASE Focus has no surfaces at all — a venue is a set of
+**audience zones**: a plan rectangle with a position, an orientation and a height profile
+along its axis. So this export is a real reduction, not a re-serialisation:
+
+- **Only Listening planes convert.** Walls, ceilings and stages have no equivalent in EASE
+  Focus, so leaving them out is not lossy, it is the only honest thing to do.
+- **Each plane becomes one oriented rectangle** with a single profile segment, front edge
+  at the low side, audience facing downslope. Outline detail and holes are lost — the
+  format has nowhere to put them.
+- **Zones narrower than 2 m are silently widened to 2 m** by EASE Focus itself, centres
+  unmoved, with nothing on screen to say so. Seat-by-seat rows are routinely narrower than
+  that, so ArrayCAD warns per zone. [Rationalise](#rationalising-a-seat-by-seat-plan) the
+  rows into blocks first and the problem goes away.
+
+The container, the model and the evidence are in
+**[docs/ease-focus-format.md](docs/ease-focus-format.md)**.
+
+### Confirmed inside EASE Focus
+
+Checked against **EASE Focus 3.1.260** on 2026-08-03. The 57 audience planes of a real
+ArrayCalc theatre export were written as a project, opened, and saved back by the
+application: 57 zones returned, all 57 labels intact, and every position, orientation,
+depth and height identical to what was written. The only change the application made was
+the 2 m width clamp above — which is how that behaviour was found.
+
+## Converting between the prediction tools
+
+None of the three applications will open another's venue, so a room modelled for one
+normally gets redrawn by hand for the next — a day's work that also guarantees the
+predictions are of subtly different buildings.
+
+All three formats are inputs here, so the conversion is just an import and an export:
 
 | You have | Drop it in | Press |
 |---|---|---|
-| A d&b ArrayCalc venue | `.dbacv` | **Export .txt (experimental)** → *3D room data → Import 3D room data* |
-| A Soundvision room | 3D room data `.txt` | **Export .dbacv** |
+| A d&b ArrayCalc venue | `.dbacv` | **Export .txt** → *3D room data → Import 3D room data*, or **Export .fc3** |
+| A Soundvision room | 3D room data `.txt` | **Export .dbacv** or **Export .fc3** |
+| An EASE Focus project | `.fc3` | **Export .dbacv** or **Export .txt** |
 
 Nothing special happens in between: the venue takes the same road a CAD model does —
 tessellate, weld, merge coplanar regions, recover outlines, write the other format — so
@@ -364,6 +402,9 @@ What that means in practice:
   plane types or listening levels to lose. You set those here, once, on the way through.
 - **ArrayCalc → Soundvision keeps more shape than the reverse**, because a Soundvision
   surface is a free polygon while an ArrayCalc quad must be a symmetric trapezoid.
+- **Anything → EASE Focus keeps the least**, because EASE Focus keeps the least: audience
+  zones only, each one a rectangle. Convert *out* of EASE Focus and you get exactly the
+  audience back — its zones are unambiguous — but nothing that was never in it.
 - **Surfaces come in grouped by their label.** L-Acoustics' own plug-ins write
   `"<layer name> face"`, so a room exported from Vectorworks arrives with the CAD layer
   tree intact and pruneable. The ` face` suffix is stripped on the way in and re-applied on

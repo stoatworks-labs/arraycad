@@ -12,6 +12,8 @@ import {
 } from './lib/import/index.ts'
 import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
 import { writeSoundvision } from './lib/soundvision/write.ts'
+import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
+import { writeEaseFocus } from './lib/easefocus/write.ts'
 import { type TraceDocument, buildTraceScene } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
@@ -46,8 +48,8 @@ const ALL_EXTENSIONS = [...ACCEPTED_EXTENSIONS, ...TRACE_EXTENSIONS]
 /** What the centre of the screen shows while tracing. */
 type TraceView = 'drawing' | 'model' | 'both'
 
-function download(text: string, filename: string, mime: string) {
-  const url = URL.createObjectURL(new Blob([text], { type: mime }))
+function download(content: string | Uint8Array, filename: string, mime: string) {
+  const url = URL.createObjectURL(new Blob([content as BlobPart], { type: mime }))
   const a = document.createElement('a')
   a.href = url
   a.download = filename
@@ -348,6 +350,26 @@ export default function App() {
     download(writeSoundvision(r.scene), `${projectName || 'venue'}.txt`, 'text/plain')
   }, [scene, decisions, settings, projectName, rationalisations])
 
+  /**
+   * EASE Focus has no geometry import at all — its guide offers typed coordinates or
+   * tracing over a picture — so the project file itself is the only route in, and this
+   * export writes one. Same on-demand pattern as the Soundvision export, and the same
+   * reason it starts from outlines rather than the live ArrayCalc result: a zone wants
+   * the plane whole, not the canonical quad frame.
+   */
+  const exportEaseFocus = useCallback(() => {
+    if (!scene || !settings?.transform) return
+    const { areas: exportAreas } = rationalisedAreas(scene, rationalisations, settings)
+    const r = convertNodesToEaseFocus(
+      conversionEntries(scene, decisions, rationalisations),
+      convertOptions(settings),
+      exportAreas,
+      projectName || 'ArrayCAD export',
+    )
+    if (r.project.zones.length === 0) return
+    download(writeEaseFocus(r.project), `${projectName || 'venue'}.fc3`, 'application/octet-stream')
+  }, [scene, decisions, settings, projectName, rationalisations])
+
   // ---------------------------------------------------------------- render
 
   if (!scene || !settings) {
@@ -407,10 +429,10 @@ export default function App() {
               sunk.
             </p>
             <p className="pitch">
-              Already have a venue? Drop an ArrayCalc <code>.dbacv</code> or an L-Acoustics
-              Soundvision 3D room data <code>.txt</code> and{' '}
-              <strong>convert between the two</strong> — either one opens here, and either
-              one comes back out.
+              Already have a venue? Drop an ArrayCalc <code>.dbacv</code>, an L-Acoustics
+              Soundvision 3D room data <code>.txt</code> or an EASE Focus 3 project{' '}
+              <code>.fc3</code> and <strong>convert between the three</strong> — any one
+              opens here, and any one comes back out.
             </p>
           </div>
         </main>
@@ -461,6 +483,25 @@ export default function App() {
           are separate claims, and a backwards surface fails the second one silently. Keep
           this caveat until a prediction has actually been run over an imported surface.
         */}
+        {/*
+          Verified against EASE Focus 3.1.260 on 2026-08-03: files from this writer load,
+          re-save with every zone value intact, and register their areas for mapping. The
+          caveat in the tooltip is the reduction, not the format: EASE Focus has only
+          rectangular zones, so this export is the lossiest of the three targets.
+        */}
+        <button
+          type="button"
+          onClick={exportEaseFocus}
+          disabled={!result || result.objects.length === 0}
+          title={
+            'EASE Focus 3 project — audience (Listening) planes only, each reduced to an ' +
+            'oriented rectangular zone with a height profile. EASE Focus has no geometry ' +
+            'import, so opening this file IS the way in.\n\n' +
+            'Walls, stages and ceilings have no equivalent in EASE Focus and are left out.'
+          }
+        >
+          Export .fc3
+        </button>
         <button
           type="button"
           onClick={exportSoundvision}

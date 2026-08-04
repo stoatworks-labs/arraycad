@@ -46,6 +46,21 @@ deploy `npx wrangler deploy`.
 - `ParentVenueObjectId` is derived on write from depth-first document order. Never store it.
 - Numbers go through `g17()`. Never `String(n)` — it breaks the byte-exact round trip.
 - `src/lib/` stays free of three.js (bar `import/mesh.ts`) so the pipeline tests run in node.
+- **EASE Focus `.fc3` is the third target, and the only one that REDUCES.** EASE Focus has
+  no surfaces — a venue is audience zones, each a plan rectangle with a height profile — so
+  only Listening planes convert and each becomes one oriented rectangle. Everything else is
+  skipped deliberately, not lost. See `docs/ease-focus-format.md`.
+- **A zone under 2 m wide is silently widened to 2 m by EASE Focus**, centres unmoved, no
+  dialog. Verified on 45 of the 57 zones of `theatre.dbacv`. Depth is NOT clamped. The
+  writer must not clamp either — the warning is the point, and a clamped file would hide
+  the discrepancy. Don't "fix" the warning to talk about depth.
+- **Area guids in `.fc3` are byte arrays, not strings.** Write one as text and EASE Focus
+  regenerates it on load, orphaning every `MappingAudienceAreas` entry: the file opens, the
+  zones draw, and the Areas dropdown says "No Areas". `container.ts:newGuid` writes both
+  forms because the mapping list refers to the same guid AS TEXT.
+- **A `.fc3` round trip cannot be byte-exact and that is not a gap.** The application's
+  Hashtable serialises in hash order and re-sorts zones alphabetically on save, so compare
+  the decoded model and match zones by label, never by index.
 - **Every output target shares `geom/outline.ts`.** ArrayCalc and Soundvision differ only in
   what they do with an outline. Do not fork the reduction to add a target.
 - **`geom/rationalise.ts` emits `RegionOutline[]`, in venue space.** That is how it reaches

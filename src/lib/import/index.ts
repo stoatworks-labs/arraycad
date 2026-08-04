@@ -10,6 +10,7 @@ import type { CadOptions } from './entities.ts'
 import { importIfc } from './ifc.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
 import { importSoundvisionAsScene } from './soundvisionScene.ts'
+import { importEaseFocusAsScene } from './easefocusScene.ts'
 
 export * from './types.ts'
 export { DEFAULT_CAD_OPTIONS, DEFAULT_CAD_OPTIONS as DEFAULT_DXF_OPTIONS } from './entities.ts'
@@ -28,12 +29,13 @@ export const ACCEPTED_EXTENSIONS = [
   '.dae',
   '.3ds',
   '.ifc',
-  // The two prediction tools' own venue formats, so a conversion can go either way between
+  // The three prediction tools' own venue formats, so a conversion can go any way between
   // them. `.txt` is Soundvision 3D room data and is sniffed before it is claimed — the
   // extension says nothing, so a .txt that is not room data must say so rather than import
-  // as an empty venue.
+  // as an empty venue. `.fc3` is an EASE Focus 3 project, sniffed by its SOAP header.
   '.dbacv',
   '.txt',
+  '.fc3',
 ] as const
 
 /**
@@ -71,6 +73,13 @@ const CLOSED_FORMATS: Record<string, { name: string; advice: string }> = {
     name: 'Rhino',
     advice: 'Export from Rhino as OBJ, glTF or DXF and drop that here.',
   },
+  '.fc2': {
+    name: 'EASE Focus 2',
+    advice:
+      'EASE Focus 2 projects are an older container this tool does not read. Open the ' +
+      'project in EASE Focus 3 — which is free and loads .fc2 — and save it; that writes ' +
+      'the .fc3 this tool reads and writes.',
+  },
   '.max': { name: '3ds Max', advice: 'Export as FBX, glTF or OBJ and drop that here.' },
   '.blend': { name: 'Blender', advice: 'Export as glTF (.glb) and drop that here.' },
 }
@@ -107,6 +116,8 @@ export async function importFile(
       return importDbacvAsScene(await file.text(), file.name)
     case '.txt':
       return importSoundvisionAsScene(await file.text(), file.name)
+    case '.fc3':
+      return importEaseFocusAsScene(new Uint8Array(await file.arrayBuffer()), file.name)
     case '.obj':
     case '.stl':
     case '.ply':
