@@ -1,5 +1,16 @@
 # ArrayCAD
 
+> **AI-assisted project.** This codebase was created with [Claude Code](https://claude.com/claude-code)
+> (Anthropic), directed and reviewed by a human author. The geometry is verified against the
+> applications themselves, not against a description of them: a written `.dbacv` reproduces a real
+> ArrayCalc export byte for byte and has been round-tripped through ArrayCalc until every object
+> came back untouched, a written Soundvision `.txt` was imported into Soundvision 3.18.0.15 and
+> read back surface by surface, and an EASE Focus project of 57 audience planes was opened and
+> saved by EASE Focus 3.1.260 with all 57 labels and every coordinate intact. 361 tests pin the
+> reduction. What none of that proves is **acoustic orientation**: no prediction has yet been run
+> over an imported surface, and a surface wound the wrong way lands in exactly the right place and
+> then silently returns no mapping result. Check a mapping before trusting a whole design to it.
+
 **Turn a CAD venue model into a d&b ArrayCalc venue file.**
 
 Drop in a DWG, DXF, glTF, IFC, OBJ or similar. ArrayCAD merges the model's triangles back
