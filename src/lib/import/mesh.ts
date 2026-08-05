@@ -139,6 +139,10 @@ export async function importMesh(
       }
       case 'dae': {
         const dae = new ColladaLoader().parse(new TextDecoder().decode(buffer), '')
+        // ColladaLoader.parse is typed as nullable: it returns null for a document
+        // it cannot read at all, rather than throwing. The catch below turns this
+        // into the same ImportError every other branch produces.
+        if (!dae) throw new Error('the file contains no readable scene')
         root = dae.scene
         break
       }
