@@ -24,19 +24,19 @@
     "pdfjs-dist": "^6.2.108",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
-    "three": "^0.180.0",
-    "web-ifc": "^0.0.68"
+    "three": "^0.185.1",
+    "web-ifc": "^0.0.77"
   },
   "devDependencies": {
     "@types/jsdom": "^28.0.3",
     "@types/node": "^26.1.2",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "@types/three": "^0.180.0",
+    "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^28.0.0",
     "typescript": "^5.6.3",
-    "vite": "^8.2.0",
+    "vite": "^8.2.1",
     "vitest": "^4.1.10"
   }
 }
