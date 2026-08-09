@@ -29,9 +29,10 @@ export interface PdfLoadOptions {
 
 export async function loadPdf(file: File, opts: PdfLoadOptions): Promise<TraceDocument> {
   const data = new Uint8Array(await file.arrayBuffer())
+  const loadingTask = pdfjs.getDocument({ data })
   let pdf: pdfjs.PDFDocumentProxy
   try {
-    pdf = await pdfjs.getDocument({ data }).promise
+    pdf = await loadingTask.promise
   } catch (e) {
     throw new ImportError(
       `Could not read "${file.name}" as a PDF.`,
@@ -96,7 +97,8 @@ export async function loadPdf(file: File, opts: PdfLoadOptions): Promise<TraceDo
     }
   } finally {
     // Releases the worker's copy of the document. In `finally` because a render that
-    // throws half way would otherwise leak it for the life of the tab.
-    void pdf.destroy()
+    // throws half way would otherwise leak it for the life of the tab. Via the loading
+    // task since pdf.js 6 — PDFDocumentProxy.destroy is gone.
+    void loadingTask.destroy()
   }
 }
