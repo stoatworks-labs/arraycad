@@ -23,7 +23,7 @@
     "fflate": "^0.8.3",
     "pdfjs-dist": "^6.2.108",
     "react": "^18.3.1",
-    "react-dom": "^18.3.1",
+    "react-dom": "^19.2.8",
     "three": "^0.185.1",
     "web-ifc": "^0.0.77"
   },
@@ -31,7 +31,7 @@
     "@types/jsdom": "^28.0.3",
     "@types/node": "^26.1.2",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
+    "@types/react-dom": "^19.2.4",
     "@types/three": "^0.185.4",
     "@vitejs/plugin-react": "^6.0.4",
     "jsdom": "^28.0.0",
