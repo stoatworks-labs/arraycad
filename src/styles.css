@@ -1181,12 +1181,13 @@ button.ghost:hover:not(:disabled) {
  * it will quietly restore the tall footer on the working screen. If a re-sync
  * ever changes the footer's markup, re-check this block.
  */
-/* The row is built on `.sw-support` itself, NOT on `.sw-support__inner`. The
-   master styles an `__inner` wrapper that its build() never actually creates —
-   `footer.append(say, list)` — so that whole rule is dead on every app that
-   vendors the footer, and a compact layout hung off it silently does nothing.
-   Reported upstream; if a fixed master ever adds the wrapper for real, these
-   two declarations move onto it. */
+/* The row is built on `.sw-support` itself. The master used to style an
+   `__inner` wrapper its build() never created, so that rule was dead on every
+   app that vendored the footer; it has since been removed upstream and replaced
+   with `.sw-support__row`, which IS created and which holds the funding chips
+   and the feedback button so the two can share a line. The footer's children are
+   therefore `__say` and `__row`, and the right-alignment below hangs off the row
+   — on `__links` it silently stopped applying the moment the row appeared. */
 body:has(.layout) .sw-support {
   margin-top: 0;
   padding: 0.5rem 1rem;
@@ -1213,7 +1214,9 @@ body:has(.layout) .sw-support__say {
 /* Chips to the right of the lead when they fit, under it when they don't. The
    master dropped a two-column footer because four chips beside 46rem of prose
    only fit in a narrow band of widths; here the prose is one short sentence, so
-   the pair fits from roughly 60rem up and wraps cleanly below that. */
-body:has(.layout) .sw-support__links {
+   the pair fits from roughly 60rem up and wraps cleanly below that.
+   On the row, not on `__links`: the row is the footer's flex item now, and an
+   auto margin only pushes against the container it is actually a child of. */
+body:has(.layout) .sw-support__row {
   margin-left: auto;
 }
