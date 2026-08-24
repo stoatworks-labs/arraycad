@@ -669,3 +669,10 @@ Static-assets Worker, not Cloudflare Pages.
 ```bash
 cf-run npx wrangler deploy
 ```
+
+## Notes
+
+`docs/NOTES.md` carries this repo's working notes — current status, decisions
+already made, and the traps that have actually bitten. Read it before changing
+anything non-obvious. Cross-cutting fleet knowledge lives in
+[fleet-notes](https://github.com/stoatworks-labs/fleet-notes).
