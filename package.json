@@ -15,7 +15,7 @@
     "test:watch": "vitest"
   },
   "dependencies": {
-    "@node-projects/acad-ts": "^2.4.0",
+    "@node-projects/acad-ts": "^3.0.2",
     "@types/earcut": "^3.0.0",
     "delaunator": "^5.1.0",
     "dxf-parser": "^1.1.2",
