@@ -13,6 +13,7 @@ import {
   type HeightMode,
   type TraceDocument,
   type TraceRegion,
+  type WandOptions,
   calibrateByPaperScale,
   fitHeightPlane,
   pxToVenue,
@@ -36,6 +37,8 @@ interface Props {
   onUpdateDecisions: (ids: string[], patch: Partial<NodeDecision>) => void
   detect: InkMaskOptions
   onDetect: (patch: Partial<InkMaskOptions>) => void
+  wand: WandOptions
+  onWand: (patch: Partial<WandOptions>) => void
   /** Re-read the source file, e.g. to move to another page of a PDF. */
   onPage: (index: number) => void
   /** Height entry state, kept above the panel so switching region does not lose it. */
@@ -376,7 +379,7 @@ function CornerSelect({ n, value, onChange }: { n: number; value: number; onChan
 
 // -------------------------------------------------------------------- detection
 
-function Detection({ doc, detect, onDetect, onChange, onPage }: Props) {
+function Detection({ doc, detect, onDetect, wand, onWand, onChange, onPage }: Props) {
   return (
     <>
       {doc.page && doc.page.count > 1 && (
@@ -423,6 +426,34 @@ function Detection({ doc, detect, onDetect, onChange, onPage }: Props) {
           onChange={(v) => onDetect({ lineThickenPx: Math.max(0, Math.round(v)) })}
         />
       </Field>
+
+      <Field
+        label="Holes"
+        hint="Shapes enclosed inside a detected area. On a real plot they are mostly labels, symbols and furniture rather than columns, so they are left out unless you ask."
+      >
+        <Segmented<WandOptions['holes']>
+          value={wand.holes}
+          onChange={(v) => onWand({ holes: v })}
+          options={[
+            { value: 'ignore', label: 'Ignore' },
+            { value: 'keep', label: 'Keep' },
+          ]}
+        />
+      </Field>
+      {wand.holes === 'keep' && (
+        <Field
+          label="Keep holes over"
+          hint="Anything enclosed and smaller than this is still left out. A label or a loudspeaker symbol is under 0.2 m²; a structural column is anywhere from 0.1 to 1 m², so keeping columns may keep a few symbols with them."
+        >
+          <NumberInput
+            value={wand.minHoleAreaM2}
+            step={0.5}
+            min={0}
+            suffix="m²"
+            onChange={(v) => onWand({ minHoleAreaM2: Math.max(0, v) })}
+          />
+        </Field>
+      )}
 
       <button
         type="button"

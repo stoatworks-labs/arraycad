@@ -13,7 +13,7 @@ import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
 import { writeSoundvision } from './lib/soundvision/write.ts'
 import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
 import { writeEaseFocus } from './lib/easefocus/write.ts'
-import { type TraceDocument, buildTraceScene } from './lib/trace/index.ts'
+import { type TraceDocument, type WandOptions, DEFAULT_WAND, buildTraceScene } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
 import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
@@ -75,6 +75,7 @@ export default function App() {
   const [traceView, setTraceView] = useState<TraceView>('drawing')
   const [traceTool, setTraceTool] = useState<TraceTool>('select')
   const [detect, setDetect] = useState<InkMaskOptions>({ threshold: 'auto', invert: false, lineThickenPx: 1 })
+  const [wand, setWand] = useState<WandOptions>(DEFAULT_WAND)
   const [ramp, setRamp] = useState({ from: 0, to: 1, zFrom: 0, zTo: 1, flat: 0 })
   const [preset, setPreset] = useState<CameraPreset>('iso')
   const [presetNonce, setPresetNonce] = useState(0)
@@ -593,6 +594,8 @@ export default function App() {
               onUpdateDecisions={updateDecisions}
               detect={detect}
               onDetect={(p) => setDetect((d) => ({ ...d, ...p }))}
+              wand={wand}
+              onWand={(p) => setWand((w) => ({ ...w, ...p }))}
               onPage={(i) => void loadPage(i)}
               ramp={ramp}
               onRamp={(p) => setRamp((r) => ({ ...r, ...p }))}
@@ -662,6 +665,7 @@ export default function App() {
                 selected={traceSelected}
                 onSelect={(id) => setSelection(id ? [id] : [])}
                 detect={detect}
+                wand={wand}
                 planeTypeOf={(id) => decisions[id]?.planeType ?? traceDoc.regions.find((r) => r.id === id)!.planeType}
                 includedIds={includedIds}
               />

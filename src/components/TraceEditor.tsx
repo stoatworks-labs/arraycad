@@ -13,11 +13,13 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type Calibration,
   type Px,
+  type RegionHit,
   type TraceDocument,
   type TraceRegion,
-  DEFAULT_FLOOD,
+  type WandOptions,
   SnapIndex,
   calibrateByDistance,
+  floodOptionsFor,
   floodRegion,
   inkMask,
   nextRegionId,
@@ -49,6 +51,7 @@ interface Props {
   selected: string | null
   onSelect: (id: string | null) => void
   detect: InkMaskOptions
+  wand: WandOptions
   planeTypeOf: (regionId: string) => PlaneType
   /** Regions the user has excluded are drawn as outlines only. */
   includedIds: Set<string>
@@ -63,6 +66,30 @@ interface View {
 const VERTEX_HIT_PX = 9
 const SNAP_PX = 12
 
+/**
+ * Past these, a detected region is describing the drawing rather than the room: a hall
+ * with pilasters comes back as a hundred corners, and a plot with its labels inside the
+ * room as dozens of holes. Neither is wrong, but neither is what anyone wants to export.
+ */
+const MANY_CORNERS = 40
+const MANY_HOLES = 10
+
+/** What the wand found, and what to do when what it found is mostly annotation. */
+function wandStatus(hit: RegionHit): string {
+  let s = `Detected ${hit.outline.length} corners`
+  if (hit.holes.length) s += ` and ${hit.holes.length} hole(s)`
+  if (hit.holesDropped) s += `; ${hit.holesDropped} enclosed shape(s) inside it left out`
+  s += '.'
+  if (hit.outline.length > MANY_CORNERS) {
+    s += ' That many corners is wall detail, not the shape of the room — trace it by hand with four clicks.'
+  }
+  if (hit.holes.length > MANY_HOLES) {
+    s +=
+      ' That many holes is usually annotation rather than columns — raise the hole size under Detection, or set Holes to Ignore.'
+  }
+  return s
+}
+
 export function TraceEditor({
   doc,
   onChange,
@@ -71,6 +98,7 @@ export function TraceEditor({
   selected,
   onSelect,
   detect,
+  wand,
   planeTypeOf,
   includedIds,
 }: Props) {
@@ -217,7 +245,7 @@ export function TraceEditor({
   const runWand = useCallback(
     (p: Px) => {
       if (!maskRef.current) maskRef.current = inkMask(doc.raster, detect)
-      const hit = floodRegion(maskRef.current, p, DEFAULT_FLOOD)
+      const hit = floodRegion(maskRef.current, p, floodOptionsFor(wand, doc.calibration))
       if (!hit) {
         setStatus('That point is on a drawn line — click inside an empty area.')
         return
@@ -233,11 +261,11 @@ export function TraceEditor({
         )
         if (hit.coverage > 0.5) return
       } else {
-        setStatus(`Detected ${hit.outline.length} corners${hit.holes.length ? ` and ${hit.holes.length} hole(s)` : ''}.`)
+        setStatus(wandStatus(hit))
       }
       addRegion(hit.outline, hit.holes, 'detected')
     },
-    [doc.raster, detect, addRegion],
+    [doc.raster, doc.calibration, detect, wand, addRegion],
   )
 
   const applyScale = useCallback(() => {

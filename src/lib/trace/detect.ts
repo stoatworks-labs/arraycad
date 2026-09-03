@@ -27,7 +27,7 @@
 
 import { type Pt2, dpChain, dropCollinear, pointInRing } from '../geom/polygon.ts'
 import { signedArea2 } from '../geom/vec.ts'
-import type { DetectedPath, Px } from './types.ts'
+import type { Calibration, DetectedPath, Px } from './types.ts'
 import type { Mask } from './raster.ts'
 
 export interface RegionHit {
@@ -35,6 +35,12 @@ export interface RegionHit {
   outline: Px[]
   /** Holes: columns, voids, anything enclosed inside the region. Largest first. */
   holes: Px[][]
+  /**
+   * Enclosed islands left out for being under `FloodOptions.minHoleAreaPx`. Reported so
+   * the UI can say what it ignored: a column dropped by a floor set for labels is a thing
+   * the user should be able to notice.
+   */
+  holesDropped: number
   /** Filled area in square pixels, before simplification. */
   areaPx: number
   /**
@@ -51,9 +57,41 @@ export interface FloodOptions {
   simplifyPx: number
   /** Give up once the fill exceeds this fraction of the sheet — it has clearly leaked. */
   maxCoverage: number
+  /**
+   * Holes under this area, in square pixels, are left out. On a real plot nearly every
+   * enclosed island inside a room is annotation — a label, a loudspeaker symbol, a desk —
+   * and each one kept is a hole punched through the surface. 0 keeps every hole; Infinity
+   * keeps none.
+   */
+  minHoleAreaPx: number
 }
 
-export const DEFAULT_FLOOD: FloodOptions = { simplifyPx: 2, maxCoverage: 0.9 }
+export const DEFAULT_FLOOD: FloodOptions = { simplifyPx: 2, maxCoverage: 0.9, minHoleAreaPx: 0 }
+
+/**
+ * The wand's settings as the user sees them, in metres.
+ *
+ * `holes` defaults to ignore. The demo plan has one column in the stalls; a real plot has
+ * fifty labels for every column, and a listening plane with a hole where each label was
+ * is not a venue anyone wants. Keep is for the column, with a floor under it for the
+ * labels.
+ */
+export interface WandOptions {
+  holes: 'ignore' | 'keep'
+  /** With `holes: 'keep'`, the smallest enclosed shape kept as a hole, in m². */
+  minHoleAreaM2: number
+}
+
+export const DEFAULT_WAND: WandOptions = { holes: 'ignore', minHoleAreaM2: 0.5 }
+
+/** Pixel-space flood options for one click, from the wand settings and the current scale. */
+export function floodOptionsFor(wand: WandOptions, cal: Calibration): FloodOptions {
+  const ppm = cal.pixelsPerMetre
+  return {
+    ...DEFAULT_FLOOD,
+    minHoleAreaPx: wand.holes === 'ignore' ? Infinity : wand.minHoleAreaM2 * ppm * ppm,
+  }
+}
 
 /**
  * Flood fill the paper area containing `seed` and return its outline.
@@ -100,6 +138,7 @@ export function floodRegion(mask: Mask, seed: Px, opts: FloodOptions = DEFAULT_F
       return {
         outline: [],
         holes: [],
+        holesDropped: 0,
         areaPx: count,
         touchedBorder: true,
         coverage: count / (w * h),
@@ -124,12 +163,26 @@ export function floodRegion(mask: Mask, seed: Px, opts: FloodOptions = DEFAULT_F
 
   const loops = boundaryLoops(filled, w, h)
   if (loops.length === 0) return null
-  const simplified = loops.map((l) => simplifyLoop(l, opts.simplifyPx)).filter((l) => l.length >= 3)
-  if (simplified.length === 0) return null
+  const outline = simplifyLoop(loops[0], opts.simplifyPx)
+  if (outline.length < 3) return null
+
+  // Area-tested on the raw pixel loop, before simplification, so the floor means what it
+  // says in square pixels rather than depending on how many corners survived.
+  let holesDropped = 0
+  const holes: Px[][] = []
+  for (const loop of loops.slice(1)) {
+    if (Math.abs(signedArea2(loop)) / 2 < opts.minHoleAreaPx) {
+      holesDropped++
+      continue
+    }
+    const h = simplifyLoop(loop, opts.simplifyPx)
+    if (h.length >= 3) holes.push(h)
+  }
 
   return {
-    outline: simplified[0],
-    holes: simplified.slice(1),
+    outline,
+    holes,
+    holesDropped,
     areaPx: count,
     touchedBorder,
     coverage: count / (w * h),

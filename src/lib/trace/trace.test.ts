@@ -21,7 +21,16 @@ import {
   DEFAULT_CALIBRATION,
 } from './types.ts'
 import { binarise, dilate, inkFraction, luminance, otsuThreshold } from './raster.ts'
-import { SnapIndex, boundaryLoops, closestOnSegment, floodRegion, pointInPolygon, traceContours } from './detect.ts'
+import {
+  DEFAULT_FLOOD,
+  SnapIndex,
+  boundaryLoops,
+  closestOnSegment,
+  floodOptionsFor,
+  floodRegion,
+  pointInPolygon,
+  traceContours,
+} from './detect.ts'
 import {
   calibrateByDistance,
   calibrateByPaperScale,
@@ -180,6 +189,35 @@ describe('flood region select', () => {
     expect(hit).not.toBeNull()
     expect(hit!.holes).toHaveLength(1)
     expect(hit!.holes[0]).toHaveLength(4)
+  })
+
+  it('leaves out holes under the minimum area, and says how many', () => {
+    const r = grey(60, 60, (x, y) => {
+      const wall = x === 5 || x === 55 || y === 5 || y === 55
+      const column = x >= 25 && x <= 35 && y >= 25 && y <= 35
+      const label = x >= 10 && x <= 12 && y >= 45 && y <= 46
+      return wall || column || label ? 0 : 255
+    })
+    const all = floodRegion(binarise(r), [10, 10])!
+    expect(all.holes).toHaveLength(2)
+    expect(all.holesDropped).toBe(0)
+    // The column is 11 x 11 = 121 px² of ink, the label 3 x 2 = 6. A floor between the
+    // two keeps the column and drops the label, and the drop is counted.
+    const some = floodRegion(binarise(r), [10, 10], { ...DEFAULT_FLOOD, minHoleAreaPx: 50 })!
+    expect(some.holes).toHaveLength(1)
+    expect(some.holes[0]).toHaveLength(4)
+    expect(some.holesDropped).toBe(1)
+    const none = floodRegion(binarise(r), [10, 10], { ...DEFAULT_FLOOD, minHoleAreaPx: Infinity })!
+    expect(none.holes).toHaveLength(0)
+    expect(none.holesDropped).toBe(2)
+    expect(none.outline).toHaveLength(4)
+  })
+
+  it('floodOptionsFor: Ignore drops every hole; Keep converts the m² floor at the calibrated scale', () => {
+    const cal: Calibration = { pixelsPerMetre: 40, origin: [0, 0], source: { kind: 'unset' } }
+    expect(floodOptionsFor({ holes: 'ignore', minHoleAreaM2: 1 }, cal).minHoleAreaPx).toBe(Infinity)
+    // 0.5 m² at 40 px/m is 0.5 * 40 * 40 = 800 px².
+    expect(floodOptionsFor({ holes: 'keep', minHoleAreaM2: 0.5 }, cal).minHoleAreaPx).toBeCloseTo(800, 9)
   })
 })
 
