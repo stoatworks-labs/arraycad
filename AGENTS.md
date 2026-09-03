@@ -376,6 +376,17 @@ hatch and says what it will cost.
 and opposite area, so its shoelace total is zero; check area first and the only thing the
 user is told about a crossed outline is "encloses no area".
 
+**A real plot is mostly annotation, and `source` is what the detector found.** Labels,
+symbols and furniture inside a room are all enclosed islands, so the wand leaves holes out
+by default (`WandOptions`, converted to pixels per click by `floodOptionsFor`), and a hall
+with pilasters comes back as a hundred corners, so a region carries a `fit`.
+`TraceRegion.source` is the outline as detected or drawn and is never modified;
+`vertices`/`holes` are derived from it by `fit.ts` and then edited freely. Switching the
+fit re-derives them — a dragged corner or a removed hole is an edit to the derived corners,
+and that is what a re-fit discards. Don't make a fit edit `source`, and don't push the fit
+through the pipeline instead: the drawing must show what is exported, and the height table
+must have as many rows as the export has corners.
+
 **Flood fill is 4-connected over the paper, not 8.** Eight would squeeze diagonally
 between two ink pixels a person reads as a continuous wall. And it always reports
 `touchedBorder` / `coverage` rather than silently returning the whole sheet — a doorway or

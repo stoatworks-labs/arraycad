@@ -11,11 +11,13 @@ import { useMemo } from 'react'
 import { PLANE_TYPES, PlaneType } from '../lib/dbacv/types.ts'
 import {
   type HeightMode,
+  type RegionFit,
   type TraceDocument,
   type TraceRegion,
   type WandOptions,
   calibrateByPaperScale,
   fitHeightPlane,
+  fitRegion,
   pxToVenue,
   rampHeights,
   regionAreaM2,
@@ -252,6 +254,21 @@ function RegionEditor({
         />
         Include in the export
       </label>
+
+      <Field
+        label="Fit"
+        hint="Rectangle and Hull replace the corners with the smallest rectangle or convex shape round the outline, drop its holes, and carry the heights across as a plane. Switching back restores the outline as it was detected or drawn."
+      >
+        <Segmented<RegionFit>
+          value={region.fit}
+          onChange={(v) => patch(region.id, (r) => fitRegion(r, v))}
+          options={[
+            { value: 'outline', label: region.origin === 'drawn' ? 'As drawn' : 'As detected' },
+            { value: 'rect', label: 'Rectangle' },
+            { value: 'hull', label: 'Hull' },
+          ]}
+        />
+      </Field>
 
       <Field label="Heights" hint="How the typed corner heights become a surface.">
         <Segmented<HeightMode>

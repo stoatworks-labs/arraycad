@@ -65,6 +65,16 @@ export type HeightMode =
    */
   | 'free'
 
+/**
+ * How a region's corners are derived from the outline it was detected or drawn as.
+ *
+ * `outline` is that source as it stands. `rect` is the smallest rectangle enclosing it and
+ * `hull` its convex hull; both drop the holes, because a fit describes the coverage area
+ * rather than the joinery — the same choice the rectangle fit makes downstream in
+ * geom/outline.ts. See fit.ts.
+ */
+export type RegionFit = 'outline' | 'rect' | 'hull'
+
 export interface TraceVertex {
   /** Pixel position on the drawing. */
   p: Px
@@ -84,6 +94,13 @@ export interface TraceRegion {
    * in a surface rather than a surface of its own.
    */
   holes: Px[][]
+  /**
+   * The outline exactly as detected or drawn, in pixels. `vertices` and `holes` are derived
+   * from it by `fit` (fit.ts) and then edited freely; switching the fit re-derives them from
+   * here, so nothing the detector found is ever lost to a fit.
+   */
+  source: { vertices: Px[]; holes: Px[][] }
+  fit: RegionFit
   heightMode: HeightMode
   /** Set false to keep a region in the document but out of the venue. */
   visible: boolean

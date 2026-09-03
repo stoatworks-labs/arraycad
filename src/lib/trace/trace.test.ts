@@ -15,6 +15,7 @@ import { formatDbacvDate, writeDbacv } from '../dbacv/write.ts'
 import { JSDOM } from 'jsdom'
 import {
   type Calibration,
+  type Px,
   type Raster,
   type TraceDocument,
   type TraceRegion,
@@ -39,6 +40,7 @@ import {
   venueToPx,
 } from './calibrate.ts'
 import { fitHeightPlane, heightAt, rampHeights, slopeOf } from './heights.ts'
+import { fitRegion } from './fit.ts'
 import { buildTraceScene, regionAreaM2, regionGeometry, regionPerimeterM, selfIntersects } from './build.ts'
 import { type Mat, flattenCubic, mul, pathsFromOperatorList } from './pdfPaths.ts'
 
@@ -83,6 +85,8 @@ const region = (over: Partial<TraceRegion> = {}): TraceRegion => ({
   planeType: PlaneType.Listening,
   vertices: [],
   holes: [],
+  source: { vertices: (over.vertices ?? []).map((v) => v.p), holes: over.holes ?? [] },
+  fit: 'outline',
   heightMode: 'plane',
   visible: true,
   origin: 'drawn',
@@ -394,6 +398,66 @@ describe('height fitting', () => {
 })
 
 // ---------------------------------------------------------------------- build
+
+describe('region fit', () => {
+  // An L-shaped room as detected — six corners — with a column in it.
+  const L: Px[] = [
+    [0, 0],
+    [100, 0],
+    [100, 40],
+    [60, 40],
+    [60, 100],
+    [0, 100],
+  ]
+  const column: Px[] = [
+    [20, 20],
+    [30, 20],
+    [30, 30],
+    [20, 30],
+  ]
+  const detected = () => region({ origin: 'detected', vertices: L.map((p) => ({ p, z: 0 })), holes: [column] })
+
+  it('rectangle is the smallest box round the outline, and drops the holes', () => {
+    const r = fitRegion(detected(), 'rect')
+    expect(r.fit).toBe('rect')
+    expect(r.vertices).toHaveLength(4)
+    expect(r.holes).toHaveLength(0)
+    const xs = r.vertices.map((v) => v.p[0]).sort((a, b) => a - b)
+    const ys = r.vertices.map((v) => v.p[1]).sort((a, b) => a - b)
+    expect(xs[0]).toBeCloseTo(0, 6)
+    expect(xs[3]).toBeCloseTo(100, 6)
+    expect(ys[0]).toBeCloseTo(0, 6)
+    expect(ys[3]).toBeCloseTo(100, 6)
+  })
+
+  it('hull is convex: the inside corner of the L goes, the rest stay', () => {
+    const r = fitRegion(detected(), 'hull')
+    expect(r.vertices).toHaveLength(5)
+    expect(r.vertices.some((v) => v.p[0] === 60 && v.p[1] === 40)).toBe(false)
+    expect(r.holes).toHaveLength(0)
+  })
+
+  it('switching back restores the outline and holes exactly as detected', () => {
+    const back = fitRegion(fitRegion(detected(), 'rect'), 'outline')
+    expect(back.vertices.map((v) => v.p)).toEqual(L)
+    expect(back.holes).toEqual([column])
+    expect(back.fit).toBe('outline')
+  })
+
+  it('carries heights across as the fitted plane, so a rake stays a rake', () => {
+    // Rising 1 m per 100 px along x.
+    const raked = region({ vertices: L.map((p) => ({ p, z: p[0] / 100 })) })
+    const r = fitRegion(raked, 'rect')
+    for (const v of r.vertices) expect(v.z).toBeCloseTo(v.p[0] / 100, 2)
+  })
+
+  it('never touches the source', () => {
+    const d = detected()
+    fitRegion(d, 'rect')
+    expect(d.source.vertices).toEqual(L)
+    expect(d.vertices).toHaveLength(6)
+  })
+})
 
 describe('building geometry from a trace', () => {
   it('turns a level rectangle into one flat surface at the typed height', () => {

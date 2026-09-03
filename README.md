@@ -146,9 +146,12 @@ stage, a pit, two raked stalls blocks, columns and a balcony.
    returns its outline. Anything enclosed *inside* it — a column, but on a real plot far
    more often a label, a loudspeaker symbol or a desk — is left out by default and
    counted in the status line; set **Holes** to *Keep* under Detection, with a size
-   floor, when the columns matter. *Trace* draws one corner by corner, snapping to the
-   drawing's own lines. Drag corners to adjust, alt-click one to delete it, click a
-   midpoint to add one.
+   floor, when the columns matter. If the outline comes back with dozens of corners — a
+   hall with pilasters, a wall with every door frame drawn — set the region's **Fit** to
+   *Rectangle* or *Hull*: the same area as four corners or a convex shape, holes dropped,
+   heights carried across as a plane; *As detected* brings the outline back. *Trace* draws
+   one corner by corner, snapping to the drawing's own lines. Drag corners to adjust,
+   alt-click one to delete it, click a midpoint to add one.
 4. **Type the heights.** Every corner carries its own height in metres, so a level floor,
    a raked block, a raised balcony and a sunken pit (negative) are all the same operation.
    *Ramp* does the arithmetic: pick a front corner and a back corner, give each a height,

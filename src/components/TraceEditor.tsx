@@ -81,7 +81,7 @@ function wandStatus(hit: RegionHit): string {
   if (hit.holesDropped) s += `; ${hit.holesDropped} enclosed shape(s) inside it left out`
   s += '.'
   if (hit.outline.length > MANY_CORNERS) {
-    s += ' That many corners is wall detail, not the shape of the room — trace it by hand with four clicks.'
+    s += ' That many corners is wall detail, not the shape of the room — set Fit to Rectangle in the Surface panel, or trace it by hand.'
   }
   if (hit.holes.length > MANY_HOLES) {
     s +=
@@ -218,6 +218,8 @@ export function TraceEditor({
             planeType: PlaneType.Listening,
             vertices: points.map((p) => ({ p, z: 0 })),
             holes,
+            source: { vertices: points.map((p) => [p[0], p[1]]), holes: holes.map((h) => h.map((p) => [p[0], p[1]])) },
+            fit: 'outline',
             heightMode: 'plane',
             visible: true,
             origin,
@@ -612,6 +614,24 @@ function paint(ctx: CanvasRenderingContext2D, s: PaintState) {
     ctx.setLineDash(included ? [] : [5, 4])
     ctx.stroke()
     ctx.setLineDash([])
+
+    // The outline a fit was made from, so what it replaced stays visible while it is selected.
+    if (isSel && r.fit !== 'outline' && r.source.vertices.length >= 3) {
+      ctx.strokeStyle = colour
+      ctx.globalAlpha = 0.45
+      ctx.lineWidth = 1
+      ctx.setLineDash([3, 3])
+      ctx.beginPath()
+      r.source.vertices.forEach((p, i) => {
+        const [x, y] = S(p)
+        if (i === 0) ctx.moveTo(x, y)
+        else ctx.lineTo(x, y)
+      })
+      ctx.closePath()
+      ctx.stroke()
+      ctx.setLineDash([])
+      ctx.globalAlpha = 1
+    }
 
     if (isSel) {
       for (const v of r.vertices) {
