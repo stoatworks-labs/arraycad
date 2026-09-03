@@ -7,7 +7,7 @@
  * without leaving the drawing.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { PLANE_TYPES, PlaneType } from '../lib/dbacv/types.ts'
 import {
   type HeightMode,
@@ -47,6 +47,13 @@ interface Props {
   ramp: { from: number; to: number; zFrom: number; zTo: number; flat: number }
   onRamp: (patch: Partial<Props['ramp']>) => void
 }
+
+/**
+ * Past this many corners the height table is a wall of inputs nobody will fill in — a
+ * detected hall with its pilasters has a hundred — so it collapses to the tools that set
+ * heights in bulk, and expands on request.
+ */
+const MAX_HEIGHT_ROWS = 12
 
 export function TracePanel(props: Props) {
   const { doc, onChange, selected } = props
@@ -107,7 +114,7 @@ export function TracePanel(props: Props) {
         )}
       </Panel>
 
-      {region && <RegionEditor {...props} region={region} patch={patch} />}
+      {region && <RegionEditor key={region.id} {...props} region={region} patch={patch} />}
 
       <Panel title="Detection">
         <Detection {...props} />
@@ -196,6 +203,7 @@ function RegionEditor({
 }: Props & { region: TraceRegion; patch: (id: string, fn: (r: TraceRegion) => TraceRegion) => void }) {
   const decision = decisions[region.id]
   const planeType = decision?.planeType ?? region.planeType
+  const [showAllHeights, setShowAllHeights] = useState(false)
 
   const plan = useMemo(
     () =>
@@ -301,6 +309,17 @@ function RegionEditor({
           : 'The typed heights are used as they are. Faithful to a stepped or dished surface, but anything not flat becomes several ArrayCalc objects.'}
       </p>
 
+      {region.vertices.length > MAX_HEIGHT_ROWS && !showAllHeights ? (
+        <div className="row-inline">
+          <span className="hint">
+            {region.vertices.length} corners — too many to type one by one. Use Set all or Ramp below,
+            or set Fit to Rectangle.
+          </span>
+          <button type="button" onClick={() => setShowAllHeights(true)} title="Show a height field for every corner">
+            Show all
+          </button>
+        </div>
+      ) : (
       <div className="height-table">
         {region.vertices.map((v, i) => (
           <label key={i} className="height-row">
@@ -319,6 +338,7 @@ function RegionEditor({
           </label>
         ))}
       </div>
+      )}
 
       <div className="row-inline">
         <NumberInput value={ramp.flat} step={0.1} suffix="m" onChange={(z) => onRamp({ flat: z })} />
@@ -498,6 +518,19 @@ function Detection({ doc, detect, onDetect, wand, onWand, onChange, onPage }: Pr
           />
         </Field>
       )}
+
+      <Field
+        label="Outline detail"
+        hint="Wall detail shallower than this — pilasters, skirting, door frames — is smoothed out of a detected outline. Takes effect once the scale is set."
+      >
+        <NumberInput
+          value={wand.detailM}
+          step={0.1}
+          min={0}
+          suffix="m"
+          onChange={(v) => onWand({ detailM: Math.max(0, v) })}
+        />
+      </Field>
 
       <button
         type="button"

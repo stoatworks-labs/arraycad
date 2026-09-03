@@ -82,7 +82,8 @@ function wandStatus(hit: RegionHit): string {
   if (hit.holesDropped) s += `; ${hit.holesDropped} enclosed shape(s) inside it left out`
   s += '.'
   if (hit.outline.length > MANY_CORNERS) {
-    s += ' That many corners is wall detail, not the shape of the room — set Fit to Rectangle in the Surface panel, or trace it by hand.'
+    s +=
+      ' That many corners is wall detail, not the shape of the room — raise Outline detail under Detection, or set Fit to Rectangle in the Surface panel.'
   }
   if (hit.holes.length > MANY_HOLES) {
     s +=

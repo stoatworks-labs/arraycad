@@ -24,6 +24,7 @@ import {
 import { binarise, dilate, inkFraction, luminance, otsuThreshold } from './raster.ts'
 import {
   DEFAULT_FLOOD,
+  DEFAULT_WAND,
   SnapIndex,
   boundaryLoops,
   closestOnSegment,
@@ -228,11 +229,37 @@ describe('flood region select', () => {
     expect(none.outline).toHaveLength(4)
   })
 
+  const at40: Calibration = {
+    pixelsPerMetre: 40,
+    origin: [0, 0],
+    source: { kind: 'known-distance', from: [0, 0], to: [40, 0], metres: 1 },
+  }
+
   it('floodOptionsFor: Ignore drops every hole; Keep converts the m² floor at the calibrated scale', () => {
-    const cal: Calibration = { pixelsPerMetre: 40, origin: [0, 0], source: { kind: 'unset' } }
-    expect(floodOptionsFor({ holes: 'ignore', minHoleAreaM2: 1 }, cal).minHoleAreaPx).toBe(Infinity)
+    expect(floodOptionsFor({ ...DEFAULT_WAND, holes: 'ignore' }, at40).minHoleAreaPx).toBe(Infinity)
     // 0.5 m² at 40 px/m is 0.5 * 40 * 40 = 800 px².
-    expect(floodOptionsFor({ holes: 'keep', minHoleAreaM2: 0.5 }, cal).minHoleAreaPx).toBeCloseTo(800, 9)
+    expect(floodOptionsFor({ ...DEFAULT_WAND, holes: 'keep', minHoleAreaM2: 0.5 }, at40).minHoleAreaPx).toBeCloseTo(800, 9)
+  })
+
+  it('floodOptionsFor: outline detail is metres once the scale is set, and the pixel default before', () => {
+    expect(floodOptionsFor({ ...DEFAULT_WAND, detailM: 0.3 }, at40).simplifyPx).toBeCloseTo(12, 9)
+    // Under the raster's own stair-steps it would keep every jag: floored at the pixel default.
+    expect(floodOptionsFor({ ...DEFAULT_WAND, detailM: 0.01 }, at40).simplifyPx).toBe(DEFAULT_FLOOD.simplifyPx)
+    const unset: Calibration = { pixelsPerMetre: 100, origin: [0, 0], source: { kind: 'unset' } }
+    expect(floodOptionsFor({ ...DEFAULT_WAND, detailM: 0.3 }, unset).simplifyPx).toBe(DEFAULT_FLOOD.simplifyPx)
+  })
+
+  it('a wider outline tolerance smooths pilasters out of the walls', () => {
+    // A room whose left wall carries three pilasters, each 3 px deep and 5 px wide.
+    const r = grey(80, 80, (x, y) => {
+      const wall = x === 5 || x === 75 || y === 5 || y === 75
+      const pilaster = x > 5 && x <= 8 && [20, 40, 60].some((c) => Math.abs(y - c) <= 2)
+      return wall || pilaster ? 0 : 255
+    })
+    const fine = floodRegion(binarise(r), [40, 40], { ...DEFAULT_FLOOD, simplifyPx: 1 })!
+    expect(fine.outline.length).toBeGreaterThan(4)
+    const coarse = floodRegion(binarise(r), [40, 40], { ...DEFAULT_FLOOD, simplifyPx: 4 })!
+    expect(coarse.outline).toHaveLength(4)
   })
 })
 

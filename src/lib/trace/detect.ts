@@ -80,15 +80,28 @@ export interface WandOptions {
   holes: 'ignore' | 'keep'
   /** With `holes: 'keep'`, the smallest enclosed shape kept as a hole, in m². */
   minHoleAreaM2: number
+  /**
+   * Wall detail shallower than this — pilasters, skirting, door frames — is smoothed out
+   * of a detected outline, in metres. Needs the scale: until it is set, the outline keeps
+   * `DEFAULT_FLOOD.simplifyPx` of detail instead, because a metre is not yet a number of
+   * pixels.
+   */
+  detailM: number
 }
 
-export const DEFAULT_WAND: WandOptions = { holes: 'ignore', minHoleAreaM2: 0.5 }
+export const DEFAULT_WAND: WandOptions = { holes: 'ignore', minHoleAreaM2: 0.5, detailM: 0.3 }
 
 /** Pixel-space flood options for one click, from the wand settings and the current scale. */
 export function floodOptionsFor(wand: WandOptions, cal: Calibration): FloodOptions {
   const ppm = cal.pixelsPerMetre
   return {
     ...DEFAULT_FLOOD,
+    // Never below the pixel default: a tolerance under the raster's own stair-steps would
+    // keep every jag of an anti-aliased wall as a corner.
+    simplifyPx:
+      cal.source.kind === 'unset'
+        ? DEFAULT_FLOOD.simplifyPx
+        : Math.max(DEFAULT_FLOOD.simplifyPx, wand.detailM * ppm),
     minHoleAreaPx: wand.holes === 'ignore' ? Infinity : wand.minHoleAreaM2 * ppm * ppm,
   }
 }
