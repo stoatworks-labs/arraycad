@@ -270,6 +270,21 @@ function RegionEditor({
         />
       </Field>
 
+      {region.holes.length > 0 && (
+        <div className="row-inline">
+          <span className="hint">
+            {region.holes.length} hole(s) — alt-click inside one on the drawing to remove it.
+          </span>
+          <button
+            type="button"
+            onClick={() => patch(region.id, (r) => ({ ...r, holes: [] }))}
+            title="Remove every hole from this surface. Switching Fit back to As detected brings them back."
+          >
+            Remove holes
+          </button>
+        </div>
+      )}
+
       <Field label="Heights" hint="How the typed corner heights become a surface.">
         <Segmented<HeightMode>
           value={region.heightMode}

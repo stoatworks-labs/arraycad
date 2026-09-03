@@ -36,7 +36,8 @@ import { PLANE_UI_COLOUR } from './planeColours.ts'
 export type TraceTool = 'select' | 'draw' | 'wand' | 'scale' | 'origin'
 
 export const TOOL_HELP: Record<TraceTool, string> = {
-  select: 'Click a region to select it. Drag its corners to adjust. Alt-click a corner to delete it, click a midpoint to add one.',
+  select:
+    'Click a region to select it. Drag its corners to adjust. Alt-click a corner to delete it, click a midpoint to add one, alt-click inside a hole to remove it.',
   draw: 'Click each corner. Enter or a click on the first corner closes the outline; Backspace undoes; Esc cancels.',
   wand: 'Click inside an enclosed area and its outline is detected for you. If the fill escapes, thicken the lines under Detection.',
   scale: 'Click each end of a dimension you know — the longest one on the sheet — then type its real length.',
@@ -371,6 +372,17 @@ export function TraceEditor({
       })
       drag.current = { kind: 'vertex', regionId: selected!, index: mid + 1 }
       return
+    }
+    // Alt-click inside a hole of the selected region removes it: a label the size floor let
+    // through, or a real column that does not matter to this surface.
+    if (e.altKey && selected) {
+      const r = doc.regions.find((x) => x.id === selected)
+      const hi = r ? r.holes.findIndex((h) => pointInPolygon(raw, h)) : -1
+      if (r && hi !== -1) {
+        patchRegion(r.id, (x) => ({ ...x, holes: x.holes.filter((_, i) => i !== hi) }))
+        setStatus(`Hole removed — ${r.holes.length - 1} left in ${r.name}.`)
+        return
+      }
     }
     // Topmost region wins, so a balcony drawn over the stalls is still reachable.
     const hit = [...doc.regions].reverse().find((r) => r.visible && pointInPolygon(raw, r.vertices.map((v2) => v2.p)))
