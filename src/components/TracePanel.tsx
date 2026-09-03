@@ -467,7 +467,7 @@ function Detection({ doc, detect, onDetect, wand, onWand, onChange, onPage }: Pr
 
       <label
         className="check"
-        title="Keeps only black and grey ink. On a CAD plot the loudspeakers, labels and cable runs are usually on coloured layers and the architecture is black, so this leaves the walls alone to detect."
+        title="Keeps only black and grey ink. On a CAD plot the loudspeakers, labels and cable runs are usually on coloured layers and the architecture is black, so this leaves the walls alone to detect. Where a coloured line crosses a wall, the wall stays closed."
       >
         <input
           type="checkbox"

@@ -180,7 +180,8 @@ stage, a pit, two raked stalls blocks, columns and a balcony.
   broken hairline lets the fill escape; it says so rather than silently returning the whole
   page. Raise *thicken lines* to bridge small gaps, or trace it by hand. On a CAD plot,
   tick **Ignore coloured lines** so a cable run or a dimension drawn in colour across the
-  room does not cut it in two — the architecture is black, the annotation usually is not.
+  room does not cut it in two — the architecture is black, the annotation usually is not,
+  and where a coloured line crosses a wall the wall stays closed.
 - **Seat rows seal a room.** On a plan with the seating drawn in, a flood fill stops at the
   first row. Trace the block outline instead — it is four clicks.
 

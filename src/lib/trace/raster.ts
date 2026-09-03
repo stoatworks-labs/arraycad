@@ -80,8 +80,9 @@ export interface BinariseOptions {
    * Count only black and grey as ink. A CAD plot puts its annotation — loudspeakers,
    * labels, cable runs, dimensions — on coloured layers and the architecture in black, so
    * this leaves exactly the walls to detect, and a coloured line drawn across a room no
-   * longer cuts it in two. Off by default: a scan or a photograph can put colour into a
-   * black line from the paper and the lens.
+   * longer cuts it in two. Colour that touches grey ink is kept, so a coloured line drawn
+   * across a wall does not leave a gap where it crossed. Off by default: a scan or a
+   * photograph can put colour into a black line from the paper and the lens.
    */
   ignoreColour?: boolean
 }
@@ -94,6 +95,13 @@ export const DEFAULT_BINARISE: BinariseOptions = { threshold: 'auto', invert: fa
  * colour at any printable saturation is well over 100.
  */
 const GREY_CHROMA_MAX = 64
+
+/**
+ * How far, in pixels, a coloured pixel may sit from grey ink and still count as ink while
+ * colour is being ignored. A red cable run drawn across a black wall paints the wall red
+ * where it crosses; two pixels reaches across any annotation line a plot draws.
+ */
+const COLOUR_BRIDGE_PX = 2
 
 /** Chroma per pixel — how far from grey — composited over white like `luminance`. */
 export function chroma(r: Raster): Uint8ClampedArray {
@@ -123,14 +131,23 @@ export interface Mask {
 export function binarise(r: Raster, opts: BinariseOptions = DEFAULT_BINARISE): Mask {
   const lum = luminance(r)
   const t = opts.threshold === 'auto' ? otsuThreshold(lum) : opts.threshold
-  const chr = opts.ignoreColour ? chroma(r) : null
-  const data = new Uint8Array(r.width * r.height)
-  for (let i = 0; i < data.length; i++) {
+  const n = r.width * r.height
+  const data = new Uint8Array(n)
+  for (let i = 0; i < n; i++) {
     const dark = lum[i] <= t
-    let ink = opts.invert ? !dark : dark
-    if (chr && chr[i] > GREY_CHROMA_MAX) ink = false
-    data[i] = ink ? 1 : 0
+    data[i] = (opts.invert ? !dark : dark) ? 1 : 0
   }
+  if (!opts.ignoreColour) return { width: r.width, height: r.height, data, threshold: t }
+
+  // Grey ink first, then colour let back in only where it touches grey ink. A coloured
+  // line drawn across a wall paints the wall its colour where it crosses, and dropping
+  // those pixels would cut a gap in the wall the width of the line — which is exactly
+  // where a flood fill then escapes.
+  const chr = chroma(r)
+  const greyInk = new Uint8Array(n)
+  for (let i = 0; i < n; i++) greyInk[i] = data[i] && chr[i] <= GREY_CHROMA_MAX ? 1 : 0
+  const near = dilate({ width: r.width, height: r.height, data: greyInk, threshold: t }, COLOUR_BRIDGE_PX).data
+  for (let i = 0; i < n; i++) data[i] = data[i] && (greyInk[i] || near[i]) ? 1 : 0
   return { width: r.width, height: r.height, data, threshold: t }
 }
 

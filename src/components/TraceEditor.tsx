@@ -254,16 +254,19 @@ export function TraceEditor({
         setStatus('That point is on a drawn line — click inside an empty area.')
         return
       }
-      if (hit.outline.length < 3) {
-        setStatus('Nothing enclosed that point.')
-        return
-      }
       if (hit.touchedBorder) {
+        // Before the corner count: a fill that ran away comes back with no outline at all,
+        // and "nothing enclosed" would hide the leak that is the actual news.
         setStatus(
           `The fill reached the edge of the sheet (${(hit.coverage * 100).toFixed(0)}% of the page), ` +
-            'so the area is not closed. Increase "thicken lines" under Detection, or trace it by hand.',
+            'so the area is not closed. Increase "thicken lines" under Detection' +
+            (detect.ignoreColour ? ', untick "Ignore coloured lines" in case a coloured line was closing it' : '') +
+            ', or trace it by hand.',
         )
-        if (hit.coverage > 0.5) return
+        if (hit.coverage > 0.5 || hit.outline.length < 3) return
+      } else if (hit.outline.length < 3) {
+        setStatus('Nothing enclosed that point.')
+        return
       } else {
         setStatus(wandStatus(hit))
       }

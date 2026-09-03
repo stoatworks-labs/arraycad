@@ -63,6 +63,22 @@ function grey(w: number, h: number, at: (x: number, y: number) => number): Raste
   return { width: w, height: h, data }
 }
 
+/** A colour image as a Raster. `at(x, y)` returns [r, g, b]. */
+function rgb(w: number, h: number, at: (x: number, y: number) => [number, number, number]): Raster {
+  const data = new Uint8ClampedArray(w * h * 4)
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const [r, g, b] = at(x, y)
+      const o = (y * w + x) * 4
+      data[o] = r
+      data[o + 1] = g
+      data[o + 2] = b
+      data[o + 3] = 255
+    }
+  }
+  return { width: w, height: h, data }
+}
+
 /** A hollow rectangle of ink: four walls one pixel thick. `gap` opens a doorway. */
 function roomMask(w: number, h: number, rect: [number, number, number, number], gap = 0) {
   const [x0, y0, x1, y1] = rect
@@ -135,14 +151,23 @@ describe('raster', () => {
   })
 
   it('ignores coloured ink when asked, and keeps black and grey', () => {
-    // Black, pure red, mid grey, white.
-    const r: Raster = {
-      width: 4,
-      height: 1,
-      data: new Uint8ClampedArray([0, 0, 0, 255, 255, 0, 0, 255, 110, 110, 110, 255, 255, 255, 255, 255]),
-    }
-    expect(Array.from(binarise(r, { threshold: 128, invert: false }).data)).toEqual([1, 1, 1, 0])
-    expect(Array.from(binarise(r, { threshold: 128, invert: false, ignoreColour: true }).data)).toEqual([1, 0, 1, 0])
+    // Black, mid grey, white, and a red pixel well clear of any black ink.
+    const r = rgb(8, 1, (x) => (x === 0 ? [0, 0, 0] : x === 1 ? [110, 110, 110] : x === 6 ? [255, 0, 0] : [255, 255, 255]))
+    expect(Array.from(binarise(r, { threshold: 128, invert: false }).data)).toEqual([1, 1, 0, 0, 0, 0, 1, 0])
+    expect(Array.from(binarise(r, { threshold: 128, invert: false, ignoreColour: true }).data)).toEqual([
+      1, 1, 0, 0, 0, 0, 0, 0,
+    ])
+  })
+
+  it('keeps colour where it crosses black ink, so a cable run drawn over a wall leaves no gap', () => {
+    // A vertical black wall with a red line drawn across it: the wall pixel under the line is red.
+    const r = rgb(9, 9, (x, y) => (y === 4 ? [255, 0, 0] : x === 4 ? [0, 0, 0] : [255, 255, 255]))
+    const m = binarise(r, { threshold: 128, invert: false, ignoreColour: true })
+    // The line itself goes, away from the wall...
+    expect(m.data[4 * 9 + 0]).toBe(0)
+    expect(m.data[4 * 9 + 8]).toBe(0)
+    // ...and the wall is continuous through the crossing.
+    for (let y = 0; y < 9; y++) expect(m.data[y * 9 + 4]).toBe(1)
   })
 
   it('dilate thickens ink by a Chebyshev radius', () => {
