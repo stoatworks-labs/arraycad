@@ -42,6 +42,24 @@ or trace over a picture — so writing the project file is the only way in.
 
 ---
 
+## Coming from a lighting visualiser
+
+If the venue is already built in **Capture, Depence, WYSIWYG, grandMA3 or Vectorworks**, export
+**MVR** from it and drop that in. MVR is the open interchange format all of them share; their own
+project files are closed and cannot be read by anything else.
+
+An MVR is a whole show, so most of it is rig. That is handled: truss, fixtures, supports and
+projectors are recognised by their MVR type rather than their name, so **the rig prunes itself**
+even when a truss is called `Sunstrip 12`. Video screens are deliberately kept — an LED wall is a
+large hard reflector and belongs in the prediction. Lighting fixtures are left out entirely, for
+the same reason loudspeakers always have been: the prediction places its own.
+
+The format states millimetres and Z-up, so the units are not a guess. Check the size against the
+drawing anyway — the spec is silent on the units of the 3D models inside the archive, and ArrayCAD
+warns if the room comes out an implausible size.
+
+---
+
 ## Preparing a model on import
 
 **Most of the first ten minutes with a new file is work the drawing already describes.** The

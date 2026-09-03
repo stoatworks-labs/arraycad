@@ -91,14 +91,45 @@ function sceneToNodes(root: THREE.Object3D, fallbackName: string): ImportedNode[
   return top.positions.length === 0 && top.children.length > 0 ? top.children : [top]
 }
 
-type MeshFormat = 'obj' | 'stl' | 'ply' | 'gltf' | 'glb' | 'fbx' | 'dae' | '3ds'
+export type MeshFormat = 'obj' | 'stl' | 'ply' | 'gltf' | 'glb' | 'fbx' | 'dae' | '3ds'
 
-export async function importMesh(
+/**
+ * Units and axes the mesh formats declare, as facts rather than guesses.
+ *
+ * glTF is metres and Y-up by specification; Collada and FBX declare an up axis but no
+ * scale this reads. Everything else states nothing and the user has to choose.
+ */
+const FORMAT_FACTS: Record<MeshFormat, { unitsPerMetre?: number; upAxis?: 'y' | 'z' }> = {
+  obj: {},
+  stl: {},
+  ply: {},
+  gltf: { unitsPerMetre: 1, upAxis: 'y' },
+  glb: { unitsPerMetre: 1, upAxis: 'y' },
+  fbx: { upAxis: 'y' },
+  dae: { upAxis: 'y' },
+  '3ds': {},
+}
+
+const FORMAT_WARNINGS: Partial<Record<MeshFormat, string>> = {
+  obj: 'OBJ carries no units. Check the unit setting before exporting.',
+  stl:
+    'STL has no object names and no units — the whole model arrives as one node. ' +
+    'Coplanar merging still separates the surfaces, but you cannot prune by name.',
+}
+
+/**
+ * Decode a mesh file to nodes in the FILE's own units, with no scene-level judgement.
+ *
+ * Split out from `importMesh` so the MVR importer can reach the loaders for the `.glb`
+ * and `.3ds` files inside an archive without inheriting an `ImportedScene`'s units, axis
+ * and warnings — an MVR states those itself, and states them differently. See
+ * `import/mvr.ts`.
+ */
+export async function decodeMeshNodes(
   buffer: ArrayBuffer,
   filename: string,
   format: MeshFormat,
-): Promise<ImportedScene> {
-  const warnings: string[] = []
+): Promise<ImportedNode[]> {
   const base = filename.replace(/\.[^.]+$/, '')
   let root: THREE.Object3D
 
@@ -106,17 +137,12 @@ export async function importMesh(
     switch (format) {
       case 'obj': {
         root = new OBJLoader().parse(new TextDecoder().decode(buffer))
-        warnings.push('OBJ carries no units. Check the unit setting before exporting.')
         break
       }
       case 'stl': {
         const geom = new STLLoader().parse(buffer)
         root = new THREE.Mesh(geom)
         root.name = base
-        warnings.push(
-          'STL has no object names and no units — the whole model arrives as one node. ' +
-            'Coplanar merging still separates the surfaces, but you cannot prune by name.',
-        )
         break
       }
       case 'ply': {
@@ -160,7 +186,16 @@ export async function importMesh(
     )
   }
 
-  const nodes = sceneToNodes(root, base)
+  return sceneToNodes(root, base)
+}
+
+export async function importMesh(
+  buffer: ArrayBuffer,
+  filename: string,
+  format: MeshFormat,
+): Promise<ImportedScene> {
+  const base = filename.replace(/\.[^.]+$/, '')
+  const nodes = await decodeMeshNodes(buffer, filename, format)
   if (nodes.length === 0) {
     throw new ImportError(
       'That file loaded but contains no triangles.',
@@ -169,15 +204,12 @@ export async function importMesh(
     )
   }
 
-  // glTF is metres and Y-up by specification, so those are facts rather than guesses. The
-  // other formats declare nothing and the user has to choose.
-  const isGltf = format === 'gltf' || format === 'glb'
+  const warning = FORMAT_WARNINGS[format]
   return {
     format: format.toUpperCase(),
     sourceName: base,
-    unitsPerMetre: isGltf ? 1 : undefined,
-    upAxis: isGltf || format === 'dae' || format === 'fbx' ? 'y' : undefined,
+    ...FORMAT_FACTS[format],
     nodes,
-    warnings,
+    warnings: warning ? [warning] : [],
   }
 }

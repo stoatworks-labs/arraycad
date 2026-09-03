@@ -44,6 +44,14 @@ const CLUTTER = [
   // Production rigging and lighting
   'lighting', 'light', 'lights', 'luminaire', 'luminaires', 'lantern', 'lanterns', 'lx',
   'truss', 'trusses', 'rigging', 'hoist', 'hoists', 'motor', 'motors', 'winch',
+  // MVR node types, which `import/mvr.ts` stamps on every node it produces. In a
+  // visualiser model the node type is the reliable signal and the name is not — a truss is
+  // as likely to be called "Sunstrip 12" as "TRUSS 1". `truss`, `rigging` and `hoist`
+  // above already cover the rest of what MVR calls infrastructure.
+  //
+  // MVR's `VideoScreen` is deliberately absent, and so is a bare `screen`: an LED wall is
+  // a large rigid reflector and belongs in the prediction as a surface, not in the bin.
+  'fixture', 'fixtures', 'projector', 'projectors',
   'drape', 'drapes', 'curtain', 'curtains', 'legs', 'border', 'borders',
   // Services
   'cable', 'cables', 'cabling', 'conduit', 'tray', 'trunking',

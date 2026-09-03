@@ -8,6 +8,7 @@ import { importDxf } from './dxf.ts'
 import { importDwg } from './dwg.ts'
 import type { CadOptions } from './entities.ts'
 import { importIfc } from './ifc.ts'
+import { importMvr } from './mvr.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
 import { importSoundvisionAsScene } from './soundvisionScene.ts'
 import { importEaseFocusAsScene } from './easefocusScene.ts'
@@ -29,6 +30,10 @@ export const ACCEPTED_EXTENSIONS = [
   '.dae',
   '.3ds',
   '.ifc',
+  // The lighting visualisers' shared interchange format, and the only open one among
+  // them: Capture, Depence, Vectorworks, WYSIWYG and grandMA3 all read and write it, and
+  // none of their own project formats is public. One importer covers the lot.
+  '.mvr',
   // The three prediction tools' own venue formats, so a conversion can go any way between
   // them. `.txt` is Soundvision 3D room data and is sniffed before it is claimed — the
   // extension says nothing, so a .txt that is not room data must say so rather than import
@@ -84,6 +89,23 @@ const CLOSED_FORMATS: Record<string, { name: string; advice: string }> = {
   '.blend': { name: 'Blender', advice: 'Export as glTF (.glb) and drop that here.' },
 }
 
+/**
+ * What to say about a file type we have never heard of.
+ *
+ * The visualiser paragraph is not padding. Capture, Depence, WYSIWYG and grandMA3 keep
+ * their projects in closed formats that will never be readable here, and someone holding
+ * one has no reason to guess that the answer is a menu item in the application they
+ * already have open. MVR is that answer for all of them, and naming it converts a dead end
+ * into a two-minute detour. No extension is claimed for those formats because none has
+ * been verified — the advice reaches them by covering everything unrecognised instead.
+ */
+const VISUALISER_ADVICE =
+  `Supported: ${ACCEPTED_EXTENSIONS.join(', ')}.\n\n` +
+  'From a lighting visualiser — Capture, Depence, WYSIWYG, grandMA3 — export MVR and ' +
+  'drop that here. It is the one interchange format they all share, and it keeps the ' +
+  'layer names, so pruning works by the names you already use. Capture can also export ' +
+  'glTF (.glb) or DWG, both of which work here today.'
+
 export interface ImportOptions {
   /** Shared by DXF and DWG: they are the same drawing model and the same importer. */
   cad?: Partial<CadOptions>
@@ -112,6 +134,8 @@ export async function importFile(
       return importDwg(await file.arrayBuffer(), file.name, options.cad)
     case '.ifc':
       return importIfc(await file.arrayBuffer(), file.name)
+    case '.mvr':
+      return importMvr(await file.arrayBuffer(), file.name)
     case '.dbacv':
       return importDbacvAsScene(await file.text(), file.name)
     case '.txt':
@@ -128,9 +152,6 @@ export async function importFile(
     case '.3ds':
       return importMesh(await file.arrayBuffer(), file.name, ext.slice(1) as never)
     default:
-      throw new ImportError(
-        `Unrecognised file type "${ext || file.name}".`,
-        `Supported: ${ACCEPTED_EXTENSIONS.join(', ')}.`,
-      )
+      throw new ImportError(`Unrecognised file type "${ext || file.name}".`, VISUALISER_ADVICE)
   }
 }

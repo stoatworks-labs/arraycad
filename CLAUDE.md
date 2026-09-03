@@ -102,6 +102,22 @@ deploy `npx wrangler deploy`.
   and `convert.ts` re-applies it — break that pairing and names grow a word per round trip.
 - A `.txt` is sniffed (`isSoundvisionText`) before it is claimed. The extension declares
   nothing, and a file that is not room data must say so rather than import as an empty venue.
+- **MVR is the door into every lighting visualiser, and the ONLY open format among them.**
+  Capture, Depence, WYSIWYG, grandMA3 and Vectorworks all read and write it; none of their
+  own project formats is public and none needs to be. Don't add a second visualiser
+  importer — add to `lib/mvr/`.
+- **MVR states millimetres, but does NOT state the unit of the glTF inside it**, which by
+  the glTF spec is metres. Getting that backwards is a 1000× error, so `mvr/scene.ts`
+  normalises every embedded file into millimetres before any matrix is applied and
+  range-checks the result. The constant is `GLTF_METRES_PER_UNIT`; it is a deduction and
+  is labelled as one. See `docs/mvr-format.md` §5.
+- **`mvr/scene.ts` takes its geometry decoder as a parameter.** That is what keeps three.js
+  out of it and the matrix, instancing and unit logic testable in node. Import `mesh.ts`
+  there and the tests can no longer reach any of it.
+- **An MVR node's TYPE is stamped on every node of the subtree, not just its root.**
+  `prepare/plan.ts` judges each node alone and never looks at ancestors, so a `Truss`
+  wrapper tagged on its own would prune while the mesh inside it survived. `VideoScreen` is
+  deliberately not clutter — an LED wall is a reflector.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
 - Tree grouping lives in `src/lib/grouping.ts`, pure and DOM-free, so it is tested without
