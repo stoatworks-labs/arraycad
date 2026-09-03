@@ -62,6 +62,9 @@ src/
     read.ts             GeneralSceneDescription.xml -> MvrScene. A translation, no geometry
     scene.ts            matrices, symbol instancing, units, tagging. Three-free on purpose:
                         the decoder is injected, so all of it is tested in node
+    convert.ts          outlines -> objects. The ONLY target that does not reduce
+    write.ts            GeneralSceneDescription.xml + the zip, with stable uuids
+    glb.ts              a minimal glb: one mesh, positions only. Hand-rolled, no three
   lib/soundvision/      THE OTHER FORMAT. Soundvision 3D room data .txt
     types.ts            faces, the scene, and the header a real export begins with
     read.ts             parser, mostly so the writer can be proved by round trip

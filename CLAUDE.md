@@ -118,6 +118,15 @@ deploy `npx wrangler deploy`.
   `prepare/plan.ts` judges each node alone and never looks at ancestors, so a `Truss`
   wrapper tagged on its own would prune while the mesh inside it survived. `VideoScreen` is
   deliberately not clutter — an LED wall is a reflector.
+- **MVR is the only target that does not REDUCE.** glTF wants triangles, which is what
+  `planarize.ts` already produced, so `mvr/convert.ts` triangulates the recovered outlines
+  back and writes them whole. One object per NODE, not per region: a visualiser tree of
+  four hundred `STALLS RAKE` entries is worse than the one the user pruned by.
+- **MVR uuids are stable, not random**, keyed on the object NAME plus its occurrence count
+  — never the array index, or inserting a plane renumbers everything after it. MVR asks for
+  persistent ids and Depence uses them to update in place instead of duplicating the room.
+- **The `.mvr` writer declares 1.4, not 1.6.** Nothing written postdates 1.4 and that is
+  the floor Capture and Depence accept. Don't "update" it to match `read.ts`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
 - Tree grouping lives in `src/lib/grouping.ts`, pure and DOM-free, so it is tested without

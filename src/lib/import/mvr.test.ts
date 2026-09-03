@@ -12,6 +12,9 @@ import { JSDOM } from 'jsdom'
 import { strToU8, zipSync } from 'fflate'
 import { importMvr } from './mvr.ts'
 import { ImportError, flattenNodes } from './types.ts'
+import { DEFAULT_MVR_CONVERT, convertNodesToMvr } from '../mvr/convert.ts'
+import { writeMvr } from '../mvr/write.ts'
+import { PlaneType } from '../dbacv/types.ts'
 
 // Vitest runs in node here, so supply the browser's DOMParser explicitly.
 const parser = new (new JSDOM().window.DOMParser)()
@@ -140,5 +143,47 @@ describe('MVR import, end to end', () => {
     )
     expect(err?.advice).toMatch(/lighting fixtures/)
     expect(err?.advice).toMatch(/Export the venue itself/)
+  })
+})
+
+describe('MVR export, read back through three.js', () => {
+  /**
+   * The proof the writer's own tests cannot give.
+   *
+   * `mvr/write.test.ts` round-trips an export through a stub decoder, which only shows the
+   * two halves of this codebase agree with each other. Reading the same file with the real
+   * GLTFLoader is what shows the glb is a glb — that the chunk lengths, the padding, the
+   * accessor bounds and the buffer view are all things a loader nobody here wrote will
+   * accept. A hand-rolled binary writer is exactly where that is worth checking.
+   */
+  it('writes a venue that the real loader reads back at the right size', async () => {
+    // A 12 x 8 m deck at 1.2 m, in venue metres.
+    const deck = [-6, -4, 1.2, 6, -4, 1.2, 6, 4, 1.2, -6, -4, 1.2, 6, 4, 1.2, -6, 4, 1.2]
+    const out = convertNodesToMvr(
+      [{
+        node: { id: 'n1', name: 'STAGE DECK', tags: [], positions: new Float64Array(deck), children: [] },
+        planeType: PlaneType.Stage,
+        include: true,
+        name: 'STAGE DECK',
+      }],
+      DEFAULT_MVR_CONVERT,
+      [],
+      'Theatre',
+    )
+    const written = writeMvr(out.scene)
+
+    const scene = await load(written.bytes.slice().buffer as ArrayBuffer, 'Theatre.mvr')
+    expect(scene.format).toBe('MVR 1.4')
+    expect(scene.unitsPerMetre).toBe(0.001)
+
+    const node = flattenNodes(scene.nodes).find((n) => n.name === 'STAGE DECK')!
+    const axis = (i: number) => [...node.positions].filter((_, k) => k % 3 === i)
+    const span = (i: number) => Math.max(...axis(i)) - Math.min(...axis(i))
+    // Written as metres, read back as MVR millimetres: 12 m becomes 12000.
+    expect(span(0)).toBeCloseTo(12000, 0)
+    expect(span(1)).toBeCloseTo(8000, 0)
+    expect(Math.min(...axis(2))).toBeCloseTo(1200, 0)
+    // The plane type went out as a Class and comes back as a tag.
+    expect(node.tags).toContain('Stage (4)')
   })
 })
