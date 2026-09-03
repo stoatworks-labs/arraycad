@@ -100,6 +100,7 @@ see [Preparing a model on import](#preparing-a-model-on-import).
 | **DWG** | AutoCAD's own format, read directly — no export step, no converter. R13 through R2018. Same entity support and the same outline-joining as DXF. |
 | **glTF / GLB** | Best of the mesh formats — keeps object names and hierarchy, and declares metres and Y-up, so nothing has to be guessed. |
 | **IFC** | The only format carrying real semantics. `IfcSlab`, `IfcCovering`, `IfcWall` etc. are mapped to *suggested* plane types. |
+| **MVR** | A whole show from a lighting visualiser — Capture, Depence, Vectorworks, WYSIWYG, grandMA3. Layers and classes arrive as the tree; truss, fixtures and supports are tagged by their MVR type, so the rig prunes itself whatever it was named. Millimetres and Z-up are stated by the format, so nothing is guessed. See [the format notes](docs/mvr-format.md). |
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
 | **`.dbacv`** | An existing ArrayCalc venue, for pruning, retyping and converting to Soundvision. See the caveat below. |
@@ -118,6 +119,11 @@ Vectorworks that is glTF first, then IFC, then DXF 3D.
 DWG has no public specification either, but enough of it has been reverse-engineered that
 it is read here directly. It is the one format on that list that no longer needs an export
 step.
+
+**Lighting visualisers** — Capture, Depence, WYSIWYG, grandMA3 — are the same story with a
+better answer: their project formats are closed, but they all read and write **MVR**, which
+is an open standard and is read here directly. Export MVR from whichever you use and drop
+that in. Capture can also export glTF or DWG, which work too.
 
 ## Tracing a plan
 

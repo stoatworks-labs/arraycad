@@ -43,6 +43,7 @@ src/
     dxf.ts              dxf-parser -> CadDocument. A translation, no geometry
     dwg.ts              acad-ts -> CadDocument. A translation, no geometry
     ifc.ts              web-ifc wasm; the only source of plane-type suggestions
+    mvr.ts              thin: the archive + three.js seam. All the logic is in lib/mvr/
     dbacvScene.ts       an existing venue, tessellated, so it can be pruned
     soundvisionScene.ts an existing Soundvision room, ditto. With dbacvScene, §1's converter
     index.ts            extension dispatcher + the closed-format guidance table
@@ -55,6 +56,12 @@ src/
     calibrate.ts        pixels -> metres. The ONLY place the sheet scale is applied
     heights.ts          typed corner heights -> a least-squares surface
     build.ts            regions -> ImportedScene, and from there the ordinary pipeline
+  lib/mvr/              THE VISUALISERS' FORMAT. MVR — open, so quoted not deduced
+    types.ts            the object model, the 4x3 matrix, and the unit constants
+    container.ts        the zip, opened twice so a show's .gdtf payload is never inflated
+    read.ts             GeneralSceneDescription.xml -> MvrScene. A translation, no geometry
+    scene.ts            matrices, symbol instancing, units, tagging. Three-free on purpose:
+                        the decoder is injected, so all of it is tested in node
   lib/soundvision/      THE OTHER FORMAT. Soundvision 3D room data .txt
     types.ts            faces, the scene, and the header a real export begins with
     read.ts             parser, mostly so the writer can be proved by round trip
@@ -75,6 +82,7 @@ test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
 test/fixtures/roomdata.txt    a synthetic Soundvision export, in the exact byte format
 docs/dbacv-format.md    everything known about the format, and what is not known
 docs/soundvision-format.md    ditto for Soundvision, incl. why .xmls is not writable
+docs/mvr-format.md      MVR: quoted from the open spec, plus the ONE thing it does not state
 ```
 
 **Every output target shares `geom/outline.ts` and differs only after it.** The reduction is
