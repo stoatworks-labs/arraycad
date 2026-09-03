@@ -140,7 +140,7 @@ export function TraceEditor({
 
   useEffect(() => {
     maskRef.current = null
-  }, [doc.raster, detect.threshold, detect.invert, detect.lineThickenPx])
+  }, [doc.raster, detect.threshold, detect.invert, detect.ignoreColour, detect.lineThickenPx])
 
   // ------------------------------------------------------------------ viewport
 

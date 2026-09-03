@@ -41,6 +41,7 @@ export const DEFAULT_LOAD: Required<LoadTraceOptions> = {
   targetPx: 2400,
   threshold: 'auto',
   invert: false,
+  ignoreColour: false,
   lineThickenPx: 1,
 }
 

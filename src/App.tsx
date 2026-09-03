@@ -74,7 +74,12 @@ export default function App() {
   const [view, setView] = useState<ViewMode>('both')
   const [traceView, setTraceView] = useState<TraceView>('drawing')
   const [traceTool, setTraceTool] = useState<TraceTool>('select')
-  const [detect, setDetect] = useState<InkMaskOptions>({ threshold: 'auto', invert: false, lineThickenPx: 1 })
+  const [detect, setDetect] = useState<InkMaskOptions>({
+    threshold: 'auto',
+    invert: false,
+    ignoreColour: false,
+    lineThickenPx: 1,
+  })
   const [wand, setWand] = useState<WandOptions>(DEFAULT_WAND)
   const [ramp, setRamp] = useState({ from: 0, to: 1, zFrom: 0, zTo: 1, flat: 0 })
   const [preset, setPreset] = useState<CameraPreset>('iso')

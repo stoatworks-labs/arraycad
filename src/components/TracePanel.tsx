@@ -445,6 +445,18 @@ function Detection({ doc, detect, onDetect, wand, onWand, onChange, onPage }: Pr
         Light lines on a dark background
       </label>
 
+      <label
+        className="check"
+        title="Keeps only black and grey ink. On a CAD plot the loudspeakers, labels and cable runs are usually on coloured layers and the architecture is black, so this leaves the walls alone to detect."
+      >
+        <input
+          type="checkbox"
+          checked={detect.ignoreColour ?? false}
+          onChange={(e) => onDetect({ ignoreColour: e.target.checked })}
+        />
+        Ignore coloured lines
+      </label>
+
       <Field
         label="Thicken lines"
         hint="Closes hairline gaps before filling. Raise it if region detect leaks out of the room."

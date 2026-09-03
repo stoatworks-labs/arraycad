@@ -133,6 +133,17 @@ describe('raster', () => {
     expect(inkFraction(binarise(r, { threshold: 'auto', invert: true }))).toBeLessThan(0.1)
   })
 
+  it('ignores coloured ink when asked, and keeps black and grey', () => {
+    // Black, pure red, mid grey, white.
+    const r: Raster = {
+      width: 4,
+      height: 1,
+      data: new Uint8ClampedArray([0, 0, 0, 255, 255, 0, 0, 255, 110, 110, 110, 255, 255, 255, 255, 255]),
+    }
+    expect(Array.from(binarise(r, { threshold: 128, invert: false }).data)).toEqual([1, 1, 1, 0])
+    expect(Array.from(binarise(r, { threshold: 128, invert: false, ignoreColour: true }).data)).toEqual([1, 0, 1, 0])
+  })
+
   it('dilate thickens ink by a Chebyshev radius', () => {
     const r = grey(9, 9, (x, y) => (x === 4 && y === 4 ? 0 : 255))
     const m = dilate(binarise(r), 1)

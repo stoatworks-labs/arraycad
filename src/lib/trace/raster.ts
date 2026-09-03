@@ -76,9 +76,40 @@ export interface BinariseOptions {
    * always means "ink", so inverting here keeps every downstream module ignorant of it.
    */
   invert: boolean
+  /**
+   * Count only black and grey as ink. A CAD plot puts its annotation — loudspeakers,
+   * labels, cable runs, dimensions — on coloured layers and the architecture in black, so
+   * this leaves exactly the walls to detect, and a coloured line drawn across a room no
+   * longer cuts it in two. Off by default: a scan or a photograph can put colour into a
+   * black line from the paper and the lens.
+   */
+  ignoreColour?: boolean
 }
 
-export const DEFAULT_BINARISE: BinariseOptions = { threshold: 'auto', invert: false }
+export const DEFAULT_BINARISE: BinariseOptions = { threshold: 'auto', invert: false, ignoreColour: false }
+
+/**
+ * Above this chroma (max minus min of RGB), a pixel is a drawn colour rather than ink.
+ * Black and grey ink stays under about 40 even at anti-aliased edges and through JPEG; a
+ * colour at any printable saturation is well over 100.
+ */
+const GREY_CHROMA_MAX = 64
+
+/** Chroma per pixel — how far from grey — composited over white like `luminance`. */
+export function chroma(r: Raster): Uint8ClampedArray {
+  const n = r.width * r.height
+  const out = new Uint8ClampedArray(n)
+  const d = r.data
+  for (let i = 0; i < n; i++) {
+    const o = i * 4
+    const a = d[o + 3] / 255
+    const rr = d[o] * a + 255 * (1 - a)
+    const gg = d[o + 1] * a + 255 * (1 - a)
+    const bb = d[o + 2] * a + 255 * (1 - a)
+    out[i] = Math.max(rr, gg, bb) - Math.min(rr, gg, bb)
+  }
+  return out
+}
 
 export interface Mask {
   width: number
@@ -92,10 +123,13 @@ export interface Mask {
 export function binarise(r: Raster, opts: BinariseOptions = DEFAULT_BINARISE): Mask {
   const lum = luminance(r)
   const t = opts.threshold === 'auto' ? otsuThreshold(lum) : opts.threshold
+  const chr = opts.ignoreColour ? chroma(r) : null
   const data = new Uint8Array(r.width * r.height)
   for (let i = 0; i < data.length; i++) {
     const dark = lum[i] <= t
-    data[i] = (opts.invert ? !dark : dark) ? 1 : 0
+    let ink = opts.invert ? !dark : dark
+    if (chr && chr[i] > GREY_CHROMA_MAX) ink = false
+    data[i] = ink ? 1 : 0
   }
   return { width: r.width, height: r.height, data, threshold: t }
 }
@@ -150,13 +184,17 @@ export interface InkMaskOptions extends Partial<BinariseOptions> {
 export const DEFAULT_INK_MASK: Required<InkMaskOptions> = {
   threshold: 'auto',
   invert: false,
+  ignoreColour: false,
   lineThickenPx: 1,
 }
 
 /** The mask every detector works on: binarise, then close the hairlines. */
 export function inkMask(r: Raster, opts: InkMaskOptions = {}): Mask {
   const o = { ...DEFAULT_INK_MASK, ...opts }
-  return dilate(binarise(r, { threshold: o.threshold, invert: o.invert }), o.lineThickenPx)
+  return dilate(
+    binarise(r, { threshold: o.threshold, invert: o.invert, ignoreColour: o.ignoreColour }),
+    o.lineThickenPx,
+  )
 }
 
 /** Fraction of the mask that is ink. A sanity check: 0 or 1 means the threshold is wrong. */
