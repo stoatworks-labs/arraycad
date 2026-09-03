@@ -13,6 +13,8 @@ import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
 import { writeSoundvision } from './lib/soundvision/write.ts'
 import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
 import { writeEaseFocus } from './lib/easefocus/write.ts'
+import { convertNodesToMvr } from './lib/mvr/convert.ts'
+import { writeMvr } from './lib/mvr/write.ts'
 import { type TraceDocument, type WandOptions, DEFAULT_WAND, buildTraceScene } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
@@ -432,6 +434,29 @@ export default function App() {
     download(writeEaseFocus(r.project), `${projectName || 'venue'}.fc3`, 'application/octet-stream')
   }, [scene, decisions, settings, projectName, rationalisations])
 
+  /**
+   * Back out to the lighting visualisers, the way in came.
+   *
+   * The only target that keeps the model as SURFACES rather than reducing it: MVR carries
+   * glTF, and glTF wants exactly what `planarize.ts` produced on the way to a parametric
+   * plane. So this is the one export where nothing is lost to the format — what a
+   * visualiser gets is the simplified room, one object per plane, under the names the user
+   * pruned by. Same on-demand pattern and the same start-from-outlines reason as the other
+   * two: a plane wants to be whole, not in the canonical quad frame.
+   */
+  const exportMvr = useCallback(() => {
+    if (!scene || !settings?.transform) return
+    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
+    const r = convertNodesToMvr(
+      conversionEntries(scene, decisions, effective),
+      convertOptions(settings),
+      exportAreas,
+      projectName || 'ArrayCAD export',
+    )
+    if (r.scene.objects.length === 0) return
+    download(writeMvr(r.scene).bytes, `${projectName || 'venue'}.mvr`, 'application/octet-stream')
+  }, [scene, decisions, settings, projectName, rationalisations])
+
   // ---------------------------------------------------------------- render
 
   if (!scene || !settings) {
@@ -563,6 +588,28 @@ export default function App() {
           }
         >
           Export .fc3
+        </button>
+        {/*
+          NOT yet confirmed in a visualiser. The file is a valid MVR 1.4 archive and its
+          glbs read back through three's own loader, but nobody has opened one in Capture
+          or Depence, and the unit of embedded glTF is the one thing MVR does not state
+          (docs/mvr-format.md section 5). The tooltip says so rather than implying a
+          verified route.
+        */}
+        <button
+          type="button"
+          onClick={exportMvr}
+          disabled={!result || result.objects.length === 0}
+          title={
+            'MVR — back to a lighting visualiser: Capture, Depence, WYSIWYG, grandMA3, ' +
+            'Vectorworks. One object per plane, keeping the names, with the plane types as ' +
+            'MVR classes so audience areas can be toggled as a set.\n\n' +
+            'The only export that keeps the room as surfaces rather than reducing it.\n\n' +
+            'Not yet confirmed against a visualiser: MVR states millimetres but not the ' +
+            'unit of the 3D files inside it. Check the size after importing.'
+          }
+        >
+          Export .mvr
         </button>
         <button
           type="button"

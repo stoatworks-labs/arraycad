@@ -125,6 +125,9 @@ better answer: their project formats are closed, but they all read and write **M
 is an open standard and is read here directly. Export MVR from whichever you use and drop
 that in. Capture can also export glTF or DWG, which work too.
 
+MVR goes the other way as well — see **Supported outputs** below — so a room can come from
+a visualiser, be pruned and simplified here, and go back.
+
 ## Tracing a plan
 
 Most venues that need a design have a **plan**, not a model. A PDF or an image opens a
@@ -439,6 +442,23 @@ application: 57 zones returned, all 57 labels intact, and every position, orient
 depth and height identical to what was written. The only change the application made was
 the 2 m width clamp above — which is how that behaviour was found.
 
+## Going back to the visualiser
+
+**Export .mvr** writes the room back out as MVR, for Capture, Depence, WYSIWYG, grandMA3 or
+Vectorworks. One object per plane, keeping the names you pruned by, with the plane types as
+MVR *classes* so the audience areas can be toggled as a set.
+
+It is the only export that does **not** reduce. ArrayCalc needs parametric planes and EASE
+Focus needs rectangles, but MVR carries glTF, which wants triangles — exactly what the
+coplanar merge already produced. So what arrives is the simplified room: one clean surface
+where the source had a thousand facets, with nothing further lost to the format.
+
+> **Not yet confirmed in a visualiser.** The file is a valid MVR 1.4 archive, its geometry
+> reads back through three.js's own glTF loader, and an MVR imported → exported →
+> re-imported here reproduces the venue dimension for dimension. But nobody has opened one
+> in Capture or Depence yet, and MVR does not state the units of the 3D files inside it
+> (**[docs/mvr-format.md](docs/mvr-format.md)** §5). Check the size after importing.
+
 ## Converting between the prediction tools
 
 None of the three applications will open another's venue, so a room modelled for one
@@ -452,6 +472,8 @@ All three formats are inputs here, so the conversion is just an import and an ex
 | A d&b ArrayCalc venue | `.dbacv` | **Export .txt** → *3D room data → Import 3D room data*, or **Export .fc3** |
 | A Soundvision room | 3D room data `.txt` | **Export .dbacv** or **Export .fc3** |
 | An EASE Focus project | `.fc3` | **Export .dbacv** or **Export .txt** |
+| A visualiser show | `.mvr` from Capture, Depence, WYSIWYG, grandMA3 | any of the three |
+| Any of the above | | **Export .mvr**, back into the visualiser |
 
 Nothing special happens in between: the venue takes the same road a CAD model does —
 tessellate, weld, merge coplanar regions, recover outlines, write the other format — so

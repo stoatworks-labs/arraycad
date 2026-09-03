@@ -58,6 +58,15 @@ The format states millimetres and Z-up, so the units are not a guess. Check the 
 drawing anyway — the spec is silent on the units of the 3D models inside the archive, and ArrayCAD
 warns if the room comes out an implausible size.
 
+**Export .mvr** goes back the other way, so a room can come from a visualiser, be pruned and
+simplified here, and return. It is the only export that does not reduce — MVR carries glTF, which
+wants the triangles the coplanar merge already produced, so the visualiser gets the *simplified*
+room with nothing further lost. Plane types travel as MVR classes, so the audience areas can be
+toggled as a set.
+
+> Not yet confirmed in a visualiser: nobody has opened an ArrayCAD `.mvr` in Capture or Depence.
+> Check the size after importing.
+
 ---
 
 ## Preparing a model on import

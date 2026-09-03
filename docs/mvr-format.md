@@ -152,12 +152,62 @@ belongs in the prediction.
 
 ## 8. Writing MVR
 
-Not implemented yet. The sketch, so it is not designed into a corner:
-one `Layer` named for the project, one `SceneObject` per venue plane, each referencing its
-own small glb with an identity matrix and vertices baked in millimetres — so the plane
-names pruned in ArrayCAD arrive as a readable object tree in Capture or Depence. The glb
-encoder should be hand-rolled and positions-only, for the same reason the `.fc3` container
-is hand-rolled: `src/lib/` stays three-free and the output stays byte-exact testable.
+Implemented in `src/lib/mvr/convert.ts`, `write.ts` and `glb.ts`; reached from the
+**Export .mvr** button.
 
-Note that §5 lands squarely on the writer too. Until a real file settles which unit a
-consumer expects inside the glb, an export is a guess in the same direction as the import.
+**Shape.** One `Layer` named for the project, and **one `SceneObject` per venue plane**,
+each with its own small glb and no `Matrix` at all — the coordinates are already where
+they belong, and the spec reads a missing `Matrix` as the identity. A visualiser therefore
+shows the plane names the user pruned by (`STALLS RAKE`, `BALCONY`) as a readable object
+tree rather than one anonymous lump.
+
+**Plane types go out as `Class`es**, which is what a visualiser filters visibility by, so
+the audience planes can be toggled as a set. The class name carries the raw numeric code
+beside the label — `Listening (1)` — because those labels are inferred and unverified
+(CLAUDE.md), and an inferred label leaving this tool unqualified is how a guess becomes
+somebody else's fact.
+
+**The glb writer is hand-rolled** (`glb.ts`, positions only, no materials or normals) for
+the same reason the `.fc3` container is: `src/lib/` stays three-free so the whole pipeline
+runs in node, and every byte is one a test can assert. `extensionsRequired` is satisfied by
+never writing an extension. A primitive without normals is flat-shaded by the glTF spec,
+which is what a room surface should be — computing them would only invent smoothing the
+model does not have.
+
+**uuids are stable, not random.** MVR asks for persistent ids to "track changes between
+the different applications", and Depence uses exactly that to re-import an updated MVR and
+update in place instead of duplicating the room. `stableUuid` derives them from a 128-bit
+FNV-1a over the object's name and its occurrence count — not its array index, or inserting
+a plane would renumber everything after it and defeat the point. The version nibble is 4,
+which is the truthful classification: v4 covers random *or pseudo-random* bits, and a hash
+is a pseudo-random source. It is not a name-based v5 and is not claimed to be.
+
+**The version declared is 1.4, not 1.6.** Nothing written postdates 1.4, and 1.4 is the
+floor both Capture and Depence state they accept. A consumer reads `verMajor`/`verMinor` to
+decide how to parse, so promising 1.6 features that are not in the file could turn a
+readable export into a refused one for nothing.
+
+**This is the only target that does not reduce.** ArrayCalc needs parametric planes and
+EASE Focus needs rectangles; glTF wants triangles, which is exactly what `planarize.ts`
+already produced. So what goes out is the *simplified* room — one welded, coplanar,
+Douglas-Peucker'd surface where the source had a thousand facets — with nothing lost to the
+format on the way.
+
+### What is verified, and what is not
+
+Verified: the archive is a valid MVR that `read.ts` parses; the glbs read back through
+**three.js's own GLTFLoader**, which is the check a hand-rolled binary writer needs; and an
+MVR imported, exported and re-imported produces a byte-for-byte identical venue — a real
+file of seven planes came back with every dimension unchanged (12x6 stage, 20x18 stalls
+with a 3.2 m rake, 18x9 wall, both symbol-instanced boxes).
+
+**Not verified: that any visualiser opens one.** Nobody has put an ArrayCAD MVR into
+Capture or Depence. And §5 lands squarely on the writer as well as the reader — the export
+writes glb geometry in metres, which is what this importer reads back, so the round trip
+above proves self-consistency and nothing more. A consumer that treats embedded glTF as
+millimetres would see the room 1000x small. The button's tooltip says so.
+
+> **TO CONFIRM.** Open an ArrayCAD `.mvr` in Capture or Depence and measure one known
+> dimension. If it arrives 1000x out, `GLTF_METRES_PER_UNIT` in `types.ts` is the constant
+> to flip and it fixes the reader and the writer together. Record the application and
+> version here either way.
