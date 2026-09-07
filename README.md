@@ -518,6 +518,36 @@ npm run build
 See [CLAUDE.md](CLAUDE.md) for the full command reference and [AGENTS.md](AGENTS.md) for
 the model, the invariants and the traps.
 
+<!-- selfhost:start -->
+## Run your own copy
+
+ArrayCAD is a static page, so hosting it yourself is one container serving
+the built files — the same files the hosted copy serves, running somewhere that
+still works when the venue has no internet.
+
+**Docker.** The image is built by this repo's `docker.yml` workflow on every
+push and published as `ghcr.io/stoatworks-labs/arraycad`:
+
+```bash
+docker run -d --name arraycad --restart unless-stopped -p 8523:80 ghcr.io/stoatworks-labs/arraycad:latest
+```
+
+Or `docker compose up -d` with the [`docker-compose.yml`](docker-compose.yml)
+in this repo, which maps the same port. Either way it is then at
+`http://localhost:8523/`.
+
+**Unraid.** Search Community Applications for *ArrayCAD* — the template is
+[`templates/arraycad.xml`](https://github.com/stoatworks-labs/stoatworks-unraid/blob/main/templates/arraycad.xml)
+in [stoatworks-unraid](https://github.com/stoatworks-labs/stoatworks-unraid), which is what the CA feed reads.
+
+**Stoatworks Burrow** lists it under *Self-hosted*, with the compose file a
+click away.
+
+The `Dockerfile`, `docker-compose.yml`, `docker/` and the workflow are
+generated from `fleet.json` in stoatworks-unraid. Change them there and
+regenerate rather than editing them here.
+<!-- selfhost:end -->
+
 <!-- attributions:start -->
 This project is built on other people's work — see [ATTRIBUTIONS.md](ATTRIBUTIONS.md).
 <!-- attributions:end -->
