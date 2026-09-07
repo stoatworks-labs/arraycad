@@ -5,9 +5,15 @@
 # containing static files", which reads like a missing build step and is really
 # the wrong config key. Same shape as blend-calc, pixel-peeker and aspect-calc.
 #
-# Build command in the Cloudflare project:
+# Deploys are automatic: .github/workflows/deploy.yml runs `wrangler deploy` on
+# every push to master that touches something a visitor sees. `cf-run npx
+# wrangler deploy` is the fallback when Actions is down.
 #
-#   npm ci && npm run build
+# There is NO Cloudflare-side build connected to this repo, and there never was.
+# The note that used to be here gave a "build command in the Cloudflare project"
+# as though the dashboard was wired up; across the fleet that comment hid sites
+# that had gone weeks without shipping. Do not reintroduce one — two things
+# deploying the same Worker is worse than one.
 #
 # `public/_headers` is copied into dist/ by Vite and carries the CSP and the
 # immutable-cache rule for hashed assets; the assets runtime honours it.
