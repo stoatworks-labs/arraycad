@@ -139,6 +139,12 @@ comment that used to claim one is why this repo went weeks without shipping.
   the floor Capture and Depence accept. Don't "update" it to match `read.ts`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
+- **pdf.js fetches its JPEG 2000, JBIG2 and ICC decoders at runtime from `wasmUrl`.**
+  `vite.pdfjs-wasm.ts` emits them unhashed at `pdfjs-wasm/` — pdf.js concatenates a bare
+  filename onto that URL, so a hashed name is never requested. Unset or misdirected, a
+  scan in either format renders as a blank white page and the tracer reports it as a
+  thresholding problem; it fails as a console warning, never a rejected render promise.
+  Don't fold these into `/assets/`, which `_headers` caches as immutable. See AGENTS.md §8.
 - Tree grouping lives in `src/lib/grouping.ts`, pure and DOM-free, so it is tested without
   a browser. Group on the row's DISPLAYED label, never the raw name; a group holding every
   remaining sibling is not a group. See AGENTS.md §10.

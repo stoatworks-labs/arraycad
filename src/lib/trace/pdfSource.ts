@@ -20,6 +20,24 @@ import { type Mat, pathsFromOperatorList } from './pdfPaths.ts'
 // blocked and every PDF would fail with a message about the worker, not about the file.
 pdfjs.GlobalWorkerOptions.workerSrc = workerUrl
 
+/**
+ * Where pdf.js fetches its JPEG 2000, JBIG2 and ICC decoders from. They are WebAssembly
+ * loaded at runtime, not bundled into pdf.worker, and vite.pdfjs-wasm.ts puts them here.
+ *
+ * Unset, pdf.js resolves the literal path `nullopenjpeg.wasm`, the decode fails, and the
+ * image is dropped — as a console warning, not a rejected render promise. A scan in either
+ * format then reaches the tracer as a blank white page and is reported as a thresholding
+ * problem. See the header of vite.pdfjs-wasm.ts.
+ *
+ * Resolved against `document.baseURI` rather than written root-absolute, to match the
+ * relative `base` the app is built with: it has to keep working when served from a
+ * subdirectory, and a leading slash would point at the host root instead.
+ *
+ * Written as a literal rather than imported from the plugin, which would pull node:fs into
+ * the browser bundle. `pdfjsWasmPathMatches` in trace.test.ts holds the two together.
+ */
+const WASM_URL = new URL('pdfjs-wasm/', document.baseURI).href
+
 export interface PdfLoadOptions {
   pageIndex: number
   targetPx: number
@@ -29,7 +47,7 @@ export interface PdfLoadOptions {
 
 export async function loadPdf(file: File, opts: PdfLoadOptions): Promise<TraceDocument> {
   const data = new Uint8Array(await file.arrayBuffer())
-  const loadingTask = pdfjs.getDocument({ data })
+  const loadingTask = pdfjs.getDocument({ data, wasmUrl: WASM_URL })
   let pdf: pdfjs.PDFDocumentProxy
   try {
     pdf = await loadingTask.promise

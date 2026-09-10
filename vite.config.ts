@@ -3,6 +3,7 @@ import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 
 import { readFileSync } from 'node:fs'
+import { pdfjsWasm } from './vite.pdfjs-wasm.ts'
 
 const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8'))
 
@@ -42,12 +43,17 @@ function supportFooterVersion(): Plugin {
 // web-ifc fetches its own .wasm at runtime. import/ifc.ts resolves that path with
 // `new URL(..., import.meta.url)` so Vite emits it as a hashed asset and it stays
 // same-origin — the CSP has no external connect source, so a CDN default would be blocked.
+//
+// pdf.js also fetches .wasm at runtime, but cannot use that trick: it builds the URL by
+// concatenating a bare filename onto its `wasmUrl` option, so the files have to keep their
+// own names. vite.pdfjs-wasm.ts serves and emits them unhashed; trace/pdfSource.ts points
+// `wasmUrl` there. Unset, JPEG 2000 and JBIG2 scans render blank.
 export default defineConfig({
   // The About dialog shows the version the build actually produced. about-data.js
   // carries one baked at sync time as a fallback, and it goes stale the moment a
   // release is tagged; this is the one that is always right.
   define: { __APP_VERSION__: JSON.stringify(`v${pkg.version}`) },
-  plugins: [react(), supportFooterVersion()],
+  plugins: [react(), supportFooterVersion(), pdfjsWasm()],
   base: './',
   assetsInclude: ['**/*.wasm'],
   // Honour PORT so more than one dev server can run at once. Vite does not read it itself.

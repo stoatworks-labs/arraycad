@@ -415,6 +415,29 @@ a real user, and *not* a bug to go hunting — but it makes automated verificati
 headless or hidden browser pane look like a hang in the loader. Bring the page to the
 front before testing PDF import.
 
+**pdf.js fetches its JPEG 2000, JBIG2 and ICC decoders at runtime, and losing them is
+silent.** They are WebAssembly, not part of `pdf.worker`, and pdf.js builds their URL by
+concatenating a bare filename onto the `wasmUrl` option. Unset, it asks for the literal
+`nullopenjpeg.wasm`, the decode fails, and **the image is dropped from the page** — as a
+console warning, never a rejected render promise. The JS fallback beside each decoder is
+built from the same option, so it fails too.
+
+For the tracer that lands in the worst possible place. A page with no vector line work is
+already a supported input — `source.ts:contoursOf` recovers outlines from the pixels, for
+exactly the scanned drawing this affects — so a JPEG 2000 or JBIG2 scan arrives as a blank
+white page, traces nothing, and is reported as *"Almost nothing was detected as a drawn
+line. Try inverting, or set the threshold by hand."* The user is sent to the threshold
+controls for a page that has no pixels in it. JBIG2 is the ordinary bilevel codec for
+scan-to-PDF, so this is the common scan, not an exotic one.
+
+`vite.pdfjs-wasm.ts` serves and emits the decoders **unhashed** at `pdfjs-wasm/` — hashed
+names would never be requested — and `pdfSource.ts` points `wasmUrl` there, resolved
+against `document.baseURI` so it survives the app's relative `base`. The path is a literal
+in both places, because importing the plugin would pull `node:fs` into the browser bundle;
+`pdfjsWasmPathMatches` in `trace.test.ts` is what holds them together, and the companion
+test names the three decoders so a `pdfjs-dist` upgrade that renames one fails loudly
+instead of quietly going back to blank scans.
+
 ## 9. Vector CAD: DXF and DWG
 
 **They are one importer, not two.** DXF is the drawing model written as tagged text; DWG

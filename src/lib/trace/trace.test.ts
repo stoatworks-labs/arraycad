@@ -6,7 +6,9 @@
  * scan, and it means these run in node with no canvas, no pdf.js and no browser.
  */
 
+import { readFileSync, readdirSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { PDFJS_WASM_PATH, pdfjsWasmDir } from '../../../vite.pdfjs-wasm.ts'
 import { PlaneType, Shape } from '../dbacv/types.ts'
 import { DEFAULT_CONVERT, convertNode, convertNodes } from '../geom/convert.ts'
 import { signedArea2 } from '../geom/vec.ts'
@@ -855,5 +857,35 @@ describe('trace -> .dbacv, end to end', () => {
     // And it landed where it was drawn: the sheet origin was the left end of the scale line.
     expect(Math.min(...xs)).toBeCloseTo(2.5, 6)
     expect(Math.min(...ys)).toBeCloseTo(0, 6)
+  })
+})
+
+// ------------------------------------------------------------- pdf.js decoders
+
+/**
+ * pdf.js fetches its JPEG 2000, JBIG2 and ICC decoders at runtime from the `wasmUrl`
+ * option; vite.pdfjs-wasm.ts is what puts them somewhere to fetch from.
+ *
+ * This is guarded by a test because every way it breaks is silent. Unset or misdirected,
+ * pdf.js asks for a path that does not exist, the decode fails as a console warning rather
+ * than a rejected render promise, and a scan in either format reaches the tracer as a blank
+ * white page — reported to the user as a thresholding problem.
+ */
+describe('pdf.js wasm decoders', () => {
+  it('pdfjsWasmPathMatches: the served path is the one pdfSource asks for', () => {
+    const src = readFileSync(new URL('./pdfSource.ts', import.meta.url), 'utf8')
+    // The literal in pdfSource.ts is deliberately not an import — importing the plugin
+    // would pull node:fs into the browser bundle — so the two are held together here.
+    expect(src).toContain(`new URL('${PDFJS_WASM_PATH}/', document.baseURI)`)
+    expect(src).toContain('wasmUrl: WASM_URL')
+  })
+
+  it('ships the decoders the tracer actually needs', () => {
+    // Named individually rather than asserting the directory is non-empty: a pdfjs-dist
+    // upgrade that renames or drops one of these is exactly the invisible regression.
+    const names = readdirSync(pdfjsWasmDir())
+    expect(names).toContain('openjpeg.wasm')
+    expect(names).toContain('jbig2.wasm')
+    expect(names).toContain('qcms_bg.wasm')
   })
 })
