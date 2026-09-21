@@ -417,6 +417,49 @@ describe('.dbacv re-import', () => {
     expect(ss.suggestedPlaneType).toBe(5)
   })
 
+  it('says nothing about unknown shapes when there are none', () => {
+    expect(scene.warnings.some((w) => w.includes('does not draw'))).toBe(false)
+  })
+
+  /**
+   * `Shape=3` is a superelliptical sector — ArrayCalc's `VenueObjectsEllipsoidal` table,
+   * the arc's fields plus `InnerN`/`OuterN` exponents. It is not in our enum, so it draws
+   * as nothing; 26 of them appear across 8 of ArrayCalc's own 80 example venues, mostly as
+   * audience. Silent was the bug: the object has to be named, or an export looks complete
+   * and is missing a floor.
+   */
+  describe('a shape this version cannot draw', () => {
+    // String.replace with a string pattern hits the first match only, which is the
+    // SOUNDSCAPE quad at the top of the fixture.
+    const withShape3 = xml.replace('Shape="1"', 'Shape="3"')
+    const s3 = importDbacvAsScene(withShape3, 'odd.dbacv', parser)
+    const odd = () => flattenNodes(s3.nodes).find((n) => n.name === 'SOUNDSCAPE')!
+    const warning = s3.warnings.find((w) => w.includes('does not draw'))
+
+    it('warns, naming the code and the object', () => {
+      expect(warning).toBeDefined()
+      expect(warning).toContain('Shape 3')
+      expect(warning).toContain('"SOUNDSCAPE"')
+    })
+
+    it('says the objects are missing from the export, not merely undrawn', () => {
+      expect(warning).toContain('NOT in the export')
+    })
+
+    it('puts it first, ahead of the lossy-round-trip note', () => {
+      expect(s3.warnings[0]).toBe(warning)
+    })
+
+    it('still imports the rest of the venue', () => {
+      expect(flattenNodes(s3.nodes)).toHaveLength(112)
+      expect(odd().positions).toHaveLength(0)
+    })
+
+    it('tags it with the raw code rather than "undefined"', () => {
+      expect(odd().tags).toContain('shape:3')
+    })
+  })
+
   it('composes the group transform onto children', () => {
     // The STAGE group sits at x=-4.8 and its STAGE child at another -4.8. Composed, the
     // stage deck starts at x=-9.6 — which is exactly where the SOUNDSCAPE plane starts.

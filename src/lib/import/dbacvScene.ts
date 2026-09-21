@@ -104,8 +104,20 @@ function tessellateArc(o: RoomObject, xf: Xf, out: number[]): void {
   }
 }
 
-/** Tessellate one RoomObject's own geometry (not its children) into `out`. */
-export function tessellate(o: RoomObject, xf: Xf, out: number[]): void {
+/**
+ * Tessellate one RoomObject's own geometry (not its children) into `out`.
+ *
+ * `onUnknownShape` is called for a `Shape` code this switch does not handle. It is not
+ * hypothetical: ArrayCalc's own example projects use `Shape=3` (a superelliptical sector,
+ * the `VenueObjectsEllipsoidal` table) which is not in our enum, and without this the
+ * object produced no triangles and said nothing. See §4 of docs/dbacv-format.md.
+ */
+export function tessellate(
+  o: RoomObject,
+  xf: Xf,
+  out: number[],
+  onUnknownShape?: (shape: number) => void,
+): void {
   const p = o.points.map((q) => apply(q, xf))
   switch (o.shape) {
     case Shape.Triangle:
@@ -138,21 +150,58 @@ export function tessellate(o: RoomObject, xf: Xf, out: number[]): void {
       break
     case Shape.Group:
       break
+    default:
+      onUnknownShape?.(o.shape)
+      break
   }
 }
 
-function toNode(o: RoomObject, parent: Xf): ImportedNode {
+/** One unrecognised `Shape` code, and the objects that carried it. */
+type UnknownShapes = Map<number, string[]>
+
+function toNode(o: RoomObject, parent: Xf, unknown: UnknownShapes): ImportedNode {
   const xf = compose(parent, o)
   const tris: number[] = []
-  tessellate(o, xf, tris)
+  tessellate(o, xf, tris, (shape) => {
+    const names = unknown.get(shape)
+    if (names) names.push(o.name)
+    else unknown.set(shape, [o.name])
+  })
   return {
     id: nextId(),
     name: o.name,
-    tags: [`shape:${Shape[o.shape]}`, `planeType:${o.planeType}`],
+    // `Shape[code]` is undefined for a code outside the enum, and "shape:undefined" in the
+    // tree tells the user nothing. Fall back to the raw number, which at least identifies it.
+    tags: [`shape:${Shape[o.shape] ?? o.shape}`, `planeType:${o.planeType}`],
     positions: new Float64Array(tris),
     suggestedPlaneType: o.shape === Shape.Group ? undefined : o.planeType,
-    children: o.children.map((c) => toNode(c, xf)),
+    children: o.children.map((c) => toNode(c, xf, unknown)),
   }
+}
+
+/**
+ * The warning for shapes we could not draw.
+ *
+ * Worth being specific rather than generic: these objects are usually audience — in
+ * ArrayCalc's own `Install - Large Church 180` the four `Shape=3` objects are the floor,
+ * the rear seats, the thrust and a walkway, four of its seven objects — and losing them
+ * silently leaves an export that looks complete and is not.
+ */
+function unknownShapeWarning(unknown: UnknownShapes): string[] {
+  if (unknown.size === 0) return []
+  const parts: string[] = []
+  let total = 0
+  for (const [shape, names] of [...unknown].sort((a, b) => a[0] - b[0])) {
+    total += names.length
+    const shown = names.slice(0, 4).map((n) => `"${n}"`).join(', ')
+    const more = names.length > 4 ? `, and ${names.length - 4} more` : ''
+    parts.push(`Shape ${shape}: ${names.length} object(s) — ${shown}${more}`)
+  }
+  return [
+    `${total} object(s) use a geometry this version does not draw and were left out of the ` +
+      `model entirely — they are NOT in the export. ${parts.join('. ')}. Check them against ` +
+      'ArrayCalc before trusting this venue.',
+  ]
 }
 
 export function importDbacvAsScene(
@@ -161,14 +210,18 @@ export function importDbacvAsScene(
   parser?: DOMParser,
 ): ImportedScene {
   const venue = parseDbacv(xml, parser)
+  const unknown: UnknownShapes = new Map()
+  const nodes = venue.objects.map((o) => toNode(o, IDENTITY, unknown))
   return {
     format: 'ArrayCalc venue',
     alreadyAVenue: true,
     sourceName: filename.replace(/\.[^.]+$/, ''),
     unitsPerMetre: 1,
     upAxis: 'z',
-    nodes: venue.objects.map((o) => toNode(o, IDENTITY)),
+    nodes,
     warnings: [
+      // Loudest first: losing whole objects matters more than arcs coming back flat.
+      ...unknownShapeWarning(unknown),
       'Re-importing a venue tessellates every object into triangles and rebuilds it from ' +
         'planes. Arc segments and boxes come back as flat quads, so a round trip through ' +
         'here is not lossless — use it to prune and retype, not to preserve.',

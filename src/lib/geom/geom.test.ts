@@ -3,7 +3,7 @@ import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
 import { boundaryLoops, convexHull, dropCollinear, isConvex, levelAlignedRect, minAreaRect, simplifyClosed, toFaces } from './polygon.ts'
 import { applyTransform, boundsOf, guessUnits, withOriginAt } from './transform.ts'
 import { planeBasis, toPlane2D } from './vec.ts'
-import { DEFAULT_CONVERT, convertNode } from './convert.ts'
+import { DEFAULT_CONVERT, convertNode, convertNodes } from './convert.ts'
 import { PlaneType, Shape } from '../dbacv/types.ts'
 import { canonicalQuad } from '../dbacv/quad.ts'
 import type { ImportedNode } from '../import/types.ts'
@@ -408,6 +408,45 @@ describe('convertNode', () => {
   it('handles an empty node without throwing', () => {
     const r = convertNode(node([]), PlaneType.Listening, DEFAULT_CONVERT)
     expect(r.objects).toHaveLength(0)
+  })
+})
+
+/**
+ * Every threshold in the reduction is in metres, so a drawing converted at the wrong scale
+ * has nothing dropped as clutter and the object count explodes instead of falling. A real
+ * 303 KB concert-hall DWG gives 683 objects at its own millimetres and 165,356 objects in a
+ * 107 MB .dbacv at metres — a file ArrayCalc cannot open, produced in silence.
+ */
+describe('scale sanity', () => {
+  const one = (positions: number[]) => [
+    { node: node(positions), planeType: PlaneType.Listening, include: true, name: 'test' },
+  ]
+  const scaleWarning = (w: string[]) => w.find((x) => x.includes('units being wrong'))
+
+  it('says nothing about a venue-sized venue', () => {
+    // 250 m is about as big as a real one gets — a stadium bowl.
+    expect(scaleWarning(convertNodes(one(quadXY(250, 180)), DEFAULT_CONVERT).warnings)).toBeUndefined()
+  })
+
+  it('warns past a kilometre, naming the span and the object count', () => {
+    const r = convertNodes(one(quadXY(92_139, 55_964)), DEFAULT_CONVERT)
+    const w = scaleWarning(r.warnings)
+    expect(w).toBeDefined()
+    expect(w).toContain('92,139 m across')
+    expect(w).toContain('unit setting')
+  })
+
+  it('does not fire once the same drawing is converted at its real scale', () => {
+    // The same numbers as millimetres: 92 m, which is what that concert hall really is.
+    const r = convertNodes(one(quadXY(92_139, 55_964)), {
+      ...DEFAULT_CONVERT,
+      transform: { ...DEFAULT_CONVERT.transform, unitsPerMetre: 0.001 },
+    })
+    expect(scaleWarning(r.warnings)).toBeUndefined()
+  })
+
+  it('handles a selection that produced nothing', () => {
+    expect(() => convertNodes(one([]), DEFAULT_CONVERT)).not.toThrow()
   })
 })
 

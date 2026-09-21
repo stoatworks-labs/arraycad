@@ -264,5 +264,60 @@ export function convertNodes(
     emit(made, area.name)
   }
 
+  warnings.push(...scaleSanityWarning(objects, stats))
+
   return { objects, stats, warnings }
+}
+
+/** Biggest single-axis span of a finished venue, in metres. */
+function venueSpanM(objects: RoomObject[]): number {
+  const lo = [Infinity, Infinity, Infinity]
+  const hi = [-Infinity, -Infinity, -Infinity]
+  const walk = (os: RoomObject[], ox: number, oy: number, oz: number) => {
+    for (const o of os) {
+      const r = (o.rotation.z * Math.PI) / 180
+      const c = Math.cos(r)
+      const s = Math.sin(r)
+      for (const p of o.points) {
+        const v = [
+          p.x * c - p.y * s + o.origin.x + ox,
+          p.x * s + p.y * c + o.origin.y + oy,
+          p.z + o.origin.z + oz,
+        ]
+        for (let a = 0; a < 3; a++) {
+          if (v[a] < lo[a]) lo[a] = v[a]
+          if (v[a] > hi[a]) hi[a] = v[a]
+        }
+      }
+      walk(o.children, ox + o.origin.x, oy + o.origin.y, oz + o.origin.z)
+    }
+  }
+  walk(objects, 0, 0, 0)
+  if (!Number.isFinite(lo[0])) return 0
+  return Math.max(hi[0] - lo[0], hi[1] - lo[1], hi[2] - lo[2])
+}
+
+/**
+ * The units cliff.
+ *
+ * Every threshold in the reduction is in metres — the minimum region area above all — so a
+ * drawing converted at the wrong scale has nothing dropped as clutter, and the object count
+ * explodes instead of falling. A 303 KB concert-hall DWG reduces to 683 objects at its own
+ * millimetres and to 165,356 objects and a 107 MB .dbacv at metres; a stadium reaches
+ * 380,951 and 233 MB. Both are files ArrayCalc cannot open, produced without a word said.
+ *
+ * A kilometre is the test because it is unambiguous: the largest venue anyone models is a
+ * stadium bowl at roughly 250 m, and an outdoor site a few hundred more. Nothing legitimate
+ * reaches 1 km, so this cannot fire on real work — and it names the cause rather than the
+ * symptom, which an object-count threshold could not do.
+ */
+function scaleSanityWarning(objects: RoomObject[], stats: ConvertStats): string[] {
+  const span = venueSpanM(objects)
+  if (span <= 1000) return []
+  return [
+    `This venue is ${Math.round(span).toLocaleString()} m across and came out as ` +
+      `${stats.objectsOut.toLocaleString()} objects. That is almost always the units being ` +
+      'wrong — at the wrong scale nothing falls under the minimum region area, so clutter is ' +
+      'kept instead of dropped. Check the unit setting under Placement before exporting.',
+  ]
 }
