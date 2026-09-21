@@ -134,6 +134,28 @@ describe('MVR document', () => {
     expect(() => parse('<?xml version="1.0"?><ArrayCalc/>')).toThrow(/GeneralSceneDescription/)
   })
 
+  /**
+   * MA Lighting's own Demostage.mvr, from the official GDTF example set, ends its
+   * GeneralSceneDescription.xml with a NUL after the closing tag. XML forbids NUL, so
+   * DOMParser rejected the document and the whole 3.9 MB show — 85 objects, 108,701
+   * triangles — was refused over one trailing byte.
+   */
+  describe('padding left after the closing tag', () => {
+    const NUL = String.fromCharCode(0)
+
+    it('survives a trailing NUL', () => {
+      expect(parse(oneLayer('') + NUL).version).toBe('1.6')
+    })
+
+    it('survives trailing whitespace and several NULs', () => {
+      expect(parse(oneLayer('') + '\n' + NUL + NUL + '  \n').version).toBe('1.6')
+    })
+
+    it('still rejects a NUL inside the document', () => {
+      expect(() => parse(oneLayer('').replace('<Layers>', '<Lay' + NUL + 'ers>'))).toThrow()
+    })
+  })
+
   it('recurses through nested ChildLists', () => {
     const s = parse(
       oneLayer(

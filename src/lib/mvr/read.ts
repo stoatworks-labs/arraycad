@@ -146,8 +146,34 @@ function readSymdefs(aux: Element | null, classNames: Map<string, string>): Map<
   return out
 }
 
+/**
+ * Strip padding a writer left after the closing tag.
+ *
+ * MA Lighting's own `Demostage.mvr`, from the official GDTF example set, ends its
+ * GeneralSceneDescription.xml with a NUL byte after `</GeneralSceneDescription>`. XML
+ * forbids NUL anywhere, so DOMParser rejects the document and a 3.9 MB show file — 85
+ * objects, 108,701 triangles — is refused outright over one trailing byte.
+ *
+ * Nothing after the root element carries meaning, so dropping trailing NULs and whitespace
+ * costs nothing. Only the tail is touched: a NUL anywhere inside the document is still a
+ * broken file and still fails, which is what we want.
+ *
+ * Written as a character-code loop rather than a regex so the source carries no NUL escape
+ * of its own.
+ */
+function trimTrailingPadding(xml: string): string {
+  let end = xml.length
+  while (end > 0) {
+    const c = xml.charCodeAt(end - 1)
+    const isPadding = c === 0 || c === 0x20 || c === 0x09 || c === 0x0a || c === 0x0d
+    if (!isPadding) break
+    end--
+  }
+  return end === xml.length ? xml : xml.slice(0, end)
+}
+
 export function parseMvr(xml: string, parser: DOMParser = new DOMParser()): MvrScene {
-  const doc = parser.parseFromString(xml, 'application/xml')
+  const doc = parser.parseFromString(trimTrailingPadding(xml), 'application/xml')
 
   // DOMParser signals failure with a <parsererror> element rather than throwing, and the
   // element is namespaced differently across engines — check the tag name anywhere.
