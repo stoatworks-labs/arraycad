@@ -2,6 +2,7 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './styles.css'
+import { registerServiceWorker } from './register-sw.ts'
 
 // The About dialog's data file ships a version baked at sync time; this is the
 // one the build actually produced. Spread, not assign: about-data.js may not
@@ -13,3 +14,5 @@ createRoot(document.getElementById('root')!).render(
     <App />
   </StrictMode>,
 )
+
+registerServiceWorker()

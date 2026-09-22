@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="ArrayCAD">
+  <rect width="32" height="32" rx="6" fill="#0a1420"/>
+  <g id="mark">
+    <!-- A line-array hang splaying over a floor: the two things the tool moves
+         between, a CAD venue and an ArrayCalc rig. -->
+    <g fill="#4cc9f0">
+      <rect x="10" y="5.6" width="11" height="2.7" rx=".9"/>
+      <rect x="10" y="9.2" width="11" height="2.7" rx=".9" transform="rotate(7 15.5 10.55)"/>
+      <rect x="10" y="12.8" width="11" height="2.7" rx=".9" transform="rotate(15 15.5 14.15)"/>
+      <rect x="10" y="16.4" width="11" height="2.7" rx=".9" transform="rotate(24 15.5 17.75)"/>
+    </g>
+    <path d="M5 26h22" stroke="#93a8bd" stroke-width="1.7" stroke-linecap="round"/>
+  </g>
+</svg>
