@@ -37,13 +37,50 @@ const DEG = 180 / Math.PI
 const xyz = (p: Obj) => (p ? { x: p.x ?? 0, y: p.y ?? 0, z: p.z ?? 0 } : { x: 0, y: 0, z: 0 })
 
 /**
+ * Which acad-ts entity class this is, WITHOUT asking for its class name.
+ *
+ * `constructor.name` is what a debugger shows, and it is exactly what a production build
+ * throws away: the minifier renames every acad-ts class to `e`, so a switch on it matched
+ * nothing and every DWG on the hosted site failed with "nothing in model space" while the
+ * dev server, node and every test read the same file perfectly. `objectName` is the DXF
+ * entity token acad-ts stores as a string, so it survives minification; the four POLYLINE
+ * kinds share one token and are told apart by their DXF subclass marker, the same way.
+ *
+ * Returns the class name the rest of this file was written against, or the raw token for
+ * anything not mapped, so the skipped-type warning still names it.
+ */
+function entityKind(e: Obj): string {
+  const token = String(e.objectName ?? '')
+  switch (token) {
+    case 'LINE': return 'Line'
+    case 'ARC': return 'Arc'
+    case 'CIRCLE': return 'Circle'
+    case 'ELLIPSE': return 'Ellipse'
+    case 'SPLINE': return 'Spline'
+    case 'LWPOLYLINE': return 'LwPolyline'
+    case '3DFACE': return 'Face3D'
+    case 'SOLID': return 'Solid'
+    case 'INSERT': return 'Insert'
+    case '3DSOLID': return 'Solid3D'
+    case 'POLYLINE':
+      switch (e.subclassMarker) {
+        case 'AcDbPolyFaceMesh': return 'PolyfaceMesh'
+        case 'AcDbPolygonMesh': return 'PolygonMesh'
+        default: return 'Polyline'
+      }
+    default:
+      return token
+  }
+}
+
+/**
  * A DXF-shaped entity, or null for anything with no geometry in it.
  *
  * Text, dimensions and attributes are dropped here rather than in `entities.ts` so that
  * the shared code never has to know which parser it is being fed by.
  */
 function toCadEntity(e: Obj, layer: string): Obj | null {
-  switch (e.constructor?.name) {
+  switch (entityKind(e)) {
     case 'Line':
       return { type: 'LINE', layer, vertices: [xyz(e.startPoint), xyz(e.endPoint)] }
 
@@ -193,25 +230,18 @@ function solidPoints(e: Obj): { x: number; y: number; z: number }[] {
  * say the hatch was skipped, not just quietly come out without a balcony.
  */
 const IGNORED = new Set([
-  'TextEntity',
-  'MText',
-  'AttributeEntity',
-  'AttributeDefinition',
-  'Leader',
-  'MultiLeader',
-  'Dimension',
-  'DimensionAligned',
-  'DimensionLinear',
-  'DimensionRadius',
-  'DimensionDiameter',
-  'DimensionAngular2Line',
-  'DimensionAngular3Pt',
-  'DimensionOrdinate',
-  'Point',
-  'Viewport',
-  'Seqend',
-  'Ray',
-  'XLine',
+  'TEXT',
+  'MTEXT',
+  'ATTRIB',
+  'ATTDEF',
+  'LEADER',
+  'MULTILEADER',
+  'DIMENSION',
+  'POINT',
+  'VIEWPORT',
+  'SEQEND',
+  'RAY',
+  'XLINE',
 ])
 
 function mapEntities(
@@ -225,7 +255,7 @@ function mapEntities(
     const mapped = toCadEntity(e, String(layer))
     if (mapped) out.push(mapped)
     else {
-      const name = e.constructor?.name
+      const name = entityKind(e)
       if (name && !IGNORED.has(name)) skipped.add(name)
     }
   }

@@ -156,7 +156,7 @@ describe('DWG import', () => {
 
   it('says so when it drops an entity type that could have carried geometry', () => {
     const l = layer('X')
-    const hatch: any = { constructor: { name: 'Hatch' }, layer: l }
+    const hatch: any = { objectName: 'HATCH', layer: l }
     const s = buildDwgScene(
       doc([
         line(l, 0, 0, 10, 0),
@@ -167,8 +167,29 @@ describe('DWG import', () => {
       ]),
       'a.dwg',
     )
-    expect(s.warnings.join(' ')).toMatch(/Skipped unsupported DWG entity type Hatch/)
+    expect(s.warnings.join(' ')).toMatch(/Skipped unsupported DWG entity type HATCH/)
     expect(countTriangles(s.nodes)).toBeGreaterThan(0)
+  })
+
+  it('reads entities whose class name a minifier has thrown away', () => {
+    // The production build renames every acad-ts class to a single letter. Dispatching on
+    // `constructor.name` passed every test here and read nothing at all on the hosted site.
+    class e extends Line {}
+    const l = layer('WALLS')
+    const minified = (x1: number, y1: number, x2: number, y2: number) => {
+      const m = new e()
+      m.startPoint = new XYZ(x1, y1, 0)
+      m.endPoint = new XYZ(x2, y2, 0)
+      m.layer = l
+      return m
+    }
+    expect(new e().constructor.name).toBe('e')
+    const s = buildDwgScene(
+      doc([minified(0, 0, 10, 0), minified(10, 0, 10, 6), minified(10, 6, 0, 6), minified(0, 6, 0, 0)]),
+      'a.dwg',
+    )
+    expect(s.nodes.map((n) => n.name)).toEqual(['WALLS'])
+    expect(regionsOf(s)[0].area).toBeCloseTo(60, 6)
   })
 
   it('refuses a drawing with nothing in model space', () => {
