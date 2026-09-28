@@ -477,6 +477,15 @@ the same drawing as `.dxf` and as `.dwg` and comparing:
   every seat in the house faces somewhere random.
 - acad-ts's `Arc.sweep` getter is `start - end`, the negative of the DXF sweep. Don't use
   it; recompute.
+- dxf-parser has no 3DSOLID handler and drops them **without a warning** — and in a venue
+  drawing the 3DSOLIDs are the truss the speakers fly from. `dxf.ts` registers one; the body
+  is read by `acis.ts` (ciphered SAT in R2000–R2004 DXF) and imported as its convex hull.
+- acad-ts 3.x sets `isBinaryAcisData: false` on an R2004 DWG body that is SAB (`ACIS
+  BinaryFile`). `acis.ts` sniffs the bytes and ignores the flag.
+- acad-ts 3.2 reads only 5 of the 45 3DSOLIDs in a real R2018 (AC1032) DWG, with no body and
+  no wires on those 5 — the rest vanish inside the reader. 2.4 returned all 45 with their
+  isoline `wires`. Found on the Amfar Rig 2026 plot (2026-09-28): the same drawing saved as
+  DWG 2004 or DXF 2004 imports all 45, which is what the unreadable-solid warning says.
 
 **Fills use earcut, not a centroid fan.** A fan is only correct for a convex ring, and
 chaining makes deeply concave rings the common case — an auditorium outline fanned about

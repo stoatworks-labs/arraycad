@@ -13,8 +13,10 @@
  */
 
 import DxfParser from 'dxf-parser'
+import { checkCommonEntityProperties } from 'dxf-parser/dist/ParseHelpers.js'
 import { type ImportedScene, ImportError } from './types.ts'
 import { type CadDocument, type CadOptions, buildNodes, noSurfacesError } from './entities.ts'
+import { satPoints } from './acis.ts'
 
 export type DxfOptions = CadOptions
 export { DEFAULT_CAD_OPTIONS as DEFAULT_DXF_OPTIONS } from './entities.ts'
@@ -45,15 +47,43 @@ export const INSUNITS: Record<number, number | undefined> = {
   16: 100, // hectometres
 }
 
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/**
+ * 3DSOLID, which dxf-parser has no handler for and drops without a word.
+ *
+ * In a venue drawing these are the truss — the one thing the speakers are flown from — so
+ * dropping them is not a loss of detail but of the rig. The body is ACIS SAT text, one line
+ * per group code 1, continued by group code 3 when a line runs past 255 characters. It is
+ * reduced to a point cloud here (see `acis.ts`); `entities.ts` turns that into a hull.
+ */
+class Solid3dHandler {
+  ForEntityName = '3DSOLID'
+  parseEntity(scanner: any, curr: any) {
+    const entity: any = { type: curr.value, sat: [] as string[] }
+    curr = scanner.next()
+    while (!scanner.isEOF() && curr.code !== 0) {
+      if (curr.code === 1) entity.sat.push(String(curr.value))
+      else if (curr.code === 3 && entity.sat.length > 0) entity.sat[entity.sat.length - 1] += String(curr.value)
+      else checkCommonEntityProperties(entity, curr, scanner)
+      curr = scanner.next()
+    }
+    entity.points = satPoints(entity.sat)
+    delete entity.sat
+    return entity
+  }
+}
+
 export function importDxf(
   text: string,
   filename: string,
   options: Partial<DxfOptions> = {},
 ): ImportedScene {
-  /* eslint-disable @typescript-eslint/no-explicit-any */
   let dxf: any
   try {
-    dxf = new DxfParser().parseSync(text)
+    const parser = new DxfParser()
+    parser.registerEntityHandler(Solid3dHandler as any)
+    dxf = parser.parseSync(text)
   } catch (e) {
     throw new ImportError(
       `Could not parse this DXF: ${(e as Error).message}`,

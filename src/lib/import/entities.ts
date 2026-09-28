@@ -23,6 +23,8 @@ import { chainSegments, ringArea } from './chain.ts'
 import { triangulateRing } from '../geom/polygon.ts'
 import type { Vec3 } from '../geom/vec.ts'
 import { add, scale } from '../geom/vec.ts'
+import { Vector3 } from 'three'
+import { ConvexHull } from 'three/examples/jsm/math/ConvexHull.js'
 
 let seq = 0
 const nextId = () => `dxf${++seq}`
@@ -140,6 +142,46 @@ interface Sink {
   tris: number[]
   /** Open paths awaiting chaining, in world space. */
   paths: P3[][]
+  /** 3DSOLIDs placed on this layer, and those that carried nothing readable. */
+  solids: number
+  unreadSolids: number
+}
+
+/**
+ * A 3DSOLID as its convex hull.
+ *
+ * The importer has already reduced the ACIS body to the points it is made of (`acis.ts` for
+ * DXF, the stored wireframe for DWG). The hull of those is the solid's outer volume, which
+ * for a truss section is the whole of what a prediction tool needs: where it is, and how
+ * big. It is also far lighter than the body: a 3 m section is a few dozen triangles rather
+ * than the thousands its tubes and bracing would tessellate to.
+ */
+function emitSolid(points: P3[], ctx: Ctx, sink: Sink): void {
+  if (points.length < 4) {
+    sink.unreadSolids++
+    return
+  }
+  const placed = points.map((p) => xform(p, ctx))
+  let faces: ConvexHull['faces']
+  try {
+    faces = new ConvexHull().setFromPoints(placed.map((p) => new Vector3(p.x, p.y, p.z))).faces
+  } catch {
+    faces = []
+  }
+  // A flat or collinear cloud has no volume and no hull.
+  if (faces.length === 0) {
+    sink.unreadSolids++
+    return
+  }
+  for (const f of faces) {
+    let e = f.edge
+    do {
+      const p = e.head().point
+      sink.tris.push(p.x, p.y, p.z)
+      e = e.next
+    } while (e !== f.edge)
+  }
+  sink.solids++
 }
 
 /**
@@ -531,6 +573,10 @@ function emitEntity(
       break
     }
 
+    case '3DSOLID':
+      emitSolid((e.points ?? []).map(pt), ctx, sink)
+      break
+
     case 'TEXT':
     case 'MTEXT':
     case 'ATTDEF':
@@ -632,7 +678,7 @@ export function buildNodes(
     const layer = String(e.layer ?? '0')
     let sink = byLayer.get(layer)
     if (!sink) {
-      sink = { tris: [], paths: [] }
+      sink = { tris: [], paths: [], solids: 0, unreadSolids: 0 }
       byLayer.set(layer, sink)
     }
     emitEntity(e, IDENTITY, sink, blocks, opts, warn)
@@ -672,6 +718,25 @@ export function buildNodes(
           'were left out. Switch on "treat open paths as closed" if any of them were wanted.',
       )
     }
+  }
+
+  const solidLayers = [...byLayer].filter(([, s]) => s.solids > 0).map(([l]) => l)
+  const solids = [...byLayer.values()].reduce((n, s) => n + s.solids, 0)
+  if (solids > 0) {
+    warn.add(
+      `${solids} 3D solid${solids === 1 ? '' : 's'} (layer ${solidLayers.join(', ')}) came in as ` +
+        'their outer volume. That is the right shape for truss; anything concave is filled in.',
+    )
+  }
+  const unread = [...byLayer].filter(([, s]) => s.unreadSolids > 0)
+  const unreadCount = unread.reduce((n, [, s]) => n + s.unreadSolids, 0)
+  if (unreadCount > 0) {
+    warn.add(
+      `${unreadCount} 3D solid${unreadCount === 1 ? '' : 's'} (layer ${unread.map(([l]) => l).join(', ')}) ` +
+        'carried no geometry that could be read and were left out. If that is the truss, save ' +
+        'the drawing as DWG 2004 or DXF 2004 and import that: those keep each solid inside ' +
+        'the entity, where it can be read.',
+    )
   }
 
   const nodes: ImportedNode[] = []

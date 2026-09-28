@@ -25,6 +25,7 @@
 import { type ImportedScene, ImportError } from './types.ts'
 import { type CadBlock, type CadDocument, type CadOptions, buildNodes, noSurfacesError } from './entities.ts'
 import { INSUNITS } from './dxf.ts'
+import { acisPoints } from './acis.ts'
 
 export type DwgOptions = CadOptions
 
@@ -140,6 +141,9 @@ function toCadEntity(e: Obj, layer: string): Obj | null {
       }
     }
 
+    case 'Solid3D':
+      return { type: '3DSOLID', layer, points: solidPoints(e) }
+
     case 'Insert':
       return {
         type: 'INSERT',
@@ -161,6 +165,26 @@ function toCadEntity(e: Obj, layer: string): Obj | null {
     default:
       return null
   }
+}
+
+/**
+ * What a DWG 3DSOLID can offer in place of its body.
+ *
+ * Two sources, best first. The ACIS body itself (`acisData`, SAB or SAT — see `acis.ts`),
+ * which acad-ts 3.x hands over from an R2004 DWG. Otherwise the isoline wireframe AutoCAD
+ * stores alongside the body, already in world coordinates, which acad-ts 2.x decoded from
+ * an R2018 DWG. When both are empty the solid is counted as unreadable and `entities.ts`
+ * says so; it is not silently dropped.
+ */
+function solidPoints(e: Obj): { x: number; y: number; z: number }[] {
+  const acis: Uint8Array | undefined = e.acisData
+  if (acis && acis.length > 0) {
+    const pts = acisPoints(acis)
+    if (pts.length > 0) return pts
+  }
+  const pts: { x: number; y: number; z: number }[] = []
+  for (const w of e.wires ?? []) for (const p of w.points ?? []) pts.push(xyz(p))
+  return pts
 }
 
 /**
