@@ -67,6 +67,17 @@ body:
         one is purely local.
       placeholder: "d&b D80, firmware 2.14, on a flat VLAN with the laptop"
 
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics bundle
+      description: >
+        ArrayCAD can bundle its own logs, version info and last crash into a single
+        file — that one file usually answers every question we'd otherwise have to ask
+        you one at a time. Look for a Collect Diagnostics button in the app, or run it with --collect-diagnostics.
+        Config values are redacted before the bundle is written, but do have a look
+        before attaching it: paste the contents here, or drag the file into this box.
+      render: text
 
   - type: textarea
     id: logs
