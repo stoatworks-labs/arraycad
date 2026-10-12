@@ -16,7 +16,7 @@ It runs in the browser with no backend and no upload, so the file never leaves y
 > export **byte for byte** and has been round-tripped through ArrayCalc until every object came
 > back untouched, a written Soundvision file was imported into Soundvision and read back surface
 > by surface, and EASE Focus opened and saved a project of 57 audience planes with all 57 labels
-> and every coordinate intact. 361 tests pin the reduction.
+> and every coordinate intact. 464 tests pin the reduction.
 >
 > **What none of that proves is acoustic orientation.** No prediction has been run over an
 > imported surface yet, and **a surface wound the wrong way lands right where it should and then

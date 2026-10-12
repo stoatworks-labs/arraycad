@@ -6,7 +6,7 @@
 > reproduces a real ArrayCalc export byte for byte and has been round-tripped through ArrayCalc
 > until every object came back untouched, Soundvision 3.18.0.15 imported a written `.txt` and read
 > it back surface by surface, and EASE Focus 3.1.260 opened and saved a project of 57 audience
-> planes with all 57 labels and every coordinate intact. 361 tests pin the reduction. What none of
+> planes with all 57 labels and every coordinate intact. 464 tests pin the reduction. What none of
 > that proves is **acoustic orientation**. No prediction has been run over an imported surface
 > yet, and a surface wound the wrong way lands right where it should and then silently returns no
 > mapping result, so check a mapping before you trust a whole design to it.
