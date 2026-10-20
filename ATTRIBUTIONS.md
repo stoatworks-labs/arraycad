@@ -41,6 +41,26 @@ An npm dependency.
 
 The UI layer for the browser tools and the Electron and Tauri front ends.
 
+### pdf.js — Mozilla
+
+<https://github.com/mozilla/pdf.js>  
+Licence: Apache-2.0  
+Copyright: Mozilla Foundation
+
+An npm dependency (pdfjs-dist), bundled into the page with its worker.
+
+Mozilla's PDF renderer, the one in Firefox. It draws a PDF's pages to a canvas at whatever size they are wanted, rather than scaling a picture of them.
+
+### fflate
+
+<https://github.com/101arrowz/fflate>  
+Licence: MIT  
+Copyright: Arjun Barrett
+
+An npm dependency, bundled into the page.
+
+Zip and deflate in plain JavaScript, fast enough to use in a browser. Office documents, OpenDocument files and most multi-file downloads are zip packages underneath.
+
 ### The Rust crate ecosystem
 
 <https://crates.io>  
