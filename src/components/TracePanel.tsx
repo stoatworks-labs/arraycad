@@ -16,6 +16,7 @@ import {
   type TraceRegion,
   type WandOptions,
   calibrateByPaperScale,
+  drawingUnitName,
   fitHeightPlane,
   fitRegion,
   pxToVenue,
@@ -46,6 +47,8 @@ interface Props {
   /** Height entry state, kept above the panel so switching region does not lose it. */
   ramp: { from: number; to: number; zFrom: number; zTo: number; flat: number }
   onRamp: (patch: Partial<Props['ramp']>) => void
+  /** A plan traced from a CAD import: leave the tracer for the model it came from. */
+  onBackToModel?: () => void
 }
 
 /**
@@ -125,9 +128,11 @@ export function TracePanel(props: Props) {
 
 // ------------------------------------------------------------------- calibration
 
-function Calibration({ doc, onChange }: Props) {
+function Calibration({ doc, onChange, onBackToModel }: Props) {
   const cal = doc.calibration
   const src = cal.source
+  const originOnSheet =
+    cal.origin[0] >= 0 && cal.origin[1] >= 0 && cal.origin[0] <= doc.raster.width && cal.origin[1] <= doc.raster.height
 
   return (
     <>
@@ -138,9 +143,38 @@ function Calibration({ doc, onChange }: Props) {
             ? `measured over ${src.metres} m`
             : src.kind === 'paper-scale'
               ? `1:${src.denominator} on the page`
-              : 'not calibrated'}
+              : src.kind === 'drawing-units'
+                ? `drawn in ${drawingUnitName(src.metresPerUnit)}`
+                : 'not calibrated'}
         </em>
       </div>
+      {src.kind === 'drawing-units' &&
+        (src.stated ? (
+          <p className="hint">
+            Exact: the drawing states its units, so there is nothing to measure. Set scale is
+            still there if a dimension disagrees.
+          </p>
+        ) : (
+          <p className="hint warn-text">
+            The drawing does not state its units — this is the Source units setting standing in
+            for them. Check it against a dimension you know with <strong>Set scale</strong>.
+          </p>
+        ))}
+      {doc.drawing && (
+        <p className="hint" title={doc.drawing.layersLeftOff.join('\n') || undefined}>
+          {doc.drawing.layersDrawn.length} layer{doc.drawing.layersDrawn.length === 1 ? '' : 's'} on the sheet
+          {doc.drawing.layersLeftOff.length > 0 &&
+            `; ${doc.drawing.layersLeftOff.length} left off as clutter or turned off (${doc.drawing.layersLeftOff
+              .slice(0, 3)
+              .join(', ')}${doc.drawing.layersLeftOff.length > 3 ? ', …' : ''})`}
+          .
+        </p>
+      )}
+      {onBackToModel && (
+        <button type="button" onClick={onBackToModel} title="Convert the drawing as a 3D model after all. Traced regions are not kept.">
+          Back to the 3D import
+        </button>
+      )}
       {src.kind === 'unset' && (
         <p className="hint warn-text">
           Nothing is at the right size yet. Use <strong>Set scale</strong> and measure a
@@ -181,9 +215,20 @@ function Calibration({ doc, onChange }: Props) {
       )}
 
       <p className="hint">
-        Venue origin is at pixel {cal.origin[0].toFixed(0)}, {cal.origin[1].toFixed(0)} — the
-        green cross. Venue +X runs right across the sheet and +Y runs up it; use{' '}
-        <strong>Heading</strong> under Placement to aim the room down +X.
+        {src.kind === 'drawing-units' ? (
+          <>
+            Venue origin is the drawing's own 0, 0{originOnSheet ? ' — the green cross' : ', which is off the sheet'}
+            , so a traced room lands where the drawing puts it. Use <strong>Set origin</strong> to
+            move it.
+          </>
+        ) : (
+          <>
+            Venue origin is at pixel {cal.origin[0].toFixed(0)}, {cal.origin[1].toFixed(0)} — the
+            green cross.
+          </>
+        )}{' '}
+        Venue +X runs right across the sheet and +Y runs up it; use <strong>Heading</strong>{' '}
+        under Placement to aim the room down +X.
       </p>
     </>
   )

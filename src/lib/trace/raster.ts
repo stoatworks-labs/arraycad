@@ -220,3 +220,36 @@ export function inkFraction(mask: Mask): number {
   for (let i = 0; i < mask.data.length; i++) n += mask.data[i]
   return mask.data.length === 0 ? 0 : n / mask.data.length
 }
+
+/**
+ * Half the size, keeping the DARKEST of each 2x2 block, channel by channel.
+ *
+ * For showing a sheet zoomed out, not for detecting anything. Any ordinary downscale
+ * averages a one-pixel line into the paper around it or samples between lines altogether,
+ * so a plan shrunk to fit the screen loses walls that are perfectly present in the mask —
+ * and a wall that cannot be seen reads as the reason a fill escaped. Repeated, this is a
+ * mip chain in which a line stays a line at every level. Odd edges keep their last row and
+ * column.
+ */
+export function shrinkDarkest(r: Raster): Raster {
+  const w = Math.max(1, Math.ceil(r.width / 2))
+  const h = Math.max(1, Math.ceil(r.height / 2))
+  const out = new Uint8ClampedArray(w * h * 4)
+  const d = r.data
+  for (let y = 0; y < h; y++) {
+    const y0 = y * 2
+    const y1 = Math.min(r.height - 1, y0 + 1)
+    for (let x = 0; x < w; x++) {
+      const x0 = x * 2
+      const x1 = Math.min(r.width - 1, x0 + 1)
+      const a = (y0 * r.width + x0) * 4
+      const b = (y0 * r.width + x1) * 4
+      const c = (y1 * r.width + x0) * 4
+      const e = (y1 * r.width + x1) * 4
+      const o = (y * w + x) * 4
+      for (let k = 0; k < 3; k++) out[o + k] = Math.min(d[a + k], d[b + k], d[c + k], d[e + k])
+      out[o + 3] = Math.max(d[a + 3], d[b + 3], d[c + 3], d[e + 3])
+    }
+  }
+  return { width: w, height: h, data: out }
+}

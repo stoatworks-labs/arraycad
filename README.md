@@ -6,7 +6,7 @@
 > reproduces a real ArrayCalc export byte for byte and has been round-tripped through ArrayCalc
 > until every object came back untouched, Soundvision 3.18.0.15 imported a written `.txt` and read
 > it back surface by surface, and EASE Focus 3.1.260 opened and saved a project of 57 audience
-> planes with all 57 labels and every coordinate intact. 464 tests pin the reduction. What none of
+> planes with all 57 labels and every coordinate intact. 480 tests pin the reduction. What none of
 > that proves is **acoustic orientation**. No prediction has been run over an imported surface
 > yet, and a surface wound the wrong way lands right where it should and then silently returns no
 > mapping result, so check a mapping before you trust a whole design to it.
@@ -165,6 +165,24 @@ a pit, two raked stalls blocks, columns and a balcony.
    if you do want a number for every corner.
    *Ramp* does the arithmetic: pick a front corner and a back corner, give each a height,
    and the rest follow the slope.
+
+### A DXF or DWG plan
+
+A rig plot or a floor plan saved as CAD is a drawing, not a model: every line at height zero.
+Converted as a model it comes out with every surface lying on the floor, the ceiling coffers
+included. When that's what's left once the clutter is out, the **Prepare** panel says so and
+offers **Trace this plan**, which puts the drawing's own lines on the sheet:
+
+- **No scale to set.** The drawing states its units (`$INSUNITS`), so the sheet is calibrated
+  exactly, and the venue origin is the drawing's own 0, 0. If it states none, the Source units
+  setting stands in, and the Scale panel says to check it.
+- **Only the layers left in are drawn**, so a centreline, the dimensions or the lighting don't
+  cut a room in two for *Detect region*. Turn a layer off in the tree first to keep it off the
+  sheet too.
+- **Snapping uses the real lines**, like a vector PDF.
+
+A plan whose lines never close into a single surface skips the question and opens in the tracer
+straight away. Try it on **[`demo/demo-rigplot.dxf`](demo/demo-rigplot.dxf)**.
 
 ### Two ways to read the heights
 

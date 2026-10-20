@@ -91,6 +91,41 @@ export function calibrateByPaperScale(
   }
 }
 
+/**
+ * How many pixels one drawing unit gets, for a CAD plan drawn onto a sheet.
+ *
+ * The longest side of the drawing comes out at no more than `targetPx`, and the scale is
+ * rounded DOWN to two significant figures in pixels per metre, so the readout says 33 px/m
+ * rather than 33.81 — a number a person can check against a dimension, which is the point
+ * of quoting it. Here rather than in cad.ts because it is the one place metres meet pixels.
+ */
+export function pixelsPerDrawingUnit(extentUnits: number, metresPerUnit: number, targetPx: number): number {
+  const extentM = Math.max(extentUnits * metresPerUnit, 1e-6)
+  const raw = targetPx / extentM
+  const step = 10 ** (Math.floor(Math.log10(raw)) - 1)
+  return (Math.max(1, Math.floor(raw / step)) * step) * metresPerUnit
+}
+
+/**
+ * Calibrate a CAD plan from its own units. Exact, with no clicking, like a paper scale:
+ * the sheet was drawn at `pixelsPerUnit`, and a unit is `metresPerUnit` metres. `stated`
+ * is false when the drawing declared no units and the user's Source units setting is
+ * standing in for them — the UI says so, because that is a choice, not a measurement.
+ */
+export function calibrateByDrawingUnits(
+  metresPerUnit: number,
+  pixelsPerUnit: number,
+  origin: Px,
+  stated: boolean,
+): Calibration | null {
+  if (!(metresPerUnit > 0) || !(pixelsPerUnit > 0)) return null
+  return {
+    pixelsPerMetre: pixelsPerUnit / metresPerUnit,
+    origin,
+    source: { kind: 'drawing-units', metresPerUnit, pixelsPerUnit, stated },
+  }
+}
+
 /** Move the venue origin without touching the scale. */
 export function withOrigin(cal: Calibration, origin: Px): Calibration {
   return { ...cal, origin }

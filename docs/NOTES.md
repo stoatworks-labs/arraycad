@@ -35,6 +35,15 @@ beside the `.dbacv` one. Shipped as two separate commits; `demo/demo-plan.pdf` i
 synthetic 1:200 sheet to trace. Three videos now: reducer tour `g5TH-Y7cWNs`, tracing
 `Ky7lkRAa8qE`, Soundvision `w2-KEFSz1Mk`.
 
+**2026-10-20: a flat CAD plan goes through the tracer.** The 2026-10-19 probe found 2D DXF/DWG
+plans converted as 3D: the Amfar rig plot (158 MB DXF, mm) came out as 1,393 objects at z = 0,
+`Ceiling Coffers` typed as a ceiling on the floor. Now Prepare reports "a flat plan" (decided on
+what is left in, by AREA share — the plot's speaker symbols are 3D blocks on non-clutter layers,
+so a height span says "model") and offers *Trace this plan*: `trace/cad.ts` draws the importer's
+line work onto a sheet at 33 px/m with the drawing-units calibration, and the wand closes real
+rooms on it. Checked headlessly on Amfar and in the built bundle under the real CSP. Amfar is a
+client drawing and is not in the repo; `demo/demo-rigplot.dxf` is the fixture. AGENTS.md §8.
+
 **v0.2.0, released 2026-08-03: rationalisation.** `src/lib/geom/rationalise.ts` closes the one gap
 `planarize.ts` structurally cannot: a plan that models every seat separately, where the
 surfaces genuinely do not touch, so the flood fill is right to report hundreds of regions.

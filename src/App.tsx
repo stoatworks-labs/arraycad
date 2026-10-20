@@ -3,6 +3,7 @@ import { type VenueFile } from './lib/dbacv/types.ts'
 import { formatDbacvDate, writeDbacv } from './lib/dbacv/write.ts'
 import {
   type ImportedNode,
+  type ImportedScene,
   ACCEPTED_EXTENSIONS,
   ImportError,
   countTriangles,
@@ -15,7 +16,17 @@ import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
 import { writeEaseFocus } from './lib/easefocus/write.ts'
 import { convertNodesToMvr } from './lib/mvr/convert.ts'
 import { writeMvr } from './lib/mvr/write.ts'
-import { type TraceDocument, type WandOptions, DEFAULT_WAND, buildTraceScene } from './lib/trace/index.ts'
+import {
+  type LayerChoice,
+  type TraceDocument,
+  type WandOptions,
+  DEFAULT_WAND,
+  buildTraceScene,
+  cadTraceDocument,
+  flatPlanReport,
+  guessDrawingUnits,
+  traceLayers,
+} from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
 import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
@@ -70,6 +81,12 @@ export default function App() {
   const [prepareOptions, setPrepareOptions] = useState<PrepareSettings>(DEFAULT_PREPARE_SETTINGS)
   const [traceDoc, setTraceDoc] = useState<TraceDocument | null>(null)
   const [traceFile, setTraceFile] = useState<File | null>(null)
+  /**
+   * The CAD import a traced plan came from, kept so "Back to the 3D import" costs nothing.
+   * Null for a PDF or an image, and for a plan with no surfaces, which has no model to go
+   * back to.
+   */
+  const [cadScene, setCadScene] = useState<ImportedScene | null>(null)
   const [decisions, setDecisions] = useState<Decisions>({})
   const [settings, setSettings] = useState<Settings | null>(null)
   const [selection, setSelection] = useState<string[]>([])
@@ -97,7 +114,10 @@ export default function App() {
   // Tracing rebuilds the scene on every dragged corner, so the build is debounced rather
   // than run per pointer event. The 3D preview lags the drawing by a frame or two, which
   // is the right trade: the drawing itself is repainted immediately.
-  const settledDoc = useDebounced(traceDoc, 150)
+  // Keyed on the raster, so a NEW sheet is taken at once: entering the tracer from a loaded
+  // model would otherwise leave no scene at all for those 150 ms, and the app would flash
+  // back to the drop screen in between.
+  const settledDoc = useDebounced(traceDoc, 150, traceDoc?.raster)
   const tracedScene = useMemo(() => (settledDoc ? buildTraceScene(settledDoc) : null), [settledDoc])
   const scene = traceDoc ? tracedScene : prepared?.scene ?? null
   const tracing = traceDoc !== null
@@ -155,6 +175,28 @@ export default function App() {
   const { result, areas, running } = useConversion(scene, decisions, settings, rationalisations)
   const areaStats = useMemo(() => new Map(areas.map((a) => [a.id, a.stats])), [areas])
 
+  /**
+   * Switch to tracing a document.
+   *
+   * A trace is authored in metres with Z up by construction, so there is nothing for the
+   * units guess to do — but heading, offset and mirror still matter, and a plan coming from
+   * a CAD import keeps the ones already set: traced or converted, its venue coordinates are
+   * the same, so the same placement puts it in the same place.
+   */
+  const enterTrace = useCallback((doc: TraceDocument, placement: Settings['transform']) => {
+    setTraceDoc(doc)
+    setTraceFile(null)
+    setPrepared(null)
+    setTraceView('drawing')
+    setTraceTool(doc.calibration.source.kind === 'unset' ? 'scale' : doc.drawing ? 'wand' : 'select')
+    setSettings({
+      ...DEFAULT_SETTINGS,
+      transform: { ...placement, unitsPerMetre: 1, upAxis: 'z' },
+      // The outline is exactly what the user drew; there is no CAD noise to shave off.
+      simplifyTolerance: 0,
+    })
+  }, [])
+
   const load = useCallback(
     async (file: File) => {
       setBusy(true)
@@ -164,21 +206,39 @@ export default function App() {
       try {
         if (isTraceFile(file.name)) {
           const doc = await loadTraceSource(file)
-          setTraceDoc(doc)
+          enterTrace(doc, DEFAULT_SETTINGS.transform)
           setTraceFile(file)
-          setPrepared(null)
-          setTraceView('drawing')
-          setTraceTool(doc.calibration.source.kind === 'unset' ? 'scale' : 'select')
-          // A trace is authored in metres with Z up by construction, so there is nothing for
-          // the units guess to do — but heading, offset and mirror still matter.
-          setSettings({
-            ...DEFAULT_SETTINGS,
-            transform: { ...DEFAULT_SETTINGS.transform, unitsPerMetre: 1, upAxis: 'z' },
-            // The outline is exactly what the user drew; there is no CAD noise to shave off.
-            simplifyTolerance: 0,
-          })
+          setCadScene(null)
         } else {
-          const s = await importFile(file)
+          let s: ImportedScene
+          try {
+            s = await importFile(file)
+          } catch (e) {
+            // A DXF or DWG whose lines never close has no surfaces, and no model to convert —
+            // but it is a plan, and a plan can be traced. Straight to the tracer, with the
+            // clutter layers off the sheet, rather than to an error that says to go and
+            // close the outlines by hand.
+            const plan = e instanceof ImportError ? e.traceable : undefined
+            if (!plan) throw e
+            const doc = cadTraceDocument(plan, {
+              layers: traceLayers(plan, {
+                included: new Set(),
+                planExcluded: new Set(),
+                dropClutter: prepareOptions.dropClutter,
+              }),
+              metresPerUnit: plan.unitsPerMetre ?? guessDrawingUnits(plan),
+              unitsStated: plan.unitsPerMetre !== undefined,
+            })
+            doc.warnings.unshift(
+              'Nothing in this drawing closes into a surface, so there is no model to convert — ' +
+                'it opened in the tracer instead.',
+            )
+            enterTrace(doc, DEFAULT_SETTINGS.transform)
+            setCadScene(null)
+            setSelection([])
+            setProjectName(file.name.replace(/\.[^.]+$/, '') || 'Untitled')
+            return
+          }
           // The settings the file itself implies, decided BEFORE preparation, because
           // preparation's thresholds are in metres and it needs the scale to read them.
           const seeded = settingsForScene(s)
@@ -186,6 +246,7 @@ export default function App() {
           setPrepared(prepareScene(s, seeded.transform, prepareOptions))
           setTraceDoc(null)
           setTraceFile(null)
+          setCadScene(null)
         }
         setSelection([])
         setProjectName(file.name.replace(/\.[^.]+$/, '') || 'Untitled')
@@ -199,7 +260,7 @@ export default function App() {
         setBusy(false)
       }
     },
-    [prepareOptions],
+    [prepareOptions, enterTrace],
   )
 
   /**
@@ -232,6 +293,75 @@ export default function App() {
     },
     [prepareOptions, prepared, settings],
   )
+
+  /**
+   * Which layers of a CAD plan are left in, as the tracer needs to know it. Prepare's own
+   * decisions plus the user's, read off the tree — see `traceLayers`.
+   */
+  const layerChoice = useMemo((): LayerChoice | null => {
+    if (!prepared) return null
+    // Decisions are seeded by an effect, so for one render after an import they still
+    // describe the PREVIOUS file — and read as "nothing left in", which reports this plan as
+    // a drawing with no surfaces until the next render puts it right.
+    if (flattenNodes(prepared.scene.nodes).some((n) => !decisions[n.id])) return null
+    return {
+      included: new Set(Object.entries(decisions).filter(([, d]) => d.include).map(([id]) => id)),
+      planExcluded: new Set(prepared.plan.exclude.keys()),
+      dropClutter: prepared.options.dropClutter,
+    }
+  }, [prepared, decisions])
+
+  /** Is what is left in a flat plan? Re-asked as the tree changes, because the answer does. */
+  const flatPlan = useMemo(
+    () => (prepared && layerChoice && settings ? flatPlanReport(prepared.scene, settings.transform, layerChoice) : null),
+    [prepared, layerChoice, settings],
+  )
+  const layersLeftIn = useMemo(
+    () => (prepared && layerChoice && flatPlan ? traceLayers(prepared.scene, layerChoice).size : 0),
+    [prepared, layerChoice, flatPlan],
+  )
+
+  /**
+   * Trace a CAD plan instead of converting it. The sheet is drawn at the units the
+   * Placement panel holds now — the drawing's own unless the user changed them, and then
+   * theirs, said so on the sheet.
+   */
+  const traceCadPlan = useCallback(
+    (onlyLeftIn: boolean) => {
+      if (!prepared || !settings || !layerChoice) return
+      const scene = prepared.scene
+      const metresPerUnit = settings.transform.unitsPerMetre
+      try {
+        const doc = cadTraceDocument(scene, {
+          layers: onlyLeftIn ? traceLayers(scene, layerChoice) : undefined,
+          metresPerUnit,
+          unitsStated: scene.unitsPerMetre !== undefined && scene.unitsPerMetre === metresPerUnit,
+        })
+        setCadScene(prepared.raw)
+        enterTrace(doc, settings.transform)
+        setSelection([])
+      } catch (e) {
+        if (e instanceof ImportError) setError({ message: e.message, advice: e.advice })
+        else throw e
+      }
+    },
+    [prepared, settings, layerChoice, enterTrace],
+  )
+
+  /** Leave the tracer for the CAD import the plan came from, re-prepared from the raw scene. */
+  const backToModel = useCallback(() => {
+    if (!cadScene || !settings) return
+    if (traceDoc && traceDoc.regions.length > 0 && !window.confirm('Leave the tracer? The traced regions are not kept.')) {
+      return
+    }
+    const seeded = settingsForScene(cadScene)
+    const transform = { ...seeded.transform, ...placementOf(settings.transform) }
+    setSettings({ ...seeded, transform })
+    setPrepared(prepareScene(cadScene, transform, prepareOptions))
+    setTraceDoc(null)
+    setCadScene(null)
+    setSelection([])
+  }, [cadScene, settings, traceDoc, prepareOptions])
 
   /** Move to another page of the same PDF, keeping nothing — a new page is a new drawing. */
   const loadPage = useCallback(
@@ -651,6 +781,7 @@ export default function App() {
               onPage={(i) => void loadPage(i)}
               ramp={ramp}
               onRamp={(p) => setRamp((r) => ({ ...r, ...p }))}
+              onBackToModel={cadScene ? backToModel : undefined}
             />
           ) : (
             <Panel title="Objects">
@@ -782,7 +913,18 @@ export default function App() {
               wanted, so there is no clutter to leave out and nothing repeated to gather. */}
           {traceDoc || !prepared ? null : (
             <Panel title="Prepare">
-              <PreparePanel prepared={prepared} busy={busy} onChange={rerunPreparation} />
+              <PreparePanel
+                prepared={prepared}
+                busy={busy}
+                onChange={rerunPreparation}
+                flatPlan={flatPlan}
+                units={{
+                  metresPerUnit: settings.transform.unitsPerMetre,
+                  stated: scene.unitsPerMetre !== undefined && scene.unitsPerMetre === settings.transform.unitsPerMetre,
+                }}
+                layersLeftIn={layersLeftIn}
+                onTracePlan={traceCadPlan}
+              />
             </Panel>
           )}
 
@@ -1032,6 +1174,11 @@ export default function App() {
       </div>
     </div>
   )
+}
+
+/** Heading, offset and mirror: the part of a transform that is a choice about placement, not units. */
+function placementOf(t: Settings['transform']): Pick<Settings['transform'], 'headingDeg' | 'offset' | 'flipX'> {
+  return { headingDeg: t.headingDeg, offset: t.offset, flipX: t.flipX }
 }
 
 function Topbar({ children }: { children?: React.ReactNode }) {

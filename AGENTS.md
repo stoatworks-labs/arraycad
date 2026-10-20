@@ -56,6 +56,7 @@ src/
     calibrate.ts        pixels -> metres. The ONLY place the sheet scale is applied
     heights.ts          typed corner heights -> a least-squares surface
     build.ts            regions -> ImportedScene, and from there the ordinary pipeline
+    cad.ts              a flat DXF/DWG plan -> a sheet, already calibrated. Pure; see §8
   lib/mvr/              THE VISUALISERS' FORMAT. MVR — open, so quoted not deduced
     types.ts            the object model, the 4x3 matrix, and the unit constants
     container.ts        the zip, opened twice so a show's .gdtf payload is never inflated
@@ -319,6 +320,11 @@ The ones that matter most:
 - `guards.test.ts` — degenerate input that must not throw or hang.
 - `trace.test.ts` — synthetic *drawings*: a mask built by hand, so "a rectangular room
   detects as four corners" is an exact assertion rather than a tolerance on a real scan.
+- `cad.test.ts` — a CAD plan into the tracer, end to end in node: `demo/demo-rigplot.dxf`
+  (`scripts/make_demo_rigplot.py`) is detected as flat past its 3D speaker symbols, lands
+  calibrated at the drawing's own coordinates, and its audience floor comes back off the
+  wand as the 24 x 20 m rectangle the generator wrote down — and as half of it with the
+  centreline drawn, which is why the clutter stays off the sheet.
 - `soundvision.test.ts` — round trip of `roomdata.txt`, the winding rule, and the fact a
   six-sided region stays ONE surface. The writer was additionally checked byte for byte
   against a real 7,194-face Vectorworks export (1.0 MB, 29,760 coordinates); that file is a
@@ -407,6 +413,56 @@ because importing it pulls in pdf.js and a DOM and the whole point of the split 
 everything else runs in node under test. pdf.js itself sits behind a **dynamic import** in
 `pdfSource.ts` — 400 kB that nobody dropping a DXF should download — which is why the
 build emits a separate `pdfSource-*.js` chunk.
+
+### A flat CAD plan goes through the tracer too
+
+A rig plot or a floor plan saved as DXF or DWG is a 2D drawing in a 3D format: every
+entity at z = 0. Converted as a model it comes out as surfaces all lying on the floor — the
+Amfar Rig 2026 plot was 1,393 ArrayCalc objects at height zero, with a layer called
+`Ceiling Coffers` typed as a ceiling on the floor. What the file holds is what a PDF of the
+same plan holds, so it takes the same road. `trace/cad.ts` is the bridge; everything after
+it is the tracer as it stands.
+
+- **The importer keeps the line work.** `entities.ts` records every path as drawn, open or
+  closed, per layer, into `ImportedScene.linework` — packed, because a plan is hundreds of
+  thousands of two-point LINEs. It records at the ENTITY, not after chaining, since the
+  chained rings are made of segments it already has. SOLID's edge is kept (a 2D fill);
+  3DFACE and the meshes are not (their plan edges are a wireframe, not a drawing). A plan
+  whose lines never close used to stop at "no surfaces"; `noSurfacesError` now carries the
+  scene as `ImportError.traceable` and the app opens the tracer instead.
+- **"Flat" is an area share, never a height span.** `flatPlanReport` judges what is LEFT
+  IN: at least 90% of its surface area level and within 50 mm of the peak height. A span
+  fails on the very plot this was built for — its speaker symbols are 3D blocks on layers
+  the vocabulary does not call clutter (`Custom Sound`, `CAD-Audio`, 1.2 m each). Their
+  area is nothing next to a plan's, while a 3D model of even a flat-floored hall is well
+  under half floor. With no surface left in, it judges the line work's points instead.
+- **Which layers go on the sheet is `traceLayers`, and it follows the tree with two
+  exceptions.** A layer Prepare left out for its SIZE is still drawn: walls whose corners do
+  not quite meet have no area, and their lines are exactly what the wand stops at. A layer
+  of nothing but open lines has no node to decide by, so it is drawn unless its name is
+  clutter — a `CENTRELINE` on the sheet cuts every room it crosses in two.
+- **Metres still stay in `calibrate.ts`.** `cad.ts` only maps drawing units to pixels.
+  `pixelsPerDrawingUnit` picks the scale (longest side within 2,400 px, rounded DOWN to two
+  significant figures of px/m so the readout is checkable) and `calibrateByDrawingUnits`
+  makes the `Calibration`, kind `drawing-units`. `stated: false` means the drawing had no
+  `$INSUNITS` and the Source units setting is standing in, and the panel says so.
+- **The venue origin is the drawing's own 0, 0**, on the sheet or not, so a room traced and
+  the same room converted land in the same place, and the Placement heading, offset and
+  mirror carry across both ways.
+- **The extent is clustered, not trimmed by quantile.** A title block forty metres away or
+  one stray entity at a kilometre would shrink the plan to a corner of the sheet. Per axis,
+  paths further from the main body than 10% of the span are left off and counted in a
+  warning. The obvious alternative, trimming the extreme half-percent of points, is wrong:
+  a room's walls are a handful of points against tens of thousands in the symbols inside
+  it, so trimming points trims the walls.
+- **Rasterised by hand: one pixel, 8-connected, black on white.** No canvas, so the whole
+  road from DXF text to a wand-traced room runs in node, and an 8-connected line is what
+  stops a 4-connected fill squeezing through a diagonal. Because it is pure, `cad.ts` IS
+  re-exported from `trace/index.ts`, unlike `source.ts`.
+- **The editor shows a sheet through a darkest-pixel mip chain** (`raster.ts:shrinkDarkest`).
+  A browser's canvas downscale samples between one-pixel lines and drops them, and
+  `imageSmoothingQuality = 'high'` does not help in Chrome. At fit-to-view half the walls
+  of a CAD plan were simply not on screen, which reads as the reason a fill escaped.
 
 **A PDF will not finish loading in a hidden tab.** `page.render()` continues on
 `requestAnimationFrame`, which a backgrounded tab does not fire, so the promise simply

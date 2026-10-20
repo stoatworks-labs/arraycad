@@ -47,6 +47,12 @@ export type CalibrationSource =
   | { kind: 'known-distance'; from: Px; to: Px; metres: number }
   /** A vector PDF at a stated paper scale — exact, no clicking. */
   | { kind: 'paper-scale'; denominator: number; pixelsPerPagePoint: number }
+  /**
+   * A CAD plan, drawn onto the sheet at a pixel scale chosen for it — exact, no clicking.
+   * `stated` says whether the drawing declared its units ($INSUNITS) or the user chose them
+   * under Source units, because only the first is a measurement.
+   */
+  | { kind: 'drawing-units'; metresPerUnit: number; pixelsPerUnit: number; stated: boolean }
   /** Nothing has been set yet: the drawing is being shown at an arbitrary 1 px = 1 cm. */
   | { kind: 'unset' }
 
@@ -131,6 +137,11 @@ export interface TraceDocument {
    * scale printed in the title block into a pixel scale.
    */
   page?: { index: number; count: number; pixelsPerPagePoint: number }
+  /**
+   * DXF/DWG only: which of the drawing's layers are on the sheet. Shown, because a room the
+   * wand cannot close is very often a layer that was left off — or one that was not.
+   */
+  drawing?: { layersDrawn: string[]; layersLeftOff: string[] }
   warnings: string[]
 }
 

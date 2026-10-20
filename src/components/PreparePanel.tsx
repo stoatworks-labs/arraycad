@@ -11,7 +11,9 @@
  * the tree, in the viewport and in the object count the moment it is ticked.
  */
 
+import { useState } from 'react'
 import type { PrepareSettings, Prepared } from '../state.ts'
+import { type FlatPlanReport, drawingUnitName } from '../lib/trace/cad.ts'
 import { Field, NumberInput } from './ui.tsx'
 
 interface Props {
@@ -19,6 +21,13 @@ interface Props {
   /** Preparation is being re-run — it re-reads the model and can take a moment. */
   busy: boolean
   onChange: (patch: Partial<PrepareSettings>) => void
+  /** Whether what is left in is a flat plan. Null for anything that is not a DXF or DWG. */
+  flatPlan: FlatPlanReport | null
+  /** Metres per unit the sheet would be drawn at, and whether the drawing stated it. */
+  units: { metresPerUnit: number; stated: boolean }
+  /** How many layers "Draw only the layers left in" would put on the sheet. */
+  layersLeftIn: number
+  onTracePlan: (onlyLeftIn: boolean) => void
 }
 
 function Check({
@@ -40,7 +49,7 @@ function Check({
   )
 }
 
-export function PreparePanel({ prepared, busy, onChange }: Props) {
+export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layersLeftIn, onTracePlan }: Props) {
   const { options, plan, simplify } = prepared
   const cut = simplify && simplify.trianglesIn > 0 ? 1 - simplify.trianglesOut / simplify.trianglesIn : 0
 
@@ -142,13 +151,17 @@ export function PreparePanel({ prepared, busy, onChange }: Props) {
             {n}
           </p>
         ))}
-        {plan.notes.length === 0 && (!simplify || simplify.nodesSimplified === 0) && (
+        {plan.notes.length === 0 && (!simplify || simplify.nodesSimplified === 0) && !flatPlan?.flat && (
           <p className="hint">
             Nothing to do on this model — no names it recognised, nothing repeated enough to
             read as seating, and nothing meshed finely enough to be worth re-cutting.
           </p>
         )}
       </div>
+
+      {flatPlan?.flat && (
+        <FlatPlan report={flatPlan} units={units} layersLeftIn={layersLeftIn} onTrace={onTracePlan} />
+      )}
 
       {plan.seating.length > 0 && (
         <p className="hint">
@@ -158,5 +171,77 @@ export function PreparePanel({ prepared, busy, onChange }: Props) {
         </p>
       )}
     </>
+  )
+}
+
+/**
+ * The offer to trace a flat plan instead of converting it.
+ *
+ * Stated as a finding about THIS drawing, with the share it was decided on, because the
+ * alternative it argues against — converting as a model — will look like it worked: the
+ * surfaces all arrive, just every one of them at the same height.
+ */
+function FlatPlan({
+  report,
+  units,
+  layersLeftIn,
+  onTrace,
+}: {
+  report: FlatPlanReport
+  units: Props['units']
+  layersLeftIn: number
+  onTrace: (onlyLeftIn: boolean) => void
+}) {
+  const [onlyLeftIn, setOnlyLeftIn] = useState(true)
+  const pct = Math.floor(report.share * 100)
+  const level = Math.abs(report.levelM) < 0.005 ? '' : ` (${report.levelM.toFixed(2)} m)`
+  const unit = drawingUnitName(units.metresPerUnit)
+
+  return (
+    <div className="flat-plan">
+      <p className="hint">
+        <strong>This is a flat plan.</strong>{' '}
+        {report.measuredOn === 'surfaces'
+          ? `${pct}% of the surface left in lies on one level${level}`
+          : `Nothing left in closes into a surface, and ${pct}% of its lines lie on one level${level}`}
+        , so converted as a model it comes out lying flat — a ceiling on the floor. Trace it
+        instead: pick out the regions with the wand and type their heights.{' '}
+        {units.stated
+          ? `It states ${unit}, so it arrives at the right scale with nothing to measure.`
+          : `It does not state its units, so the sheet is drawn in ${unit} as set under Source units — check that first.`}
+      </p>
+      {report.withHeight.length > 0 && (
+        <p className="hint">
+          {report.withHeight
+            .slice(0, 4)
+            .map((h) => `${h.name} (${h.spanM.toFixed(1)} m)`)
+            .join(', ')}
+          {report.withHeight.length > 4 ? ` and ${report.withHeight.length - 4} more` : ''}{' '}
+          {report.withHeight.length === 1 ? 'is left in and carries' : 'are left in and carry'} height —
+          symbols drawn in 3D, usually, not the room.
+          {report.leftOutWithHeight > 0 &&
+            ` ${report.leftOutWithHeight} more with height ${report.leftOutWithHeight === 1 ? 'was' : 'were'} left out as clutter.`}
+        </p>
+      )}
+      <label
+        className="check"
+        title={
+          'Put only the layers left in on the sheet, so the clutter found above — centrelines, ' +
+          'dimensions, lighting — does not cut rooms in two for the wand.\n\nA layer left out ' +
+          'only for being small is still drawn: its lines are what the wand stops at.'
+        }
+      >
+        <input type="checkbox" checked={onlyLeftIn} onChange={(e) => setOnlyLeftIn(e.target.checked)} />
+        Draw only the layers left in ({layersLeftIn})
+      </label>
+      <button
+        type="button"
+        className="primary"
+        disabled={onlyLeftIn && layersLeftIn === 0}
+        onClick={() => onTrace(onlyLeftIn)}
+      >
+        Trace this plan
+      </button>
+    </div>
   )
 }

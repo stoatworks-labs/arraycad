@@ -50,16 +50,46 @@ export interface ImportedScene {
    */
   alreadyAVenue?: boolean
   nodes: ImportedNode[]
+  /**
+   * DXF and DWG only: the drawing as it was DRAWN, one entry per layer — every line, arc,
+   * polyline and outline, open or closed, before anything was filled or thrown away.
+   *
+   * `nodes` holds only what closed into a surface. A floor plan is mostly lines that never
+   * do, and those are exactly what the tracer needs to see: they are the ink a region is
+   * detected between. Source units, like `positions`; nothing reads it but `trace/cad.ts`.
+   */
+  linework?: LayerLinework[]
   /** Non-fatal problems worth showing: skipped entities, unsupported features. */
   warnings: string[]
+}
+
+/**
+ * One layer's line work, packed: a few hundred thousand two-point LINEs as separate
+ * arrays would cost more in object headers than in coordinates.
+ */
+export interface LayerLinework {
+  layer: string
+  /** x, y, z of every path, back to back, in source units. */
+  points: Float64Array
+  /** Where each path starts, as a POINT index into `points`. One longer than the path count. */
+  starts: Uint32Array
+  /** 1 where the path is a closed ring. */
+  closed: Uint8Array
 }
 
 /** Thrown when a file cannot be imported at all. `advice` is shown to the user verbatim. */
 export class ImportError extends Error {
   advice: string
-  constructor(message: string, advice = '') {
+  /**
+   * The file has no surfaces in it, but it is a drawing that can be TRACED: a DXF or DWG
+   * plan whose lines never close. A scene with no nodes and its `linework`, for the app to
+   * open in the tracer instead of stopping at this error.
+   */
+  traceable?: ImportedScene
+  constructor(message: string, advice = '', traceable?: ImportedScene) {
     super(message)
     this.advice = advice
+    this.traceable = traceable
   }
 }
 

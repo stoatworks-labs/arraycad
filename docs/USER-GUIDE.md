@@ -16,7 +16,7 @@ It runs in the browser with no backend and no upload, so the file never leaves y
 > export **byte for byte** and has been round-tripped through ArrayCalc until every object came
 > back untouched, a written Soundvision file was imported into Soundvision and read back surface
 > by surface, and EASE Focus opened and saved a project of 57 audience planes with all 57 labels
-> and every coordinate intact. 464 tests pin the reduction.
+> and every coordinate intact. 480 tests pin the reduction.
 >
 > **What none of that proves is acoustic orientation.** No prediction has been run over an
 > imported surface yet, and **a surface wound the wrong way lands right where it should and then
@@ -131,6 +131,18 @@ hundred seats are one surface" is *your* assertion and not the geometry's.
 
 Drop in a PDF or an image instead, set the scale, click inside a room to detect its outline, and
 type a height at each corner.
+
+**A DXF or DWG that's really a plan goes the same way.** A rig plot or a floor plan saved as
+CAD has every line at height zero, and converted as a model it comes out with every surface lying
+on the floor, ceiling included. When that's what's left once the clutter is out, the **Prepare**
+panel says so and offers **Trace this plan**. The drawing states its own units, so it arrives at
+the right scale with nothing to measure, and the room lands where the drawing puts it. Only the
+layers left in are drawn, so a centreline or a lighting layer doesn't cut a room in two for the
+wand. Turn a layer off in the tree first if you don't want it on the sheet: a reflected ceiling
+plan drawn over the floor plan, say. A plan whose lines never close at all skips the question and
+opens in the tracer straight away. **Back to the 3D import** in the Scale panel goes the other way.
+
+Try it on [`demo/demo-rigplot.dxf`](../demo/demo-rigplot.dxf), a made-up ballroom rig plot.
 
 ---
 

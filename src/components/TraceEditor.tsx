@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import {
   type Calibration,
   type Px,
+  type Raster,
   type RegionHit,
   type TraceDocument,
   type TraceRegion,
@@ -27,6 +28,7 @@ import {
   pxDistance,
   pxToVenue,
   scaleBarStep,
+  shrinkDarkest,
   withOrigin,
 } from '../lib/trace/index.ts'
 import type { InkMaskOptions, Mask } from '../lib/trace/raster.ts'
@@ -124,17 +126,27 @@ export function TraceEditor({
   // built on first use and thrown away whenever a detection setting changes.
   const maskRef = useRef<Mask | null>(null)
 
+  // The sheet at full size and at every halving below it, darkest pixel kept (see
+  // `shrinkDarkest`), so a one-pixel line is still on screen when the sheet is zoomed out.
   const underlay = useMemo(() => {
-    const { width, height, data } = doc.raster
-    const c = document.createElement('canvas')
-    c.width = width
-    c.height = height
-    if (data.length === width * height * 4) {
-      // Copied rather than handed over: ImageData insists on a plain ArrayBuffer, and the
-      // document's raster stays the detector's input for the life of the session.
-      c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0)
+    const toCanvas = ({ width, height, data }: Raster) => {
+      const c = document.createElement('canvas')
+      c.width = width
+      c.height = height
+      if (data.length === width * height * 4) {
+        // Copied rather than handed over: ImageData insists on a plain ArrayBuffer, and the
+        // document's raster stays the detector's input for the life of the session.
+        c.getContext('2d')!.putImageData(new ImageData(new Uint8ClampedArray(data), width, height), 0, 0)
+      }
+      return c
     }
-    return c
+    const levels = [toCanvas(doc.raster)]
+    let r = doc.raster
+    while (Math.max(r.width, r.height) > 256 && levels.length < 6) {
+      r = shrinkDarkest(r)
+      levels.push(toCanvas(r))
+    }
+    return levels
   }, [doc.raster])
 
   const snap = useMemo(() => new SnapIndex(doc.paths), [doc.paths])
@@ -573,7 +585,8 @@ interface PaintState {
   size: { w: number; h: number }
   view: View
   doc: TraceDocument
-  underlay: HTMLCanvasElement
+  /** The sheet, then each halving of it. */
+  underlay: HTMLCanvasElement[]
   draft: Px[]
   cursor: Px | null
   scalePts: Px[]
@@ -589,14 +602,22 @@ function paint(ctx: CanvasRenderingContext2D, s: PaintState) {
   ctx.fillStyle = '#0a1420'
   ctx.fillRect(0, 0, size.w, size.h)
 
+  // Device pixels per sheet pixel: the zoom times the backing store's own scale.
+  const devicePx = view.scale * ctx.getTransform().a
+
   ctx.save()
   ctx.translate(view.tx, view.ty)
   ctx.scale(view.scale, view.scale)
 
   ctx.imageSmoothingEnabled = view.scale < 1
+  // The halving nearest to what the screen shows, never smaller: drawn at under a pixel per
+  // pixel, a browser's downscale samples between one-pixel lines and drops them. A CAD plan
+  // is drawn at exactly one pixel, so at fit-to-view half its walls were simply not there.
+  const level = Math.max(0, Math.min(s.underlay.length - 1, Math.floor(Math.log2(1 / devicePx))))
+  const sheet = s.underlay[level]
   // Dimmed, so traced outlines read clearly on top of the line work.
   ctx.globalAlpha = 0.72
-  ctx.drawImage(s.underlay, 0, 0)
+  ctx.drawImage(sheet, 0, 0, sheet.width * 2 ** level, sheet.height * 2 ** level)
   ctx.globalAlpha = 1
   ctx.restore()
 

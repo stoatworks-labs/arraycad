@@ -18,7 +18,7 @@
  * seating plan imports as nothing at all.
  */
 
-import { type ImportedNode, ImportError } from './types.ts'
+import { type ImportedNode, type ImportedScene, type LayerLinework, ImportError } from './types.ts'
 import { chainSegments, ringArea } from './chain.ts'
 import { triangulateRing } from '../geom/polygon.ts'
 import type { Vec3 } from '../geom/vec.ts'
@@ -145,6 +145,42 @@ interface Sink {
   /** 3DSOLIDs placed on this layer, and those that carried nothing readable. */
   solids: number
   unreadSolids: number
+  /**
+   * Every path as drawn, open or closed, for the tracer — see `ImportedScene.linework`.
+   * Packed as it goes: x, y, z per point, and where each path starts.
+   */
+  lines: number[]
+  lineStarts: number[]
+  lineClosed: number[]
+}
+
+const newSink = (): Sink => ({
+  tris: [],
+  paths: [],
+  solids: 0,
+  unreadSolids: 0,
+  lines: [],
+  lineStarts: [],
+  lineClosed: [],
+})
+
+/**
+ * Keep a path for the tracer, exactly as the entity drew it.
+ *
+ * At the ENTITY, not after chaining: the chainer's rings are made of segments already kept
+ * here as open paths, and keeping them twice would only draw each line twice.
+ */
+function keepLine(verts: P3[], closed: boolean, sink: Sink): void {
+  if (verts.length < 2) return
+  sink.lineStarts.push(sink.lines.length / 3)
+  sink.lineClosed.push(closed ? 1 : 0)
+  for (const p of verts) sink.lines.push(p.x, p.y, p.z)
+}
+
+/** A closed path from an entity: kept as drawn, then filled. */
+function emitClosed(verts: P3[], sink: Sink, opts: CadOptions): void {
+  keepLine(verts, true, sink)
+  emitRing(verts, sink.tris, opts)
 }
 
 /**
@@ -352,6 +388,7 @@ function emitRing(verts: P3[], out: number[], opts: CadOptions): void {
 /** Send an open path to the chainer, or fill it now if chaining is switched off. */
 function emitOpen(verts: P3[], sink: Sink, opts: CadOptions): void {
   if (verts.length < 2) return
+  keepLine(verts, false, sink)
   if (opts.chainSegments) {
     sink.paths.push(verts)
     return
@@ -384,6 +421,11 @@ function emitEntity(
       // check, so the entity silently disappears.
       if (v.length >= 4) quadOrTri(v[0], v[1], v[3], v[2], out)
       else if (v.length === 3) fanTriangulate(v, out)
+      // A SOLID is a 2D fill — a column, a wall poché, an arrowhead — so on a plan its edge
+      // is ink. 3DFACE and the meshes are not kept: they are models, and their edges in plan
+      // are a wireframe, not a drawing.
+      if (v.length >= 4) keepLine([v[0], v[1], v[3], v[2]], true, sink)
+      else if (v.length === 3) keepLine(v, true, sink)
       break
     }
 
@@ -432,7 +474,7 @@ function emitEntity(
 
       const closed = Boolean(e.shape)
       const path = flattenBulged(verts.map(pt), verts, closed, ctx)
-      if (closed) emitRing(path, out, opts)
+      if (closed) emitClosed(path, sink, opts)
       else emitOpen(path, sink, opts)
       break
     }
@@ -455,7 +497,7 @@ function emitEntity(
       const local: P3[] = raw.map((v: Entity) => ({ x: v.x ?? 0, y: v.y ?? 0, z }))
       const closed = Boolean(e.shape)
       const path = flattenBulged(local, raw, closed, ctx)
-      if (closed) emitRing(path, out, opts)
+      if (closed) emitClosed(path, sink, opts)
       else emitOpen(path, sink, opts)
       break
     }
@@ -466,7 +508,7 @@ function emitEntity(
       if (r <= 0) break
       const loop = arcPoints(c.x, c.y, c.z, r, 0, Math.PI * 2)
       loop.pop() // the closing point repeats the first
-      emitRing(loop.map((p) => xform(p, ctx)), out, opts)
+      emitClosed(loop.map((p) => xform(p, ctx)), sink, opts)
       break
     }
 
@@ -501,7 +543,7 @@ function emitEntity(
       // centroid fan does — invents a wedge of floor that is not in the drawing, and on a
       // seat-back arc the wedge is a sliver of near-zero area that is dropped later
       // anyway. Both outcomes are wrong; it belongs in the chain.
-      if (isClosedSweep(sweep)) emitRing(pts.slice(0, -1), out, opts)
+      if (isClosedSweep(sweep)) emitClosed(pts.slice(0, -1), sink, opts)
       else emitOpen(pts, sink, opts)
       break
     }
@@ -511,7 +553,7 @@ function emitEntity(
       if (pts.length < 2) break
       const start: number = e.startAngle ?? 0
       const end: number = e.endAngle ?? Math.PI * 2
-      if (isClosedSweep(end - start)) emitRing(pts.slice(0, -1), out, opts)
+      if (isClosedSweep(end - start)) emitClosed(pts.slice(0, -1), sink, opts)
       else emitOpen(pts, sink, opts)
       break
     }
@@ -519,7 +561,7 @@ function emitEntity(
     case 'SPLINE': {
       const pts = splinePoints(e).map((p) => xform(p, ctx))
       if (pts.length < 2) break
-      if (e.closed) emitRing(pts, out, opts)
+      if (e.closed) emitClosed(pts, sink, opts)
       else emitOpen(pts, sink, opts)
       break
     }
@@ -658,18 +700,32 @@ export interface CadDocument {
   blocks: Record<string, CadBlock>
 }
 
-/**
- * Entities -> one node per layer.
- *
- * Grouping by layer is not a convenience: in a venue drawing the layer IS the semantic
- * object — SEATING, BALCONY, CEILING — which makes it the right handle for pruning and
- * for assigning plane types.
- */
+/** Entities -> one node per layer. The surfaces only; see `buildCad` for the line work too. */
 export function buildNodes(
   doc: CadDocument,
   options: Partial<CadOptions>,
   warn: Set<string>,
 ): ImportedNode[] {
+  return buildCad(doc, options, warn).nodes
+}
+
+/**
+ * Entities -> one node per layer, and the layer's line work as drawn.
+ *
+ * Grouping by layer is not a convenience: in a venue drawing the layer IS the semantic
+ * object — SEATING, BALCONY, CEILING — which makes it the right handle for pruning and
+ * for assigning plane types.
+ *
+ * The line work comes back beside the nodes rather than inside them because most of it
+ * never becomes a surface, and a layer of nothing but open lines — the walls of a plan
+ * whose corners do not quite meet — has no node to carry it. The tracer needs exactly
+ * those lines. See `ImportedScene.linework`.
+ */
+export function buildCad(
+  doc: CadDocument,
+  options: Partial<CadOptions>,
+  warn: Set<string>,
+): { nodes: ImportedNode[]; linework: LayerLinework[] } {
   const opts = { ...DEFAULT_CAD_OPTIONS, ...options }
   const blocks = doc.blocks ?? {}
 
@@ -678,7 +734,7 @@ export function buildNodes(
     const layer = String(e.layer ?? '0')
     let sink = byLayer.get(layer)
     if (!sink) {
-      sink = { tris: [], paths: [], solids: 0, unreadSolids: 0 }
+      sink = newSink()
       byLayer.set(layer, sink)
     }
     emitEntity(e, IDENTITY, sink, blocks, opts, warn)
@@ -740,7 +796,16 @@ export function buildNodes(
   }
 
   const nodes: ImportedNode[] = []
+  const linework: LayerLinework[] = []
   for (const [layer, sink] of [...byLayer].sort((a, b) => a[0].localeCompare(b[0]))) {
+    if (sink.lineStarts.length > 0) {
+      linework.push({
+        layer,
+        points: new Float64Array(sink.lines),
+        starts: Uint32Array.from([...sink.lineStarts, sink.lines.length / 3]),
+        closed: Uint8Array.from(sink.lineClosed),
+      })
+    }
     if (sink.tris.length === 0) continue
     nodes.push({
       id: nextId(),
@@ -750,15 +815,22 @@ export function buildNodes(
       children: [],
     })
   }
-  return nodes
+  return { nodes, linework }
 }
 
-/** The same dead end for every vector format, so the advice is written once. */
-export function noSurfacesError(format: string): ImportError {
+/**
+ * The same dead end for every vector format, so the advice is written once.
+ *
+ * With line work in hand it is not a dead end: a drawing whose lines never close is a plan,
+ * and a plan can be traced. `traceable` carries it to the app, which opens the tracer
+ * rather than showing this message — see `ImportError.traceable`.
+ */
+export function noSurfacesError(format: string, traceable?: ImportedScene): ImportError {
   return new ImportError(
     `That ${format} parsed but produced no surfaces.`,
     'It is most likely a 2D drawing whose lines do not join up into closed shapes. Either ' +
       'close the outlines you want as polylines, or switch on "treat open paths as closed" ' +
       'and set an extrusion height.',
+    traceable,
   )
 }

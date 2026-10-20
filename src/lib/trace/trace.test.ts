@@ -23,7 +23,7 @@ import {
   type TraceRegion,
   DEFAULT_CALIBRATION,
 } from './types.ts'
-import { binarise, dilate, inkFraction, luminance, otsuThreshold } from './raster.ts'
+import { binarise, dilate, inkFraction, luminance, otsuThreshold, shrinkDarkest } from './raster.ts'
 import {
   DEFAULT_FLOOD,
   DEFAULT_WAND,
@@ -179,6 +179,19 @@ describe('raster', () => {
     expect(m.data.reduce((s, v) => s + v, 0)).toBe(9)
     expect(m.data[3 * 9 + 3]).toBe(1)
     expect(m.data[2 * 9 + 4]).toBe(0)
+  })
+
+  it('shrinkDarkest keeps a one-pixel line at every halving, where sampling would drop it', () => {
+    // A vertical hairline on an odd column: a sample at every other column misses it.
+    let r = grey(33, 9, (x) => (x === 17 ? 0 : 255))
+    for (const w of [17, 9, 5, 3, 2, 1]) {
+      r = shrinkDarkest(r)
+      expect(r.width).toBe(w)
+      expect(inkFraction(binarise(r, { threshold: 127, invert: false }))).toBeGreaterThan(0)
+    }
+    // And paper stays paper.
+    const blank = shrinkDarkest(grey(4, 4, () => 255))
+    expect([...blank.data]).toEqual(new Array(16).fill(255))
   })
 })
 

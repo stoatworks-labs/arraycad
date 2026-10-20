@@ -515,6 +515,23 @@ button.wide {
   color: var(--warn);
 }
 
+/* A flat CAD plan: the finding, and the offer to trace it. */
+.flat-plan {
+  border: 1px solid var(--accent);
+  border-radius: 6px;
+  padding: 8px 10px 10px;
+  margin: 4px 0 10px;
+}
+
+.flat-plan .hint {
+  color: var(--text-dim);
+}
+
+.flat-plan button.primary {
+  width: 100%;
+  margin-top: 6px;
+}
+
 /* ---------------------------------------------------------------- tree */
 
 .tree-toolbar {

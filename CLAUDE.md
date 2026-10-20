@@ -176,6 +176,13 @@ comment that used to claim one is why this repo went weeks without shipping.
   to v5. It is validated before use; a bump that changes it must show up as a warning and
   no geometry, never as wrong geometry.
 - Regenerate the demo plan with `python3 scripts/make_demo_plan.py`.
+- **A flat DXF/DWG plan goes to the tracer, not the reducer.** `trace/cad.ts` decides it on
+  what is LEFT IN, as an area share — never a height span, because rig plots carry 3D speaker
+  symbols on layers the vocabulary does not know. It draws the importer's `linework` onto a
+  sheet itself (pure, node-tested) and calibrates from the drawing's units through
+  `calibrate.ts`. A layer left out for its size is still drawn; a centreline drawn would cut
+  every room in two. `demo/demo-rigplot.dxf` (`python3 scripts/make_demo_rigplot.py`) is the
+  fixture. See AGENTS.md §8.
 
 ## The fixture is the ground truth
 

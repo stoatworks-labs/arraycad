@@ -195,4 +195,40 @@ describe('DWG import', () => {
   it('refuses a drawing with nothing in model space', () => {
     expect(() => buildDwgScene(doc([]), 'a.dwg')).toThrow(/nothing in model space/)
   })
+
+  it('keeps the line work as drawn, for the tracer — the same as the DXF path', () => {
+    const walls = layer('WALLS')
+    const notes = layer('CENTRELINE')
+    const s = buildDwgScene(
+      doc([
+        line(walls, 0, 0, 10, 0),
+        line(walls, 10, 0, 10, 6),
+        line(walls, 10, 6, 0, 6),
+        line(walls, 0, 6, 0, 0),
+        line(notes, -1, 3, 11, 3),
+      ]),
+      'a.dwg',
+    )
+    // The centreline never closes, so it has no node — but it is on the drawing.
+    expect(s.nodes.map((n) => n.name)).toEqual(['WALLS'])
+    expect(s.linework!.map((l) => [l.layer, l.starts.length - 1])).toEqual([
+      ['CENTRELINE', 1],
+      ['WALLS', 4],
+    ])
+    expect([...s.linework![0].points]).toEqual([-1, 3, 0, 11, 3, 0])
+  })
+
+  it('a plan whose lines never close is traceable rather than a dead end', () => {
+    const l = layer('WALLS')
+    let err: any
+    try {
+      buildDwgScene(doc([line(l, 0, 0, 9, 0), line(l, 10, 1, 10, 6)], [], 4), 'a.dwg')
+    } catch (e) {
+      err = e
+    }
+    expect(err?.message).toMatch(/no surfaces/)
+    expect(err.traceable.format).toBe('DWG')
+    expect(err.traceable.unitsPerMetre).toBe(0.001)
+    expect(err.traceable.linework).toHaveLength(1)
+  })
 })

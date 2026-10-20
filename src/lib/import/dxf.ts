@@ -15,7 +15,7 @@
 import DxfParser from 'dxf-parser'
 import { checkCommonEntityProperties } from 'dxf-parser/dist/ParseHelpers.js'
 import { type ImportedScene, ImportError } from './types.ts'
-import { type CadDocument, type CadOptions, buildNodes, noSurfacesError } from './entities.ts'
+import { type CadDocument, type CadOptions, buildCad, noSurfacesError } from './entities.ts'
 import { satPoints } from './acis.ts'
 
 export type DxfOptions = CadOptions
@@ -95,8 +95,7 @@ export function importDxf(
 
   const warn = new Set<string>()
   const doc: CadDocument = { entities: dxf.entities, blocks: dxf.blocks ?? {} }
-  const nodes = buildNodes(doc, options, warn)
-  if (nodes.length === 0) throw noSurfacesError('DXF')
+  const { nodes, linework } = buildCad(doc, options, warn)
 
   const insunits = dxf.header?.$INSUNITS
   const unitsPerMetre = typeof insunits === 'number' ? INSUNITS[insunits] : undefined
@@ -104,13 +103,16 @@ export function importDxf(
     warn.add('This DXF does not declare its units ($INSUNITS is 0 or absent). Set them yourself.')
   }
 
-  return {
+  const scene: ImportedScene = {
     format: 'DXF',
     sourceName: filename.replace(/\.[^.]+$/, ''),
     unitsPerMetre,
     // DXF world coordinates are Z-up; nothing in the header says otherwise.
     upAxis: 'z',
     nodes,
+    linework,
     warnings: [...warn],
   }
+  if (nodes.length === 0) throw noSurfacesError('DXF', linework.length > 0 ? scene : undefined)
+  return scene
 }
