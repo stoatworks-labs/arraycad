@@ -105,6 +105,14 @@ export interface RationaliseOptions {
   simplifyTolerance: number
   /** m^2. Areas smaller than this are dropped as strays. */
   minArea: number
+  /**
+   * The capture is a stepped rake, cut by `prepare/split.ts` to fit one plane. Its treads
+   * sit up to half a step off that plane by construction, so the off-plane warning is
+   * judged on the surface RMS instead of the worst point: a stadium's 0.7 m steps peak
+   * near 0.3 m off with a surface RMS under 0.2, while two tiers caught together are a
+   * metre or more either way.
+   */
+  stepped?: boolean
 }
 
 export const DEFAULT_RATIONALISE: RationaliseOptions = {
@@ -229,8 +237,16 @@ export function capture(
 }
 
 export interface PlaneFit extends Plane {
+  /** Over the captured triangles' CORNERS, which is what the panel has always shown. */
   rmsResidual: number
   maxResidual: number
+  /**
+   * Over their SURFACE, area-weighted: the smallest eigenvalue of the same covariance. On a
+   * stepped rake the two part company — every corner sits at a tread's edge, half a step
+   * off the incline, while the surface between them crosses it — and this is the one a
+   * step's height predicts, about 0.29 of it. See `RationaliseOptions.stepped`.
+   */
+  surfaceRms: number
 }
 
 /**
@@ -258,7 +274,7 @@ export interface PlaneFit extends Plane {
  * converter can promise.
  */
 export function fitPlane(samples: Sample[]): PlaneFit {
-  const flat: PlaneFit = { normal: v3(0, 0, 1), point: v3(0, 0, 0), rmsResidual: 0, maxResidual: 0 }
+  const flat: PlaneFit = { normal: v3(0, 0, 1), point: v3(0, 0, 0), rmsResidual: 0, maxResidual: 0, surfaceRms: 0 }
   if (samples.length === 0) return flat
 
   let w = 0
@@ -309,11 +325,16 @@ export function fitPlane(samples: Sample[]): PlaneFit {
     }
   }
 
-  const normal = smallestEigenvector([
+  const cov = [
     [xx, xy, xz],
     [xy, yy, yz],
     [xz, yz, zz],
-  ])
+  ]
+  const normal = smallestEigenvector(cov)
+  const nv = [normal.x, normal.y, normal.z]
+  let spread = 0
+  for (let i = 0; i < 3; i++) for (let j = 0; j < 3; j++) spread += nv[i] * cov[i][j] * nv[j]
+  const surfaceRms = Math.sqrt(Math.max(spread, 0) / w)
 
   let sum = 0
   let n = 0
@@ -327,7 +348,7 @@ export function fitPlane(samples: Sample[]): PlaneFit {
     }
   }
 
-  return { normal, point: centroid, rmsResidual: n ? Math.sqrt(sum / n) : 0, maxResidual }
+  return { normal, point: centroid, rmsResidual: n ? Math.sqrt(sum / n) : 0, maxResidual, surfaceRms }
 }
 
 /**
@@ -477,6 +498,64 @@ export function alphaComponents(pts: Pt2[], maxEdge: number): number[][] {
   return [...groups.values()]
 }
 
+/**
+ * Extra points across every captured face, so none of it is further than `spacing` from one.
+ *
+ * Each face is bisected along its longest edge until no edge exceeds the spacing, and the
+ * new corners are returned (the original corners are already in the point set). Bisection,
+ * not a barycentric lattice: a lattice puts as many points across a 0.8 m tread as along
+ * its 30 m length, and a stadium's treads would cost millions.
+ *
+ * Bounded: past `budget` points the spacing is widened rather than the browser stalled. A
+ * coarser sample bridges a little less, which shows up as a warning about separate areas,
+ * never as a frozen tab.
+ */
+export function densify(samples: Sample[], spacing: number, budget = 400_000): Vec3[] {
+  if (!(spacing > 0)) return []
+  const area = samples.reduce((s, t) => s + t.area, 0)
+  // Bisection to an edge of `spacing` leaves triangles of about spacing²/2 or larger, each
+  // adding about one new corner.
+  const s = Math.max(spacing, Math.sqrt((2 * area) / budget))
+  const limit = s * s
+  const out: Vec3[] = []
+  const seen = new Set<string>()
+  const q = 1 / (s / 8)
+  const add = (p: Vec3) => {
+    const k = `${Math.round(p.x * q)},${Math.round(p.y * q)},${Math.round(p.z * q)}`
+    if (seen.has(k)) return
+    seen.add(k)
+    out.push(p)
+  }
+  const d2 = (a: Vec3, b: Vec3) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2 + (a.z - b.z) ** 2
+  const mid = (a: Vec3, b: Vec3) => v3((a.x + b.x) / 2, (a.y + b.y) / 2, (a.z + b.z) / 2)
+
+  for (const t of samples) {
+    const stack: [Vec3, Vec3, Vec3][] = [[t.a, t.b, t.c]]
+    while (stack.length) {
+      const [a, b, c] = stack.pop()!
+      const ab = d2(a, b)
+      const bc = d2(b, c)
+      const ca = d2(c, a)
+      const longest = Math.max(ab, bc, ca)
+      if (longest <= limit) continue
+      if (longest === ab) {
+        const m = mid(a, b)
+        add(m)
+        stack.push([a, m, c], [m, b, c])
+      } else if (longest === bc) {
+        const m = mid(b, c)
+        add(m)
+        stack.push([b, m, a], [m, c, a])
+      } else {
+        const m = mid(c, a)
+        add(m)
+        stack.push([c, m, b], [m, a, b])
+      }
+    }
+  }
+  return out
+}
+
 /** Force a ring counter-clockwise, so every emitted face faces the way the plane does. */
 const ccw = (ring: Pt2[]): Pt2[] => (signedArea2(ring) < 0 ? ring.slice().reverse() : ring)
 const ringArea = (ring: Pt2[]) => Math.abs(signedArea2(ring)) / 2
@@ -534,15 +613,25 @@ export function rationalise(
   // on screen, which describes the symptom and hides the cause. A rake modelled as steps
   // is the common case and is not an error, but one plane through it is a claim about
   // where the audience is, so say how far that claim sits from the model either way.
-  if (fit.maxResidual > 0.25) {
+  if ((opts.stepped ? fit.surfaceRms : fit.maxResidual) > 0.25) {
     warnings.push(
       `"${name}": the captured surfaces sit up to ${fit.maxResidual.toFixed(2)} m off the single plane fitted through them (RMS ${fit.rmsResidual.toFixed(2)} m). For a stepped rake that is expected; for two tiers, rationalise them separately.`,
     )
   }
 
   const basis = planeBasis(fit)
+  // Every captured point goes onto the plane STRAIGHT ABOVE OR BELOW where it is, not along
+  // the plane's normal. The audience plane is a claim about where the seating is in plan,
+  // and dropping a point along the normal slides it up or down the slope by its height off
+  // the plane. On a stepped rake that is every row — each tread lands a step's height times
+  // the sine of the rake further up than the one before, so rows that abut in plan come out
+  // with gaps or overlaps between them and the outline is a sawtooth. Vertically, a row's
+  // back edge and the next row's front edge stay one line. A plane too near vertical to
+  // lift onto (a wall, captured with "all faces") keeps the normal projection.
+  const lift = Math.abs(fit.normal.z) > 0.2
+  const onPlane = (p: Vec3): Vec3 => (lift ? (onPlaneAtXY(p.x, p.y, fit) ?? p) : p)
   const pts3: Vec3[] = []
-  for (const s of samples) pts3.push(s.a, s.b, s.c)
+  for (const s of samples) pts3.push(onPlane(s.a), onPlane(s.b), onPlane(s.c))
   const pts2 = pts3.map((p) => toPlane2D(p, basis))
 
   let rings: { outer: Pt2[]; holes: Pt2[][] }[] = []
@@ -571,6 +660,17 @@ export function rationalise(
     const outer = levelled ? levelled.map((p) => toPlane2D(p, basis)) : minAreaRect(convexHull(pts2))
     rings = [{ outer: ccw(outer), holes: [] }]
   } else {
+    // The gap is between SURFACES, so sample the surfaces and not only their corners. A
+    // deck cut into 1.3 m squares, or a row of a stepped rake drawn as one 30 m strip, has
+    // no two corners within any sensible gap — so an alpha shape over the corners alone
+    // bridges nothing and the whole area comes back empty. Points no further apart than
+    // half the gap across every captured face put it back, and change nothing for a seat
+    // pan, which is already smaller than that.
+    for (const p of densify(samples, opts.gapMetres / 2)) {
+      const q = onPlane(p)
+      pts3.push(q)
+      pts2.push(toPlane2D(q, basis))
+    }
     const mesh: WeldedMesh = { vertices: pts3, indices: [] }
     for (const indices of alphaComponents(pts2, opts.gapMetres)) {
       // `boundaryLoops` recovers the outer ring and any holes from the directed edges with

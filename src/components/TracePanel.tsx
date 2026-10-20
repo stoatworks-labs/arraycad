@@ -149,7 +149,9 @@ function Calibration({ doc, onChange, onBackToModel }: Props) {
         </em>
       </div>
       {src.kind === 'drawing-units' &&
-        (src.stated ? (
+        (src.doubt ? (
+          <p className="hint warn-text">{src.doubt}</p>
+        ) : src.stated ? (
           <p className="hint">
             Exact: the drawing states its units, so there is nothing to measure. Set scale is
             still there if a dimension disagrees.

@@ -118,6 +118,22 @@ const FORMAT_WARNINGS: Partial<Record<MeshFormat, string>> = {
 }
 
 /**
+ * An OBJ with its `l` (line) and `p` (point) statements taken out.
+ *
+ * three's OBJLoader keeps one geometry per object and gives it ONE type: a single `l` turns
+ * the whole object into `LineSegments`, faces and all. A Blender export of a venue with six
+ * stray edges left in it therefore imports as no triangles at all — 8,193 faces of the d3
+ * arena gone, and the only message is that the file "contains no triangles". Lines and
+ * points are never surfaces here, so they go before the loader sees them.
+ *
+ * Continuations are joined first, as the loader itself does, or the tail of a long `l`
+ * statement would survive as a line of bare indices.
+ */
+export function withoutLinesOrPoints(text: string): string {
+  return text.replace(/\\\r?\n/g, '').replace(/^[ \t]*[lp][ \t][^\n]*$/gm, '')
+}
+
+/**
  * Decode a mesh file to nodes in the FILE's own units, with no scene-level judgement.
  *
  * Split out from `importMesh` so the MVR importer can reach the loaders for the `.glb`
@@ -136,7 +152,7 @@ export async function decodeMeshNodes(
   try {
     switch (format) {
       case 'obj': {
-        root = new OBJLoader().parse(new TextDecoder().decode(buffer))
+        root = new OBJLoader().parse(withoutLinesOrPoints(new TextDecoder().decode(buffer)))
         break
       }
       case 'stl': {

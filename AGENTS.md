@@ -42,6 +42,7 @@ src/
     chain.ts            loose LINE/ARC segments -> closed rings. See §9
     dxf.ts              dxf-parser -> CadDocument. A translation, no geometry
     dwg.ts              acad-ts -> CadDocument. A translation, no geometry
+    seats.ts            do a drawing's rows of seats agree with its stated units? WARNS only
     ifc.ts              web-ifc wasm; the only source of plane-type suggestions
     mvr.ts              thin: the archive + three.js seam. All the logic is in lib/mvr/
     dbacvScene.ts       an existing venue, tessellated, so it can be pruned
@@ -79,6 +80,12 @@ src/
     outline.ts          the SHARED reduction: ImportedNode -> planar outlines
     rationalise.ts      many objects -> ONE outline. The case outline.ts cannot reach
     convert.ts          the ArrayCalc half: outlines -> RoomObject
+  lib/prepare/          what the file already says, decided at import. See §12
+    vocabulary.ts       names -> categories, as plain word lists
+    plan.ts             names, repetition and shape -> DECISIONS. Never a scene edit
+    split.ts            a one-piece mesh -> rakes, floor, ceiling, walls. See §12
+    simplify.ts         heavy flat regions re-cut from their own outlines
+  lib/realVenues.test.ts  real venues' published drawings. LOCAL ONLY; see §7
   components/           Viewport (three.js), Tree, Inspector, TraceEditor, TracePanel, ui
   state.ts              decisions, settings, the debounced conversion hook
 vectorworks/            a SECOND implementation, in Python 3.9, for the VW plug-in
@@ -122,6 +129,20 @@ after an hour of pruning must not throw the pruning away.
 they know (`unitsPerMetre`, `upAxis`) when the format actually states it. Two importers
 each doing their own half-correct unit guess is how a model ends up 25.4× too big in one
 axis only.
+
+The guesses for what a format does NOT state live beside the transform, not in an importer:
+`guessUnits` from the model's size, and `guessUpAxis` from the way its surfaces face. The
+axis that the most surface area faces along is the vertical one, sign-free, because a floor
+wound downwards is as level as one wound up; Blender, three.js and media-server OBJs are
+Y-up, and the old Z default stood disguise's stock theatre on its back. `settingsForScene`
+applies both, and the UI labels both as guesses.
+
+**Stated is not the same as right.** The National Taichung Theater's published DWGs state
+millimetres and are drawn in centimetres. `import/seats.ts` reads that off the drawing's own
+seats — rows of one block at half a metre in some metric power of ten of the stated unit —
+and adds `ImportedScene.unitsDoubt` and a warning. It never changes `unitsPerMetre`: a
+layout that looks like seating is evidence, and the setting is the user's. Only powers of ten
+are suggested, because a 0.2 m fly-bar pitch read as inches is a plausible seat.
 
 ### `ParentVenueObjectId` is derived on write, never stored
 
@@ -248,6 +269,14 @@ that follow from the offset being applied last:
 - The result is rounded to the millimetre, so the number fields stay legible. That is the
   whole error budget of a pick, and the test asserts it.
 
+### One `l` line in an OBJ loses every face of its object
+
+three's OBJLoader keeps one geometry per object and gives it ONE type, so a single line
+statement turns the whole object into `LineSegments`. disguise's stock arena has 8,193 faces
+and six stray edges in one object, and imported as "contains no triangles". `mesh.ts` takes
+`l` and `p` statements out before the loader sees them (`withoutLinesOrPoints`), joining
+continuations first as the loader does.
+
 ### A mesh rebuild loses its colours
 
 `Viewport` builds source meshes with a default material and colours them in a *separate*
@@ -325,6 +354,18 @@ The ones that matter most:
   calibrated at the drawing's own coordinates, and its audience floor comes back off the
   wand as the 24 x 20 m rectangle the generator wrote down — and as half of it with the
   centreline drawn, which is why the clutter stays off the sheet.
+- `split.test.ts` — `demo/demo-onepiece.obj` (`scripts/make_demo_onepiece.py`): a theatre as
+  ONE Y-up mesh with a stray OBJ line, a stepped fan of stalls, a balcony overhanging them, a
+  stage stair and a floor wound upside down. Its slopes are written down in the generator, so
+  "each sector sits within a step of a plane at the rake drawn" is an assertion.
+- `realVenues.test.ts` — **LOCAL ONLY.** Four venues' own published DWGs (Epsom Playhouse,
+  Tower Theatre, Theatre Royal Bury St Edmunds, National Taichung Theater; AutoCAD 2000 to
+  2018) against the dimensions in their own specifications: a published figure must exist
+  as a drawn length at the drawing's units. Bury's seven are all within 1%. The drawings are
+  not in the repo — none carries a licence to redistribute it —
+  `python3 scripts/fetch_real_venues.py` downloads them by the URLs and checksums in
+  `test/real-venues/venues.json`, and the suite skips without them, which is what CI does.
+  Add a venue there, not a file here.
 - `soundvision.test.ts` — round trip of `roomdata.txt`, the winding rule, and the fact a
   six-sided region stays ONE surface. The writer was additionally checked byte for byte
   against a real 7,194-face Vectorworks export (1.0 MB, 29,760 coordinates); that file is a
@@ -649,6 +690,20 @@ an inverse transform; that is the same mistake §5's origin-picker entry warns a
   underside are all in the soup and would put the "seating plane" somewhere inside the seat.
   Keeping upward faces reduces each seat to its pan — the same trick `vwbridge.py` uses when
   it takes a seating solid's top face.
+- **The gap is between SURFACES, so the surfaces are sampled, not only their corners.**
+  `densify` adds points across every captured face, no further apart than half the gap. A
+  deck cut into 1.3 m squares, or a row of a stepped rake drawn as one 30 m strip, has no two
+  corners within any sensible gap, and an alpha shape over corners alone bridged nothing and
+  lost the whole area. It is bisection, not a lattice, and it is budgeted.
+- **Points go onto the plane STRAIGHT DOWN, not along its normal.** The audience plane is a
+  claim about where the seating is in plan. Dropped along the normal, every tread of a
+  stepped rake slides up the slope by its height off the plane and the outline comes back a
+  sawtooth with gaps between the rows. Only a plane too near vertical keeps the normal
+  projection.
+- **A stepped rake is judged on its SURFACE RMS** (`stepped`, `fitPlane().surfaceRms`). Its
+  corners all sit at a tread's edge, half a step off the incline, so their RMS is nearly the
+  worst case; the surface between them crosses the plane, and its RMS is the 0.29 of a step
+  that `prepare/split.ts` cuts to. Two tiers caught together are a metre off either way.
 
 ### The tree and the drawing compose, and have to
 
@@ -686,10 +741,14 @@ It is two halves, kept apart on purpose:
 ```
 plan.ts       reads the model and produces DECISIONS. No geometry is touched.
 vocabulary.ts the word lists behind it, as plain data
+split.ts      cuts a one-piece model into parts. The same triangles, in rows a person can prune.
 simplify.ts   re-cuts heavy objects into fewer triangles. The same shape, less of it.
 ```
 
-The panel (`components/PreparePanel.tsx`) is five checkboxes and a report. The report is the
+`prepareScene` runs them split, re-cut, read — splitting first, because it cuts rakes along
+the model's own triangles and a re-cut would have merged a row into one long sliver first.
+
+The panel (`components/PreparePanel.tsx`) is six checkboxes and a report. The report is the
 important half: every line says what happened to THIS model with a count, because a pass
 that silently left out forty objects is indistinguishable from an importer that lost them.
 
@@ -727,16 +786,52 @@ that silently left out forty objects is indistinguishable from an importer that 
   that came back empty took its source objects out of the venue and put nothing back: an
   auditorium with no audience in it and a lower object count than before. This protects a
   hand-drawn area exactly as much as a prepared one.
-- **The bridging gap is the row pitch OR the mesh, whichever is coarser.** Nothing can be
-  bridged more finely than the geometry that draws it: a deck cut into 1.3 m squares has no
-  two corners closer than that, and a 0.9 m gap over it joins nothing at all. Erring coarse
-  paves a gangway narrower than the mesh, which is reported; erring fine loses the surface,
-  which is a silent hole.
+- **The bridging gap is the row pitch OR the mesh, whichever is coarser.** Written when the
+  alpha shape saw only corners, so a deck cut into 1.3 m squares and bridged at 0.9 m joined
+  nothing at all. `rationalise.densify` now samples the faces (§11) and the deck comes back
+  either way; the rule stays because erring coarse costs a gangway narrower than the mesh,
+  which is reported, and the coverage test above still keeps decks out.
 - **The row pitch is the fourth nearest neighbour, at the lower quartile.** The two nearest
   seats are the ones either side — the column pitch — and bridging only that leaves every row
   its own area. The quartile rather than the median because a seat on the edge of a block
   has no neighbours on one side, so its fourth nearest is a diagonal, and on a small block
   the edges outnumber the middle.
+- **Where the name says nothing, the shape — but only the clear cases.** An unnamed object
+  that is nine-tenths wall is a surface; one that is nine-tenths level with a room's height
+  under it and nothing to stand on over it is a ceiling. A mix is a one-piece model, and one
+  type for all of it would be wrong for most of it.
+
+### Splitting a one-piece model
+
+`split.ts` exists for the file with no names at all: an OBJ, an STL, disguise's stock theatre
+(1,041 ArrayCalc objects, every one a listening plane) or its arena (8,152). It only touches a
+leaf the vocabulary cannot categorise, with height in it — a flat plan is skipped before the
+weld, which on Taichung's 700,000-triangle seating plan was most of fifteen seconds. Its parts
+are named in the vocabulary's own words (`Floor`, `Ceiling`, `Walls`), so the ordinary name
+rules type them, and rakes are tagged `shape:rake` so the plan flattens each into a
+`stepped` audience plane. The node keeps its id as a container; the parts are
+`<id>/rake1`, `<id>/floor` and so on, deterministic, because a re-run must give the same ids.
+
+What has to stay true, each found on a real mesh:
+
+- **A riser has no minimum height.** The d3 theatre rakes its stalls 30 mm a row. What keeps a
+  slab's 20 mm edge from joining its top to its underside is the TREAD test — twice area over
+  perimeter, at most a row's depth — and the count of rows.
+- **A rake is cut where one plane stops fitting, by whichever cut fits better.** Along the plan
+  (two-means from the median of the longest axis) takes a bowl's side from its corner; across
+  the fitted plane (two-means, height weighted) takes a tier from the one overhanging it. The
+  arena's end, tiers stacked in plan, shredded into fragments with plan cuts alone.
+- **Then the cut pieces are put back together.** Each sector is split into the pieces that
+  actually touch (a shared corner in plan, a step apart in height), and neighbours whose union
+  still fits are merged, best first, on summed moments — refitting triangles per pair took ten
+  seconds on the arena; moments take a fifth of one.
+- **Floor or ceiling is decided by position, then winding where winding can be trusted.** No
+  room under it means somewhere to stand. Over a room, a surface facing away from the way the
+  model's own TREADS face is an underside; with no seating to judge by, no standing room over
+  it makes it a ceiling. Where nothing is modelled underneath, the model's lowest level stands
+  in (the arena has no arena floor), and a walkable-facing surface with nothing over it is a
+  roof only near the top of the model — the d3 theatre has no roof over its auditorium and its
+  circle landings were coming out ceilings.
 
 ### Re-cutting, and the two things that make it unsafe
 

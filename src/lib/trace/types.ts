@@ -52,7 +52,14 @@ export type CalibrationSource =
    * `stated` says whether the drawing declared its units ($INSUNITS) or the user chose them
    * under Source units, because only the first is a measurement.
    */
-  | { kind: 'drawing-units'; metresPerUnit: number; pixelsPerUnit: number; stated: boolean }
+  | {
+      kind: 'drawing-units'
+      metresPerUnit: number
+      pixelsPerUnit: number
+      stated: boolean
+      /** Why the stated units are doubtful: the drawing's seats disagree. See `import/seats.ts`. */
+      doubt?: string
+    }
   /** Nothing has been set yet: the drawing is being shown at an arbitrary 1 px = 1 cm. */
   | { kind: 'unset' }
 

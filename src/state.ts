@@ -31,13 +31,15 @@ import {
   type PrepareOptions,
   type PreparePlan,
   type SimplifyStats,
+  type SplitStats,
   DEFAULT_PREPARE,
   DEFAULT_SIMPLIFY,
   EMPTY_PLAN,
   preparePlan,
   simplifyScene,
+  splitScene,
 } from './lib/prepare/index.ts'
-import { type TransformOptions, boundsOf, guessUnits } from './lib/geom/transform.ts'
+import { type TransformOptions, boundsOf, guessUnits, guessUpAxis } from './lib/geom/transform.ts'
 
 export interface NodeDecision {
   include: boolean
@@ -74,6 +76,8 @@ export interface Rationalisation {
    * checking the new plane against the geometry it came from before committing to it.
    */
   replaceMembers: boolean
+  /** A stepped rake found by shape. See `RationaliseOptions.stepped`. */
+  stepped?: boolean
 }
 
 export type ViewMode = 'source' | 'converted' | 'both'
@@ -140,24 +144,27 @@ export function mergeDecisions(prev: Decisions, scene: ImportedScene): Decisions
 /**
  * Preparation: the checkboxes, and what one run of them produced.
  *
- * `simplifyHeavy` sits beside the plan's options rather than inside them because it is the
- * one that changes GEOMETRY rather than decisions — see `lib/prepare/simplify.ts`. It is
- * also the reason a `Prepared` keeps the scene it made: re-running with the box unticked
- * has to go back to the file as imported, so the raw scene is kept beside the prepared one.
+ * `simplifyHeavy` and `splitOnePiece` sit beside the plan's options rather than inside them
+ * because they are the two that change the SCENE rather than decisions — see
+ * `lib/prepare/simplify.ts` and `lib/prepare/split.ts`. They are also the reason a
+ * `Prepared` keeps the scene it made: re-running with a box unticked has to go back to the
+ * file as imported, so the raw scene is kept beside the prepared one.
  */
 export interface PrepareSettings extends PrepareOptions {
   simplifyHeavy: boolean
+  splitOnePiece: boolean
 }
 
-export const DEFAULT_PREPARE_SETTINGS: PrepareSettings = { ...DEFAULT_PREPARE, simplifyHeavy: true }
+export const DEFAULT_PREPARE_SETTINGS: PrepareSettings = { ...DEFAULT_PREPARE, simplifyHeavy: true, splitOnePiece: true }
 
 export interface Prepared {
   /** The scene as the importer produced it. Kept so preparation can be re-run or undone. */
   raw: ImportedScene
-  /** What the app works in: `raw`, re-cut if `simplifyHeavy` was on. */
+  /** What the app works in: `raw`, split and re-cut as the boxes say. */
   scene: ImportedScene
   plan: PreparePlan
   simplify: SimplifyStats | null
+  split: SplitStats | null
   options: PrepareSettings
   /**
    * The transform the plan was decided against.
@@ -172,9 +179,11 @@ export interface Prepared {
 /**
  * Run preparation over a freshly imported scene.
  *
- * The order is deliberate: re-cut first, then read. Both halves are independent — the plan
- * reads names, sizes and spacings, none of which a re-cut changes — but running the plan on
- * the smaller scene keeps every id it hands back pointing at the nodes the app will actually
+ * The order is deliberate: split, re-cut, then read. Splitting goes first because it cuts
+ * a rake into sectors along the model's own triangles, and a re-cut would have merged a
+ * whole row of them into one long sliver first. Re-cutting goes before reading because the
+ * plan reads names, sizes and spacings, none of which a re-cut changes, and running it on
+ * the final scene keeps every id it hands back pointing at the nodes the app will actually
  * be holding.
  */
 export function prepareScene(
@@ -186,18 +195,20 @@ export function prepareScene(
   // `ImportedScene.alreadyAVenue` — there is nothing here to improve on, and plenty to
   // damage.
   if (raw.alreadyAVenue) {
-    return { raw, scene: raw, plan: EMPTY_PLAN, simplify: null, options, transform }
+    return { raw, scene: raw, plan: EMPTY_PLAN, simplify: null, split: null, options, transform }
   }
 
+  const split = options.splitOnePiece ? splitScene(raw, transform) : { scene: raw, stats: null }
   const simplified = options.simplifyHeavy
-    ? simplifyScene(raw, transform, DEFAULT_SIMPLIFY)
-    : { scene: raw, stats: null }
+    ? simplifyScene(split.scene, transform, DEFAULT_SIMPLIFY)
+    : { scene: split.scene, stats: null }
   const scene = simplified.scene
   return {
     raw,
     scene,
     plan: preparePlan(scene, transform, options),
     simplify: simplified.stats,
+    split: split.stats,
     options,
     transform,
   }
@@ -230,6 +241,7 @@ export function rationalisationsFromPlan(plan: PreparePlan | null): Rationalisat
   return plan.seating.map((c, i) => ({
     ...newRationalisation(`prep${i + 1}`, c.name, c.memberIds),
     gapMetres: c.gapMetres,
+    ...(c.found === 'shape' ? { stepped: true } : {}),
   }))
 }
 
@@ -241,7 +253,7 @@ export function settingsForScene(scene: ImportedScene): Settings {
     transform: {
       ...DEFAULT_SETTINGS.transform,
       unitsPerMetre: scene.unitsPerMetre ?? (bounds ? guessUnits(bounds) : 1),
-      upAxis: scene.upAxis ?? 'z',
+      upAxis: scene.upAxis ?? guessUpAxis(scene.nodes),
     },
   }
 }
@@ -372,6 +384,7 @@ export function rationalisedAreas(
       footprint: r.footprint,
       simplifyTolerance: settings.simplifyTolerance,
       minArea: settings.planarize.minArea,
+      stepped: r.stepped,
     })
 
     warnings.push(...result.warnings)

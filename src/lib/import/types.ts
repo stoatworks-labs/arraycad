@@ -9,6 +9,7 @@
  */
 
 import type { PlaneType } from '../dbacv/types.ts'
+import type { UnitsDoubt } from './seats.ts'
 
 export interface ImportedNode {
   id: string
@@ -38,6 +39,12 @@ export interface ImportedScene {
   unitsPerMetre?: number
   /** When the format states its up axis. Undefined means the user must choose. */
   upAxis?: 'y' | 'z'
+  /**
+   * The stated units, contradicted by the drawing's own seats. `unitsPerMetre` is still
+   * what the file says; this is the reason to doubt it, shown wherever the units are.
+   * See `import/seats.ts`.
+   */
+  unitsDoubt?: UnitsDoubt
   /**
    * This file is ALREADY a venue: an ArrayCalc, Soundvision or EASE Focus project.
    *

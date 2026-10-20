@@ -35,7 +35,8 @@
 import { PlaneType } from '../dbacv/types.ts'
 import { type ImportedNode, type ImportedScene, flattenNodes } from '../import/types.ts'
 import { DEFAULT_RATIONALISE } from '../geom/rationalise.ts'
-import type { TransformOptions } from '../geom/transform.ts'
+import { type TransformOptions, applyTransform } from '../geom/transform.ts'
+import { LevelIndex, RAKE_TAG, levelKind } from './split.ts'
 import { type Category, categorise } from './vocabulary.ts'
 
 export interface PrepareOptions {
@@ -45,9 +46,16 @@ export interface PrepareOptions {
   dropTiny: boolean
   /** m². The threshold for `dropTiny`, on an object's TOTAL surface area. */
   tinyArea: number
-  /** Turn banks of repeated small objects, and anything named as seating, into one plane. */
+  /**
+   * Turn banks of repeated small objects, anything named as seating, and the stepped rakes
+   * `split.ts` found, into one plane each.
+   */
   flattenSeating: boolean
-  /** Set plane types from the names — stage, wall, ceiling. */
+  /**
+   * Set plane types from the names — stage, wall, ceiling — and, where a name says nothing,
+   * from the shape: an object that is all wall, or a level one with a room under it and
+   * nothing over it, is an obstacle.
+   */
   guessPlaneTypes: boolean
   /**
    * Metres. A jump in seat height larger than this starts a new seating area.
@@ -76,8 +84,11 @@ export interface SeatingCluster {
   memberIds: string[]
   /** Metres. Handed to the rationalisation as its bridging gap — physically, the row pitch. */
   gapMetres: number
-  /** How it was found. Shown to the user, because the two carry different confidence. */
-  found: 'name' | 'repetition'
+  /**
+   * How it was found. Shown to the user, because they carry different confidence. `shape`
+   * is a stepped rake `split.ts` cut out of a one-piece model.
+   */
+  found: 'name' | 'repetition' | 'shape'
   /** Objects captured, for the report. */
   objectCount: number
 }
@@ -86,8 +97,12 @@ export interface PrepareSummary {
   clutterExcluded: number
   tinyExcluded: number
   planeTypesSet: number
+  /** Of `planeTypesSet`, the ones read off the shape because the name said nothing. */
+  planeTypesFromShape: number
   seatingAreas: number
   seatingObjects: number
+  /** Of `seatingAreas`, the stepped rakes. */
+  rakes: number
 }
 
 export interface PreparePlan {
@@ -104,7 +119,15 @@ export const EMPTY_PLAN: PreparePlan = {
   exclude: new Map(),
   planeTypes: new Map(),
   seating: [],
-  summary: { clutterExcluded: 0, tinyExcluded: 0, planeTypesSet: 0, seatingAreas: 0, seatingObjects: 0 },
+  summary: {
+    clutterExcluded: 0,
+    tinyExcluded: 0,
+    planeTypesSet: 0,
+    planeTypesFromShape: 0,
+    seatingAreas: 0,
+    seatingObjects: 0,
+    rakes: 0,
+  },
   notes: [],
 }
 
@@ -130,6 +153,11 @@ export interface NodeMetrics {
   /** m², of faces pointing up. A seat solid's pan; a wall has none. */
   upwardArea: number
   /**
+   * m², of faces steeper than 60° — walls, whichever way they are wound. The rest of the
+   * area is level or gently sloping, again either way up.
+   */
+  steepArea: number
+  /**
    * Metres. The typical edge length of an upward face — how finely the surface is drawn.
    *
    * The floor under a bridging gap. Nothing can be bridged more finely than the mesh that
@@ -145,6 +173,8 @@ export interface NodeMetrics {
 }
 
 const upwardCos = Math.cos((DEFAULT_RATIONALISE.upwardDeg * Math.PI) / 180)
+/** cos 60°: a face steeper than this is a wall. The same 60° the upward capture stops at. */
+const STEEP = 0.5
 
 export function measureNode(node: ImportedNode, transform: TransformOptions): NodeMetrics {
   const s = transform.unitsPerMetre
@@ -156,6 +186,7 @@ export function measureNode(node: ImportedNode, transform: TransformOptions): No
 
   let area = 0
   let upwardArea = 0
+  let steepArea = 0
   const min = [Infinity, Infinity, Infinity]
   const max = [-Infinity, -Infinity, -Infinity]
   // Sampled, not collected: a median over a few hundred edges is the same answer as a
@@ -188,6 +219,7 @@ export function measureNode(node: ImportedNode, transform: TransformOptions): No
     // Not abs(): the underside of a seat is not a seating surface, which is the same rule
     // `rationalise.capture` follows and for the same reason.
     const upComponent = (up === 1 ? ny : nz) / l
+    if (Math.abs(upComponent) < STEEP) steepArea += a
     if (upComponent >= upwardCos) {
       upwardArea += a
       if (tri++ % edgeStride === 0) {
@@ -211,6 +243,7 @@ export function measureNode(node: ImportedNode, transform: TransformOptions): No
     triangles: p.length / 9,
     area,
     upwardArea,
+    steepArea,
     upEdge: edges.length ? edges[Math.floor(edges.length / 2)] : 0,
     plan: [span(planAxes[0]), span(planAxes[1])],
     height: span(up),
@@ -257,6 +290,19 @@ const MIN_REPEATS = 8
  * half of it: do not propose it in the first place.
  */
 const SEATING_MAX_COVERAGE = 0.7
+
+/**
+ * Metres. The bridging gap for a stepped rake.
+ *
+ * Its treads tile their own footprint, so there is no row pitch to bridge — only the shift
+ * that laying steps onto an incline introduces, one step height times the sine of the rake,
+ * under 0.4 m for any real seating. A metre clears that with room to spare and still
+ * leaves a vomitory standing as a hole.
+ */
+const RAKE_GAP = 1
+
+/** Share of an unnamed object's surface that has to agree before its shape types it. */
+const SHAPE_SHARE = 0.9
 
 /** Bucket key for "the same object again": bounding box to the nearest 100 mm. */
 function shapeKey(m: NodeMetrics): string {
@@ -469,6 +515,16 @@ export function preparePlan(
   // seat at a time, and the report would call it four hundred pieces of trim.
   const seating: SeatingCluster[] = []
   if (opts.flattenSeating) {
+    // Stepped rakes `split.ts` cut out of a one-piece model, first: they are already one
+    // sector each, measured to fit a plane, and need no clustering. Not through the
+    // coverage test either — a rake's treads tile its footprint by construction, which is
+    // exactly what that test refuses, and the risk it guards (a coarse deck losing its
+    // area) is the one the bridging below is set for.
+    for (const m of withGeometry) {
+      if (!m.node.tags.includes(RAKE_TAG) || exclude.has(m.node.id)) continue
+      seating.push({ name: m.node.name, memberIds: [m.node.id], gapMetres: RAKE_GAP, found: 'shape', objectCount: 1 })
+    }
+
     const named = withGeometry.filter((m) => m.category === 'seating' && !exclude.has(m.node.id))
     seating.push(...clusterSeating(named, 'name', opts))
 
@@ -481,6 +537,7 @@ export function preparePlan(
   }
   const inSeating = new Set(seating.flatMap((c) => c.memberIds))
 
+  const unnamed: NodeMetrics[] = []
   for (const m of withGeometry) {
     if (exclude.has(m.node.id)) continue
     if (opts.dropTiny && !inSeating.has(m.node.id) && m.area < opts.tinyArea) {
@@ -490,6 +547,46 @@ export function preparePlan(
     if (opts.guessPlaneTypes && m.category) {
       const t = PLANE_TYPE_FOR[m.category]
       if (t !== undefined) planeTypes.set(m.node.id, t)
+    } else if (opts.guessPlaneTypes && !inSeating.has(m.node.id)) {
+      unnamed.push(m)
+    }
+  }
+
+  // Where the name says nothing, the shape. Only the clear cases: an object that is all
+  // wall, or all level with a room's height under it and no standing room over it. A mix
+  // of the two is a one-piece model that `split.ts` did not take apart, and guessing one
+  // type for all of it would be wrong for most of it.
+  let fromShape = 0
+  if (unnamed.length > 0) {
+    let index: LevelIndex | null = null
+    /** The level and gently sloping triangles of a node, in venue metres. */
+    const levelTris = (n: ImportedNode): number[][] => {
+      const p = applyTransform(n.positions, transform)
+      const out: number[][] = []
+      for (let i = 0; i + 8 < p.length; i += 9) {
+        const t = Array.from(p.subarray(i, i + 9))
+        const nx = (t[4] - t[1]) * (t[8] - t[2]) - (t[5] - t[2]) * (t[7] - t[1])
+        const ny = (t[5] - t[2]) * (t[6] - t[0]) - (t[3] - t[0]) * (t[8] - t[2])
+        const nz = (t[3] - t[0]) * (t[7] - t[1]) - (t[4] - t[1]) * (t[6] - t[0])
+        const l = Math.hypot(nx, ny, nz)
+        if (l > 0 && Math.abs(nz) / l >= STEEP) out.push(t)
+      }
+      return out
+    }
+    for (const m of unnamed) {
+      const level = m.area - m.steepArea
+      if (m.steepArea >= SHAPE_SHARE * m.area) {
+        planeTypes.set(m.node.id, PlaneType.Surface)
+        fromShape++
+      } else if (level >= SHAPE_SHARE * m.area) {
+        // Everything left in, not just the unnamed: a ceiling is told by the room under it,
+        // and that room's floor may well be called FLOOR.
+        index ??= new LevelIndex(withGeometry.filter((o) => !exclude.has(o.node.id)).flatMap((o) => levelTris(o.node)))
+        if (levelKind(levelTris(m.node), index) === 'ceiling') {
+          planeTypes.set(m.node.id, PlaneType.Surface)
+          fromShape++
+        }
+      }
     }
   }
 
@@ -497,8 +594,10 @@ export function preparePlan(
     clutterExcluded: 0,
     tinyExcluded: 0,
     planeTypesSet: planeTypes.size,
+    planeTypesFromShape: fromShape,
     seatingAreas: seating.length,
     seatingObjects: seating.reduce((n, c) => n + c.objectCount, 0),
+    rakes: seating.filter((c) => c.found === 'shape').length,
   }
   for (const reason of exclude.values()) {
     if (reason.startsWith('named')) summary.clutterExcluded++
@@ -511,12 +610,24 @@ export function preparePlan(
   if (summary.tinyExcluded > 0) {
     notes.push(`Left out ${plural(summary.tinyExcluded, 'object')} with under ${opts.tinyArea} m² of surface.`)
   }
-  if (summary.planeTypesSet > 0) {
-    notes.push(`Set a plane type on ${plural(summary.planeTypesSet, 'object')} from its name.`)
+  const fromName = summary.planeTypesSet - summary.planeTypesFromShape
+  if (fromName > 0) {
+    notes.push(`Set a plane type on ${plural(fromName, 'object')} from its name.`)
   }
-  if (seating.length > 0) {
+  if (summary.planeTypesFromShape > 0) {
     notes.push(
-      `Flattened ${plural(summary.seatingObjects, 'object')} into ${plural(seating.length, 'audience area')}.`,
+      `Made ${plural(summary.planeTypesFromShape, 'unnamed object')} a surface from its shape: all wall, or a ceiling with the room under it.`,
+    )
+  }
+  if (summary.rakes > 0) {
+    notes.push(
+      `Fitted an audience plane to each of ${plural(summary.rakes, 'stepped rake')} found by shape, risers and all.`,
+    )
+  }
+  const gathered = seating.filter((c) => c.found !== 'shape')
+  if (gathered.length > 0) {
+    notes.push(
+      `Flattened ${plural(gathered.reduce((n, c) => n + c.objectCount, 0), 'object')} into ${plural(gathered.length, 'audience area')}.`,
     )
   }
 
@@ -524,8 +635,10 @@ export function preparePlan(
   // half a metre below the first. Reported rather than acted on: which of the two a designer
   // wants is a judgement about the venue — the seat pans or the raked floor they stand on —
   // and quietly dropping the floor of a room with no seating flattened would be worse.
-  if (seating.length > 0) {
-    const seatBoxes = seating.map((c) => {
+  // Not for a rake cut by shape: its floor is a different set of triangles from the same
+  // model, beside the rake rather than under it, and a bounding box would say otherwise.
+  if (gathered.length > 0) {
+    const seatBoxes = gathered.map((c) => {
       const ms = c.memberIds.map((id) => withGeometry.find((m) => m.node.id === id)!).filter(Boolean)
       return planBox(ms)
     })

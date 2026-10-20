@@ -89,13 +89,17 @@ describe('a file that is already a venue', () => {
 
 describe('a rationalisation that produces nothing', () => {
   /**
-   * The failure this guards against is silent and total: a deck named as seating is
-   * captured, no two of its corners are within the bridging gap, the alpha shape comes back
-   * empty — and the objects it was standing in for have already been taken out of the
-   * venue. The audience simply is not there, and the object count looks tidier than ever.
+   * The failure this guards against is silent and total: something named as seating is
+   * captured, the outline recovery comes back empty — and the objects it was standing in for
+   * have already been taken out of the venue. The audience simply is not there, and the
+   * object count looks tidier than ever.
+   *
+   * It was found on a coarse deck, no two of whose corners were within the bridging gap.
+   * The capture now samples whole faces, so a deck comes back; a scrap under the minimum
+   * area is the way left to produce nothing, and the guard must hold for it all the same.
    */
   it('does not take its source objects out of the venue', () => {
-    const s = scene([node('SEATING', deck(20, 16))])
+    const s = scene([node('SEATING', deck(0.2, 0.2))])
     const rat = { ...newRationalisation('r1', 'Seating', [s.nodes[0].id]), gapMetres: 0.9 }
 
     const { areas, effective, warnings } = rationalisedAreas(s, [rat], settings)
@@ -108,9 +112,9 @@ describe('a rationalisation that produces nothing', () => {
   })
 
   it('and one that does produce something still replaces them', () => {
-    // The same deck, bridged widely enough to be captured.
+    // A deck, captured at an ordinary row pitch even though its corners are 16 m apart.
     const s = scene([node('SEATING', deck(20, 16))])
-    const rat = { ...newRationalisation('r1', 'Seating', [s.nodes[0].id]), gapMetres: 30 }
+    const rat = { ...newRationalisation('r1', 'Seating', [s.nodes[0].id]), gapMetres: 0.9 }
 
     const { areas, effective } = rationalisedAreas(s, [rat], settings)
     expect(areas.length).toBe(1)

@@ -17,6 +17,7 @@ import { checkCommonEntityProperties } from 'dxf-parser/dist/ParseHelpers.js'
 import { type ImportedScene, ImportError } from './types.ts'
 import { type CadDocument, type CadOptions, buildCad, noSurfacesError } from './entities.ts'
 import { satPoints } from './acis.ts'
+import { seatUnitsCheck } from './seats.ts'
 
 export type DxfOptions = CadOptions
 export { DEFAULT_CAD_OPTIONS as DEFAULT_DXF_OPTIONS } from './entities.ts'
@@ -102,11 +103,14 @@ export function importDxf(
   if (unitsPerMetre === undefined) {
     warn.add('This DXF does not declare its units ($INSUNITS is 0 or absent). Set them yourself.')
   }
+  const unitsDoubt = seatUnitsCheck(doc, unitsPerMetre) ?? undefined
+  if (unitsDoubt) warn.add(unitsDoubt.message)
 
   const scene: ImportedScene = {
     format: 'DXF',
     sourceName: filename.replace(/\.[^.]+$/, ''),
     unitsPerMetre,
+    unitsDoubt,
     // DXF world coordinates are Z-up; nothing in the header says otherwise.
     upAxis: 'z',
     nodes,

@@ -5,6 +5,7 @@ import { importDxf } from './dxf.ts'
 import { importDbacvAsScene } from './dbacvScene.ts'
 import { importSoundvisionAsScene } from './soundvisionScene.ts'
 import { countTriangles, flattenNodes } from './types.ts'
+import { importMesh, withoutLinesOrPoints } from './mesh.ts'
 import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from '../geom/planarize.ts'
 
 const parser = new (new JSDOM().window.DOMParser)()
@@ -536,6 +537,30 @@ describe('Soundvision re-import', () => {
   it('refuses a .txt that is not room data, and says what to export', () => {
     expect(() => importSoundvisionAsScene('hello\nworld\n', 'notes.txt')).toThrow(
       /not a Soundvision 3D room data file/,
+    )
+  })
+})
+
+describe('OBJ import', () => {
+  const enc = (s: string) => new TextEncoder().encode(s).buffer as ArrayBuffer
+  // One object, two faces and a stray edge: a Blender export with a loose edge left in it.
+  // three's OBJLoader turns the whole object into lines on the first `l`.
+  const obj = [
+    'o Venue',
+    'v 0 0 0', 'v 4 0 0', 'v 4 0 4', 'v 0 0 4', 'v 0 3 0',
+    'f 1 2 3', 'f 1 3 4',
+    'l 1 5',
+    'p 5',
+  ].join('\n')
+
+  it('keeps the faces of an object that also holds a line', async () => {
+    const scene = await importMesh(enc(obj), 'venue.obj', 'obj')
+    expect(countTriangles(scene.nodes)).toBe(2)
+  })
+
+  it('takes out only line and point statements, continuations included', () => {
+    expect(withoutLinesOrPoints('v 1 2 3\nl 1 \\\n 2 3\nf 1 2 3\n  p 4\nusemtl lamp\n')).toBe(
+      'v 1 2 3\n\nf 1 2 3\n\nusemtl lamp\n',
     )
   })
 })

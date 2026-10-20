@@ -1,0 +1,96 @@
+{
+  "about": "Real venues' own published technical drawings, for src/lib/realVenues.test.ts. The drawings are NOT in this repository: none of them carries a licence to redistribute it. Run `python3 scripts/fetch_real_venues.py` to download them from the venues into ~/.cache/arraycad-real-venues (or $ARRAYCAD_REAL_VENUES); the test skips without them. Each `dimensions` list is taken from the venue's own published specification and must appear as a drawn length within `within` (a fraction) at the drawing's units.",
+  "venues": [
+    {
+      "id": "epsom-playhouse",
+      "name": "Epsom Playhouse, Epsom",
+      "page": "https://www.epsomplayhouse.co.uk/venue-hire/technical-information/plans-and-drawings-main-auditorium",
+      "files": [
+        { "name": "ep1e.dwg", "url": "https://www.epsomplayhouse.co.uk/sites/default/files/downloads/ep1e.dwg", "sha256": "5cf0767e5bacd29844908048f08e910bb1e4e688eb44cff3141caa40b166ef98" },
+        { "name": "ep2-full-plan-lx-v2.dwg", "url": "https://www.epsomplayhouse.co.uk/sites/default/files/downloads/ep2-full-plan-lx-v2.dwg", "sha256": "d5b998c0acd5123779ffb0346514bfd7eec6a5ec78c8a93d524be0698e5fb38c" },
+        { "name": "ep3-section.dwg", "url": "https://www.epsomplayhouse.co.uk/sites/default/files/downloads/ep3-section.dwg", "sha256": "6ad11a3249b8fcdbab42bae2ed063c5cef518f28e5d2274ad704729c08a5c942" },
+        { "name": "ep-basic-dims.pdf", "url": "https://www.epsomplayhouse.co.uk/sites/default/files/downloads/ep-basic-dims.pdf", "sha256": "5ca52745623d255f9aa2f3039f59ba38e25c0acfb3460c9bd67ef7473d6233da" }
+      ],
+      "drawings": {
+        "ep1e.dwg": {
+          "what": "stage ground plan, AutoCAD 2000",
+          "unitsPerMetre": 0.001,
+          "dimensions": { "source": "ep-basic-dims.pdf: apron 1.5 m, between booms 11 m, between columns 14.3 m", "metres": [1.5, 11, 14.3], "within": 0.01 }
+        },
+        "ep2-full-plan-lx-v2.dwg": { "what": "full auditorium plan with lighting, AutoCAD 2000", "unitsPerMetre": 0.001 },
+        "ep3-section.dwg": { "what": "long section, AutoCAD 2000", "unitsPerMetre": 0.001 }
+      }
+    },
+    {
+      "id": "tower-theatre",
+      "name": "Tower Theatre, London",
+      "page": "https://www.towertheatre.org.uk/technical-information/",
+      "files": [
+        { "name": "plans.dwg", "url": "https://www.towertheatre.org.uk/notes/plans.dwg", "sha256": "a3100496e773b55a8184f9bb4ff643bc23884263029195b84387b6cb1e0ebf9b" }
+      ],
+      "drawings": {
+        "plans.dwg": {
+          "what": "plans and sections on one sheet, AutoCAD 2018, 108 seat blocks 500 mm apart",
+          "unitsPerMetre": 0.001,
+          "seatsAgree": true
+        }
+      }
+    },
+    {
+      "id": "theatre-royal-bury",
+      "name": "Theatre Royal, Bury St Edmunds",
+      "page": "https://theatreroyal.org/technical-information/",
+      "files": [
+        { "name": "floor-plan.dwg", "url": "https://www.dropbox.com/s/ff6sz5c6cc4chiz/Theatre%20Royal%20BSE%20-%20Floor%20plan%2C%20with%20dimensions.dwg?dl=1", "sha256": "d6a9de0497d4665e7ecdbb3f896a5f0ff65a56a188a3eeb9a7681f44fa99c285" },
+        { "name": "grid-plan.dwg", "url": "https://www.dropbox.com/s/4e5apr0nej0iuru/Theatre%20Royal%20BSE%20-%20Grid%20plan%2C%20with%20dimensions.dwg?dl=1", "sha256": "a80721660e51798542723d6c80ca2ca817216de7a644cbb623ce693fab339d44" },
+        { "name": "stage-spec.pdf", "url": "https://www.dropbox.com/s/s22kx13y2xokkhb/Theatre%20Royal%20BSE%20-%20Stage%20Specification.pdf?dl=1", "sha256": "408e93610881ecf4fd5dc8f4344d95a5019ddc6efb43d4a757c00caf9794fb86" }
+      ],
+      "drawings": {
+        "floor-plan.dwg": {
+          "what": "floor plan with dimensions, AutoCAD 2000, with stray entities a kilometre out",
+          "unitsPerMetre": 0.001,
+          "dimensions": { "source": "stage-spec.pdf: proscenium 7.25 m, main stage 13.00 x 10.00 m, forestages 6.50 x 1.10 and 2.20 m, pit 6.60 m", "metres": [7.25, 13, 10, 6.5, 1.1, 2.2, 6.6], "within": 0.01 }
+        },
+        "grid-plan.dwg": {
+          "what": "grid plan with dimensions, AutoCAD 2000",
+          "unitsPerMetre": 0.001,
+          "dimensions": { "source": "stage-spec.pdf, as above", "metres": [7.25, 13, 10, 6.5, 1.1, 2.2, 6.6], "within": 0.01 }
+        }
+      }
+    },
+    {
+      "id": "ntt-taichung",
+      "name": "National Taichung Theater, Taichung",
+      "page": "https://www.npac-ntt.org/en/venuehire/technical",
+      "files": [
+        { "name": "gt-seating-plan.dwg", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=2023041712085705461VZ.DWG", "sha256": "d2c34f74984ae5d1c4d6f507ca970e88676b031dd9595102f0e4ba409836b228" },
+        { "name": "gt-stage-plan.dwg", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=20230417122149267nD2T.DWG", "sha256": "02008414ca270ea6aa821ff6d74f03cb529ab45b2af79980365e9137af9594e4" },
+        { "name": "gt-stage-section.dwg", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=202209241548285071zK6.DWG", "sha256": "401a9e52be9d65afc79530e72c6b73f8f937774dd8d8f2998c51d7dab31d4e3f" },
+        { "name": "ph-seating-plan.dwg", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=20200325180107022P0ak.DWG", "sha256": "a0fc8c9cf07dc40a79f88f4bdb14e53f4c9e551d4de90c37a3cbe0b705e65546" },
+        { "name": "ph-stage-section.dwg", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=202304171248476164hGU.DWG", "sha256": "fc2b0691cc9ca0724e796aaf8c49fa67225687be32459338e0c60ae563d6ded3" },
+        { "name": "gt-tech-spec.pdf", "url": "https://www.npac-ntt.org/dispPageBox/getFile/GetFile.aspx?FileLocation=%2fTechnologyFile%2f&FileName=20260801173925056bBd8.PDF", "sha256": "1da6e96714aca1fc59725b4bb78608a0a5fc99185ad5f32a10818c95d4f9355c" }
+      ],
+      "drawings": {
+        "gt-seating-plan.dwg": {
+          "what": "Grand Theater seating plan, AutoCAD 2013: states millimetres, drawn in centimetres (3,116 copies of a '520' seat block 46 units apart)",
+          "unitsPerMetre": 0.001,
+          "seatsSuggest": 0.01,
+          "slow": true
+        },
+        "gt-stage-plan.dwg": {
+          "what": "Grand Theater stage plan, AutoCAD 2013: states millimetres, drawn in centimetres",
+          "unitsPerMetre": 0.001,
+          "seatsSuggest": 0.01,
+          "tooSmallAsStated": { "source": "gt-tech-spec.pdf: main stage 22.4 m wide, 19.4 m deep", "metres": 22.4 }
+        },
+        "gt-stage-section.dwg": { "what": "Grand Theater stage section, AutoCAD 2013 — no seats, so nothing to doubt the units by", "unitsPerMetre": 0.001 },
+        "ph-seating-plan.dwg": {
+          "what": "Playhouse seating plan, AutoCAD 2013: states millimetres, drawn in centimetres",
+          "unitsPerMetre": 0.001,
+          "seatsSuggest": 0.01
+        },
+        "ph-stage-section.dwg": { "what": "Playhouse stage section, AutoCAD 2013", "unitsPerMetre": 0.001 }
+      }
+    }
+  ]
+}

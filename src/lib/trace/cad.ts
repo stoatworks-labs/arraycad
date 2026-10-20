@@ -387,6 +387,13 @@ export function cadTraceDocument(scene: ImportedScene, opts: CadTraceOptions): T
 
   const calibration = calibrateByDrawingUnits(opts.metresPerUnit, ppu, toPx(0, 0), opts.unitsStated)
   if (!calibration) throw new ImportError('The drawing units are not a usable scale.', 'Set Source units and trace again.')
+  // Stated is not the same as right. When the drawing's own seats disagree with its units,
+  // the sheet says so rather than calling the scale exact.
+  const doubt = opts.unitsStated ? scene.unitsDoubt?.message : undefined
+  if (doubt && calibration.source.kind === 'drawing-units') {
+    calibration.source = { ...calibration.source, doubt }
+    warnings.push(doubt)
+  }
   if (!opts.unitsStated) {
     warnings.push(
       'This drawing does not state its units, so the scale comes from the Source units setting. ' +

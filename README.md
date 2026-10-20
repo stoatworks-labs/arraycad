@@ -6,7 +6,8 @@
 > reproduces a real ArrayCalc export byte for byte and has been round-tripped through ArrayCalc
 > until every object came back untouched, Soundvision 3.18.0.15 imported a written `.txt` and read
 > it back surface by surface, and EASE Focus 3.1.260 opened and saved a project of 57 audience
-> planes with all 57 labels and every coordinate intact. 480 tests pin the reduction. What none of
+> planes with all 57 labels and every coordinate intact. 515 tests pin the reduction, and 38 more
+> check it against four real venues' own published drawings. What none of
 > that proves is **acoustic orientation**. No prediction has been run over an imported surface
 > yet, and a surface wound the wrong way lands right where it should and then silently returns no
 > mapping result, so check a mapping before you trust a whole design to it.
@@ -38,8 +39,9 @@ seating plane they stand for. See
 [Rationalising a seat-by-seat plan](#rationalising-a-seat-by-seat-plan).
 
 Most of that happens as the file opens. Clutter gets left out, plane types are read off the
-names, banks of seats are flattened and meshed surfaces re-cut, and you can see every bit of it
-and put any of it back with one click. See [Preparing a model on import](#preparing-a-model-on-import).
+names, banks of seats are flattened and meshed surfaces re-cut, and a model that arrives as one
+lump with no names at all is taken apart by its shape. You can see every bit of it and put any
+of it back with one click. See [Preparing a model on import](#preparing-a-model-on-import).
 
 It runs entirely in the browser. There's no backend and no upload, so the file never
 leaves your machine.
@@ -218,17 +220,27 @@ one click from coming back.
 |---|---|
 | **Leave out clutter** | Objects named as something other than a room surface: dimensions, text, lighting bars, truss, cable, ductwork, furniture, people — and modelled loudspeakers, since ArrayCalc and Soundvision place their own. Whole words only, so `TEXTURED PANEL` stays and `TEXT` goes. |
 | **Leave out tiny objects** | Brackets, fixings, trim and stray facets, under a surface area you set. Seating is exempt: a seat pan is 0.2 m². |
-| **Flatten seating into audience planes** | Banks of seats become the plane they stand for — the same thing the Rationalise panel does by hand, and editable there afterwards. Found by name, and by repetition: hundreds of alike, small, upward-facing objects a metre apart are a bank of chairs whatever they are called. Tiers separated in height become separate planes. |
-| **Guess plane types from names** | `STAGE` becomes a stage, `WALL` and `CEILING` become surfaces. |
+| **Split one-piece models** | An OBJ, an STL or a media server's stock stage is one mesh with no names to prune by. It's read by its shape instead: rows of treads and risers become **rakes**, cut into sectors wherever one plane stops fitting (a fan into narrower fans, a bowl into its sides and corners, a balcony away from the stalls it overhangs), and the rest goes into **Floor**, **Ceiling** and **Walls**. Each is a row in the tree. |
+| **Flatten seating into audience planes** | Banks of seats become the plane they stand for — the same thing the Rationalise panel does by hand, and editable there afterwards. Found by name, by repetition (hundreds of alike, small, upward-facing objects a metre apart are a bank of chairs whatever they are called) and by shape: every rake the split found. Tiers separated in height become separate planes. |
+| **Guess plane types from names and shape** | `STAGE` becomes a stage, `WALL` and `CEILING` become surfaces. An object whose name says nothing becomes a surface if it's all wall, or level with the room under it and nothing to stand on above. |
 | **Re-cut heavy objects** | A meshed flat wall is hundreds of triangles describing one rectangle. Re-cutting it from its own outline gives the same shape with a fraction of the triangles — a faster viewport and a faster conversion. Anything not genuinely flat, or with a hole in it, is left alone. |
 
 The panel then tells you what it actually did to *your* model, with counts. On
 `demo/demo-venue.dxf` that's 3,206 triangles down to 1,322, the lighting bars left out and the
 balcony seating flattened: **116 ArrayCalc objects become 52** before you've touched anything.
-On `demo/demo-seats.dxf`, the seat-by-seat plan, it's **3,710 objects down to 17**.
+On `demo/demo-seats.dxf`, the seat-by-seat plan, it's **3,710 objects down to 17**. On
+`demo/demo-onepiece.obj`, a theatre as one Y-up mesh with a stepped fan of stalls and a balcony
+over them, it's **439 down to 26**: three rakes, the floor, the ceiling and the walls.
 
 Untick a box and it re-runs from the file as imported. It reads the model once, when it opens,
 using the units in force at that point, so if the unit guess was wrong, fix it and re-run.
+
+A format that doesn't say which way is up (OBJ, STL, PLY, 3DS) gets that read off the model too:
+the axis its largest surfaces face along is the vertical one. It's a guess, and the Source
+units panel says so. A DWG or DXF whose seats disagree with the units it states gets a warning
+rather than a quiet change. A row of seats is half a metre a seat in every theatre in the
+world, and the National Taichung Theater's published plans, which say millimetres and are drawn
+in centimetres, are how I know that's worth checking.
 
 ## Rationalising a seat-by-seat plan
 

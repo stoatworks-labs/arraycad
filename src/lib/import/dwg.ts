@@ -26,6 +26,7 @@ import { type ImportedScene, ImportError } from './types.ts'
 import { type CadBlock, type CadDocument, type CadOptions, buildCad, noSurfacesError } from './entities.ts'
 import { INSUNITS } from './dxf.ts'
 import { acisPoints } from './acis.ts'
+import { seatUnitsCheck } from './seats.ts'
 
 export type DwgOptions = CadOptions
 
@@ -310,11 +311,14 @@ export function buildDwgScene(
   if (unitsPerMetre === undefined) {
     warn.add('This DWG does not declare its units (INSUNITS is 0 or absent). Set them yourself.')
   }
+  const unitsDoubt = seatUnitsCheck(cad, unitsPerMetre) ?? undefined
+  if (unitsDoubt) warn.add(unitsDoubt.message)
 
   const scene: ImportedScene = {
     format: 'DWG',
     sourceName: filename.replace(/\.[^.]+$/, ''),
     unitsPerMetre,
+    unitsDoubt,
     // DWG world coordinates are Z-up, as DXF's are.
     upAxis: 'z',
     nodes,

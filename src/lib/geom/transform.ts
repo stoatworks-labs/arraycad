@@ -152,3 +152,56 @@ export function guessUnits(b: Bounds): number {
   if (span > 150) return 0.3048
   return 1
 }
+
+/**
+ * Guess which source axis is up, for a format that does not say.
+ *
+ * OBJ, STL, PLY and 3DS state nothing, and the default of Z is wrong for most of what turns
+ * up as OBJ: Blender, three.js and media-server stage models (disguise's stock theatre
+ * among them) are Y-up, and arrive lying on their backs — a 14 m high room reported as 42 m
+ * high, with its floor standing up as a wall.
+ *
+ * The surfaces say which way is up. A venue's largest surfaces are horizontal — floor,
+ * ceiling, stage, every tread of a rake — so the axis that the most surface area FACES
+ * along is the vertical one. Area-weighted and sign-free, because a CAD floor wound
+ * downwards is as horizontal as one wound up. Walls face both horizontal axes and split
+ * their area between them, which is why one long wall rarely outvotes the floor.
+ *
+ * Only a decisive answer is taken. When neither axis leads clearly the overall shape
+ * breaks the tie — a venue is wider than it is tall — and when that is close too, the old
+ * default stands. Like `guessUnits`, a starting point the UI labels as a guess.
+ */
+export function guessUpAxis(nodes: ImportedNode[]): 'y' | 'z' {
+  let facingY = 0
+  let facingZ = 0
+  const walk = (ns: ImportedNode[]) => {
+    for (const n of ns) {
+      const p = n.positions
+      for (let i = 0; i + 8 < p.length; i += 9) {
+        const ux = p[i + 3] - p[i]
+        const uy = p[i + 4] - p[i + 1]
+        const uz = p[i + 5] - p[i + 2]
+        const vx = p[i + 6] - p[i]
+        const vy = p[i + 7] - p[i + 1]
+        const vz = p[i + 8] - p[i + 2]
+        // |n_y| and |n_z| of the cross product, which is twice the area projected onto the
+        // plane perpendicular to that axis. The factor of two cancels in the comparison.
+        facingY += Math.abs(uz * vx - ux * vz)
+        facingZ += Math.abs(ux * vy - uy * vx)
+      }
+      walk(n.children)
+    }
+  }
+  walk(nodes)
+
+  const DECISIVE = 1.25
+  if (facingY > facingZ * DECISIVE) return 'y'
+  if (facingZ > facingY * DECISIVE) return 'z'
+
+  const b = boundsOf(nodes)
+  if (!b) return 'z'
+  const spanY = b.max.y - b.min.y
+  const spanZ = b.max.z - b.min.z
+  if (spanZ > spanY * DECISIVE) return 'y'
+  return 'z'
+}

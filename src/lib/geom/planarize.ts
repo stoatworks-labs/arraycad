@@ -48,12 +48,19 @@ export interface Region {
   indices: number[]
   plane: Plane
   area: number
+  /** The welded mesh's triangle numbers, in the same order as `indices`. */
+  triangles?: number[]
 }
 
 export interface WeldedMesh {
   vertices: Vec3[]
   /** 3 indices per triangle. */
   indices: number[]
+  /**
+   * For each welded triangle, the number of the source triangle it came from. Weld drops
+   * the ones that collapse, so the two numberings drift apart after the first of those.
+   */
+  sources?: number[]
 }
 
 /**
@@ -67,6 +74,7 @@ export interface WeldedMesh {
 export function weld(positions: Float64Array, tol: number): WeldedMesh {
   const vertices: Vec3[] = []
   const indices: number[] = []
+  const sources: number[] = []
   const grid = new Map<string, number[]>()
   const inv = 1 / Math.max(tol, 1e-9)
   const key = (i: number, j: number, k: number) => `${i},${j},${k}`
@@ -122,9 +130,10 @@ export function weld(positions: Float64Array, tol: number): WeldedMesh {
     // or it poisons the region normal it gets flood-filled into.
     if (a === b || b === c || a === c) continue
     indices.push(a, b, c)
+    sources.push(i / 9)
   }
 
-  return { vertices, indices }
+  return { vertices, indices, sources }
 }
 
 /** Undirected edge key. */
@@ -259,7 +268,7 @@ export function findCoplanarRegions(
       )
     }
 
-    regions.push({ indices: regionIndices, plane: { normal, point }, area })
+    regions.push({ indices: regionIndices, plane: { normal, point }, area, triangles: tris })
   }
 
   return regions.sort((a, b) => b.area - a.area)

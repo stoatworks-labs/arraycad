@@ -921,6 +921,8 @@ export default function App() {
                 units={{
                   metresPerUnit: settings.transform.unitsPerMetre,
                   stated: scene.unitsPerMetre !== undefined && scene.unitsPerMetre === settings.transform.unitsPerMetre,
+                  doubt:
+                    scene.unitsPerMetre === settings.transform.unitsPerMetre ? scene.unitsDoubt?.message : undefined,
                 }}
                 layersLeftIn={layersLeftIn}
                 onTracePlan={traceCadPlan}
@@ -978,6 +980,9 @@ export default function App() {
                     model's overall size. Check it against a dimension you know.
                   </p>
                 )}
+                {scene.unitsDoubt && scene.unitsPerMetre === settings.transform.unitsPerMetre && (
+                  <p className="hint warn-text">{scene.unitsDoubt.message}</p>
+                )}
 
                 <Field label="Up axis" hint="Which source axis points up. ArrayCalc is Z-up.">
                   <Segmented
@@ -989,6 +994,12 @@ export default function App() {
                     ]}
                   />
                 </Field>
+                {scene.upAxis === undefined && (
+                  <p className="hint warn-text">
+                    This format does not say which way is up — the setting above is a guess from
+                    the way the model's largest surfaces face. Check the room is standing upright.
+                  </p>
+                )}
               </>
             )}
 

@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { DEFAULT_PLANARIZE, findCoplanarRegions, weld } from './planarize.ts'
 import { boundaryLoops, convexHull, dropCollinear, isConvex, levelAlignedRect, minAreaRect, simplifyClosed, toFaces } from './polygon.ts'
-import { applyTransform, boundsOf, guessUnits, withOriginAt } from './transform.ts'
+import { applyTransform, boundsOf, guessUnits, guessUpAxis, withOriginAt } from './transform.ts'
 import { planeBasis, toPlane2D } from './vec.ts'
 import { DEFAULT_CONVERT, convertNode, convertNodes } from './convert.ts'
 import { PlaneType, Shape } from '../dbacv/types.ts'
@@ -263,6 +263,32 @@ describe('transform', () => {
   it('guesses units from the model span', () => {
     expect(guessUnits({ min: { x: 0, y: 0, z: 0 }, max: { x: 30000, y: 20000, z: 9000 } })).toBe(0.001)
     expect(guessUnits({ min: { x: 0, y: 0, z: 0 }, max: { x: 30, y: 20, z: 9 } })).toBe(1)
+  })
+
+  it('guesses the up axis from the way the surfaces face', () => {
+    // A 30 x 20 x 9 room, Z-up, and the same room as a Y-up exporter would write it.
+    const zUp = box(30, 20, 9)
+    const yUp: number[] = []
+    for (let i = 0; i < zUp.length; i += 3) yUp.push(zUp[i], zUp[i + 2], -zUp[i + 1])
+    expect(guessUpAxis([node(zUp)])).toBe('z')
+    expect(guessUpAxis([node(yUp)])).toBe('y')
+  })
+
+  it('reads a floor wound downwards as a floor', () => {
+    // Sign-free: a CAD floor whose triangles face down is still horizontal.
+    const floor = quadXY(30, 20)
+    const flipped: number[] = []
+    for (let i = 0; i < floor.length; i += 9) flipped.push(...floor.slice(i, i + 3), ...floor.slice(i + 6, i + 9), ...floor.slice(i + 3, i + 6))
+    expect(guessUpAxis([node(flipped)])).toBe('z')
+  })
+
+  it('falls back to the overall shape when the surfaces do not decide', () => {
+    // A cube's faces vote equally; a slab 40 m along Z and 8 m along Y is lying Y-up.
+    expect(guessUpAxis([node(box(10, 10, 10))])).toBe('z')
+    const slab: number[] = []
+    const b = box(40, 40, 8)
+    for (let i = 0; i < b.length; i += 3) slab.push(b[i], b[i + 2], -b[i + 1])
+    expect(guessUpAxis([node(slab)])).toBe('y')
   })
 
   it('bounds a node tree including children', () => {

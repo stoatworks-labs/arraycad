@@ -16,7 +16,8 @@ It runs in the browser with no backend and no upload, so the file never leaves y
 > export **byte for byte** and has been round-tripped through ArrayCalc until every object came
 > back untouched, a written Soundvision file was imported into Soundvision and read back surface
 > by surface, and EASE Focus opened and saved a project of 57 audience planes with all 57 labels
-> and every coordinate intact. 480 tests pin the reduction.
+> and every coordinate intact. 515 tests pin the reduction, and 38 more check it against four
+> real venues' own published drawings.
 >
 > **What none of that proves is acoustic orientation.** No prediction has been run over an
 > imported surface yet, and **a surface wound the wrong way lands right where it should and then
@@ -81,16 +82,27 @@ click from coming back.
 |---|---|
 | **Leave out clutter** | Objects named as something other than a room surface: dimensions, text, lighting bars, truss, cable, ductwork, furniture, people — and modelled loudspeakers, since the prediction tools place their own. **Whole words only**, so `TEXTURED PANEL` stays and `TEXT` goes. |
 | **Leave out tiny objects** | Brackets, fixings, trim and stray facets, under an area you set. **Seating is exempt** — a seat pan is 0.2 m². |
-| **Flatten seating into audience planes** | Found by name **and by repetition**: hundreds of alike, small, upward-facing objects a metre apart are a bank of chairs whatever they are called. Tiers separated in height become separate planes. |
-| **Guess plane types from names** | `STAGE` becomes a stage; `WALL` and `CEILING` become surfaces. |
+| **Split one-piece models** | A model that's one mesh (an OBJ, an STL, a media server's stock stage) has no names to work with, so it's read **by its shape**: rows of treads and risers become **rakes**, cut into as many sectors as it takes for each to fit one plane, and the rest becomes **Floor**, **Ceiling** and **Walls**. |
+| **Flatten seating into audience planes** | Found by name, **by repetition** (hundreds of alike, small, upward-facing objects a metre apart are a bank of chairs whatever they are called) and **by shape**: every rake the split found. Tiers separated in height become separate planes. |
+| **Guess plane types from names and shape** | `STAGE` becomes a stage; `WALL` and `CEILING` become surfaces. **An unnamed object that's all wall, or a ceiling over the room, becomes a surface too.** |
 | **Re-cut heavy objects** | A meshed flat wall is hundreds of triangles describing one rectangle. Re-cutting from its own outline gives the same shape with a fraction of the triangles. **Anything not genuinely flat, or with a hole in it, is left alone.** |
 
 The panel then tells you what it actually did to *your* model, with counts. On the demo venue
 that's 3,206 triangles down to 1,322 and **116 ArrayCalc objects down to 52** before you've
-touched anything. On the seat-by-seat plan it's **3,710 objects down to 17.**
+touched anything. On the seat-by-seat plan it's **3,710 objects down to 17**, and on the
+one-piece theatre (`demo/demo-onepiece.obj`) it's **439 down to 26.**
 
 Untick a box and it re-runs from the file as imported. It reads the model once, when it opens,
 using the units in force at that point, **so if the unit guess was wrong, fix it and re-run.**
+
+> **Check the units even when the file states them.** A DWG or DXF says what units it's in, and
+> it can be wrong. The National Taichung Theater's published plans say millimetres and are drawn
+> in centimetres. When a drawing's rows of seats come out the wrong size for its stated units,
+> ArrayCAD says so and suggests the units that would make them seats. It doesn't change them
+> for you.
+>
+> A mesh format that doesn't say which way is up (OBJ, STL, PLY, 3DS) has it guessed from the way
+> its largest surfaces face. Check the room is standing upright.
 
 ---
 
@@ -151,7 +163,9 @@ Try it on [`demo/demo-rigplot.dxf`](../demo/demo-rigplot.dxf), a made-up ballroo
 | Symptom | Cause |
 | --- | --- |
 | **A mapping returns nothing, and the geometry looks right** | A surface is wound the wrong way. It lands in the right place and silently maps nothing — check a mapping early. |
-| **Everything came in at the wrong scale** | The unit guess. Fix it and re-run the import; it reads the model once, with the units in force then. |
+| **Everything came in at the wrong scale** | The unit guess, or a drawing that states the wrong units (look for the warning about its seats). Fix it and re-run the import; it reads the model once, with the units in force then. |
+| **The room is lying on its back** | The up-axis guess, on a format that doesn't state one. Switch Up axis and re-run. |
+| **A seating sector is cut where you wouldn't** | The split cuts a rake wherever one plane stops fitting it. It's an ordinary audience area in **Rationalise**: delete it, or untick **Split one-piece models** and draw your own. |
 | **A seating plane sits half a seat too low** | The floor under the seats was captured. Select the seating layer before drawing. |
 | **An aisle was swallowed** | The follow distance is wider than the aisle. Set it to the row pitch. |
 | **A horseshoe came back as a block** | *Hull* outline. Use *Follow*. |

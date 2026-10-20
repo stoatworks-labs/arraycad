@@ -23,8 +23,11 @@ interface Props {
   onChange: (patch: Partial<PrepareSettings>) => void
   /** Whether what is left in is a flat plan. Null for anything that is not a DXF or DWG. */
   flatPlan: FlatPlanReport | null
-  /** Metres per unit the sheet would be drawn at, and whether the drawing stated it. */
-  units: { metresPerUnit: number; stated: boolean }
+  /**
+   * Metres per unit the sheet would be drawn at, whether the drawing stated it, and why the
+   * statement is doubtful when its seats disagree.
+   */
+  units: { metresPerUnit: number; stated: boolean; doubt?: string }
   /** How many layers "Draw only the layers left in" would put on the sheet. */
   layersLeftIn: number
   onTracePlan: (onlyLeftIn: boolean) => void
@@ -50,7 +53,7 @@ function Check({
 }
 
 export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layersLeftIn, onTracePlan }: Props) {
-  const { options, plan, simplify } = prepared
+  const { options, plan, simplify, split } = prepared
   const cut = simplify && simplify.trianglesIn > 0 ? 1 - simplify.trianglesOut / simplify.trianglesIn : 0
 
   // A file that is already a venue gets none of this, and saying so is better than five
@@ -105,20 +108,33 @@ export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layers
       )}
 
       <Check
+        label="Split one-piece models"
+        hint={
+          'A model that is one mesh — an OBJ, an STL, a media server\'s stock stage — has no ' +
+          'names to prune or type by. Its shape is read instead: rows of steps become rakes, ' +
+          'and the rest is split into floor, ceiling and walls, each a row in the tree.\n\n' +
+          'Only an object whose name says nothing is split, and only one with height in it.'
+        }
+        checked={options.splitOnePiece}
+        onChange={(v) => onChange({ splitOnePiece: v })}
+      />
+
+      <Check
         label="Flatten seating into audience planes"
         hint={
           'A bank of separately-modelled seats becomes the one plane it stands for — the ' +
           'same thing the Rationalise panel does by hand, and editable there afterwards.\n\n' +
-          'Found by name, and by repetition: hundreds of alike, small, upward-facing ' +
-          'objects a metre apart are a bank of chairs whatever they are called.'
+          'Found by name, by repetition — hundreds of alike, small, upward-facing objects a ' +
+          'metre apart are a bank of chairs whatever they are called — and by shape: a rake ' +
+          'split out of a one-piece model.'
         }
         checked={options.flattenSeating}
         onChange={(v) => onChange({ flattenSeating: v })}
       />
 
       <Check
-        label="Guess plane types from names"
-        hint="STAGE becomes a stage, WALL and CEILING become surfaces. Everything else stays Listening, and every guess is visible in the tree."
+        label="Guess plane types from names and shape"
+        hint="STAGE becomes a stage, WALL and CEILING become surfaces. An unnamed object that is all wall, or a ceiling over the room, becomes a surface too. Everything else stays Listening, and every guess is visible in the tree."
         checked={options.guessPlaneTypes}
         onChange={(v) => onChange({ guessPlaneTypes: v })}
       />
@@ -139,6 +155,13 @@ export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layers
       {busy && <p className="hint">Re-running…</p>}
 
       <div className="prep-report">
+        {split && split.nodesSplit > 0 && (
+          <p className="hint">
+            Split {split.nodesSplit} one-piece model{split.nodesSplit === 1 ? '' : 's'} into{' '}
+            {split.parts} parts: {split.rakes} rake{split.rakes === 1 ? '' : 's'} by their steps, and the
+            floor, ceiling and walls by where they are.
+          </p>
+        )}
         {simplify && simplify.nodesSimplified > 0 && (
           <p className="hint">
             Re-cut {simplify.nodesSimplified} object{simplify.nodesSimplified === 1 ? '' : 's'}:{' '}
@@ -151,7 +174,10 @@ export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layers
             {n}
           </p>
         ))}
-        {plan.notes.length === 0 && (!simplify || simplify.nodesSimplified === 0) && !flatPlan?.flat && (
+        {plan.notes.length === 0 &&
+          (!simplify || simplify.nodesSimplified === 0) &&
+          (!split || split.nodesSplit === 0) &&
+          !flatPlan?.flat && (
           <p className="hint">
             Nothing to do on this model — no names it recognised, nothing repeated enough to
             read as seating, and nothing meshed finely enough to be worth re-cutting.
@@ -206,9 +232,11 @@ function FlatPlan({
           : `Nothing left in closes into a surface, and ${pct}% of its lines lie on one level${level}`}
         , so converted as a model it comes out lying flat — a ceiling on the floor. Trace it
         instead: pick out the regions with the wand and type their heights.{' '}
-        {units.stated
-          ? `It states ${unit}, so it arrives at the right scale with nothing to measure.`
-          : `It does not state its units, so the sheet is drawn in ${unit} as set under Source units — check that first.`}
+        {units.doubt
+          ? units.doubt
+          : units.stated
+            ? `It states ${unit}, so it arrives at the right scale with nothing to measure.`
+            : `It does not state its units, so the sheet is drawn in ${unit} as set under Source units — check that first.`}
       </p>
       {report.withHeight.length > 0 && (
         <p className="hint">

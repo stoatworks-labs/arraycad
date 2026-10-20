@@ -49,7 +49,9 @@ comment that used to claim one is why this repo went weeks without shipping.
   next to them. Don't remove the caveat in the inspector until someone has actually
   checked them against ArrayCalc.
 - Units and axes are applied in `geom/transform.ts` and nowhere else. Importers report
-  what the format states; they never guess.
+  what the format states; they never guess. The guesses for what a format does not state
+  (`guessUnits`, `guessUpAxis` — the axis the most surface faces along) live beside the
+  transform and are labelled as guesses in the UI.
 - **The origin picker never inverts the transform.** The viewport reports the point it hit
   in venue space and `withOriginAt` subtracts it from the offset. Anything that reaches back
   to source coordinates is a second copy of `applyTransform`. See AGENTS.md §5.
@@ -89,6 +91,19 @@ comment that used to claim one is why this repo went weeks without shipping.
   tree and undone by one click. Clutter beats every other category and seating loses to all
   of them; whole-word matching only. Seating is found BEFORE the "too small" test, or a
   seat modelled as a flat pan is left out as trim. See AGENTS.md §12.
+- **`prepare/split.ts` splits only a leaf whose NAME says nothing and which has height in it.**
+  Rakes are found by their steps (treads a row deep, risers a step tall, no minimum riser —
+  real stalls rise 30 mm a row), cut into sectors until each fits one plane, and flattened as
+  `stepped` audience planes. Floor or ceiling is decided by position, then by winding only when
+  the model's own treads show which way is walkable. `demo/demo-onepiece.obj`
+  (`python3 scripts/make_demo_onepiece.py`) is its fixture. See AGENTS.md §12.
+- **A stated unit can be wrong, and `import/seats.ts` only ever WARNS about it.** Rows of one
+  block at a seat's half-metre pitch in a metric power of ten of the stated unit set
+  `unitsDoubt`; `unitsPerMetre` stays what the file says. The National Taichung Theater's DWGs
+  are the case: stated mm, drawn cm.
+- **`src/lib/realVenues.test.ts` is LOCAL ONLY.** Real venues' published DWGs, fetched by
+  `python3 scripts/fetch_real_venues.py` from `test/real-venues/venues.json`; skipped without
+  them, as in CI. Never commit the drawings — none carries a licence to redistribute it.
 - **Preparation never runs on a file that is already a venue.** The three venue importers
   set `alreadyAVenue` and `prepareScene` hands back an empty plan. `LIGHTING BRIDGE` is a
   real ArrayCalc plane, not rigging, and the clutter vocabulary cannot tell the difference.

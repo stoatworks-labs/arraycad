@@ -131,6 +131,56 @@ describe('capture and the plane fit', () => {
 
     expect(r.stats.maxResidual).toBeGreaterThan(0.25)
     expect(r.warnings.join(' ')).toMatch(/off the single plane/)
+    // Still, for a capture marked as a stepped rake: two tiers are two tiers on the RMS too.
+    const stepped = rationalise([node([...lower, ...upper])], 'Tiers', opts({ gapMetres: 0.9, stepped: true }))
+    expect(stepped.warnings.join(' ')).toMatch(/off the single plane/)
+  })
+})
+
+describe('a stepped rake drawn as continuous rows', () => {
+  /**
+   * 12 rows, each ONE strip 20 m long and 0.9 m deep, rising 0.45 m a row: how a stadium or
+   * a stock stage model draws its seating. No two corners of it are within any sensible
+   * gap of each other along a row, and every row sits half a step off the incline.
+   */
+  const rows: number[] = []
+  for (let r = 0; r < 12; r++) {
+    const y = r * 0.9
+    const z = r * 0.45
+    rows.push(0, y, z, 20, y, z, 20, y + 0.9, z, 0, y, z, 20, y + 0.9, z, 0, y + 0.9, z)
+  }
+
+  it('comes back whole, though no two corners are within the gap', () => {
+    const r = rationalise([node(rows)], 'Rake', opts({ gapMetres: 1, stepped: true }))
+    expect(r.outlines).toHaveLength(1)
+    // 20 m by 12 rows of 0.9 m in plan, on a plane rising 0.5 per metre.
+    const plan = 20 * 12 * 0.9
+    expect(r.stats.areaEmitted).toBeCloseTo(plan / Math.cos(Math.atan(0.5)), 0)
+  })
+
+  it('keeps its plan outline: every row lands straight under or over itself, not slid up the slope', () => {
+    const r = rationalise([node(rows)], 'Rake', opts({ gapMetres: 1, stepped: true }))
+    // Projected along the normal, each row would shift by a step's height times the sine of
+    // the rake and the outline would come back a sawtooth. Vertically, it is a rectangle.
+    expect(r.outlines[0].outer).toHaveLength(4)
+    expect(r.outlines[0].holes).toEqual([])
+  })
+
+  it('is judged on its RMS, not on its worst row', () => {
+    // A steep stadium rake, 0.7 m a row: its worst point is past the 0.25 m warning, the
+    // RMS of its surface well inside it. (Its corners' RMS is not: every corner is at a
+    // tread's edge, half a step off.)
+    const steep: number[] = []
+    for (let r = 0; r < 12; r++) {
+      const y = r * 0.9
+      const z = r * 0.7
+      steep.push(0, y, z, 20, y, z, 20, y + 0.9, z, 0, y, z, 20, y + 0.9, z, 0, y + 0.9, z)
+    }
+    const r = rationalise([node(steep)], 'Rake', opts({ gapMetres: 1, stepped: true }))
+    expect(r.stats.maxResidual).toBeGreaterThan(0.25)
+    expect(r.warnings).toEqual([])
+    const plain = rationalise([node(steep)], 'Rake', opts({ gapMetres: 1 }))
+    expect(plain.warnings.join(' ')).toMatch(/stepped rake that is expected/)
   })
 })
 
