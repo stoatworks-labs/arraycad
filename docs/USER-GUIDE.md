@@ -16,7 +16,7 @@ It runs in the browser with no backend and no upload, so the file never leaves y
 > export **byte for byte** and has been round-tripped through ArrayCalc until every object came
 > back untouched, a written Soundvision file was imported into Soundvision and read back surface
 > by surface, and EASE Focus opened and saved a project of 57 audience planes with all 57 labels
-> and every coordinate intact. 535 tests pin the reduction, and 38 more check it against four
+> and every coordinate intact. 549 tests pin the reduction, and 38 more check it against four
 > real venues' own published drawings.
 >
 > **What none of that proves is acoustic orientation.** No prediction has been run over an
@@ -123,6 +123,16 @@ It's decided as the file opens, from how the triangles meet. **Surfaces**, under
 says *Modelled* or *Scanned* and how much noise it measured; switching it re-runs preparation. A
 synthetic 14 m hall with 8 mm of noise is **7 objects** read as a scan, and 6,273 read as a model.
 
+A scan comes in at whatever angle the scanner started at, so it's **squared to its walls** as it
+opens: the **Heading** turns by however far the walls sit off ArrayCalc's axes (a hall scanned 23°
+off comes in at 22.98°). A room with no one set of right angles is left as it came. **Which end the
+audience is at is still yours**: −90° and +90° beside the heading turn it a quarter at a time. A
+model drawn off square isn't turned for you, but gets a **Square up** button in the same place.
+
+**rms off the model**, beside the object count, says how far the written surfaces sit from the
+scan. On a scan, expect about the scanner's own noise; the Simplification panel says when that's
+what it is, and adds the worst point and any area lost or added.
+
 > **The scans it's been tested on are synthetic**, made with known noise so the answer is known. A
 > real scanner smooths, drifts and leaves holes, and everything in the room (chairs, people, the
 > rig) is just more surface with no name to prune it by.
@@ -189,6 +199,8 @@ Try it on [`demo/demo-rigplot.dxf`](../demo/demo-rigplot.dxf), a made-up ballroo
 | **Everything came in at the wrong scale** | The unit guess, or a drawing that states the wrong units (look for the warning about its seats). Fix it and re-run the import; it reads the model once, with the units in force then. |
 | **The room is lying on its back** | The up-axis guess, on a format that doesn't state one. Switch Up axis and re-run. |
 | **A scanned room came back as thousands of scraps** | It was read as a model. Set **Surfaces** to *Scanned*. |
+| **The audience is at the wrong end, or down the side** | Squaring finds the walls, not the stage. Turn it with **−90°** / **+90°** beside the heading. |
+| **rms off the model is in the centimetres** | Merge tolerances loose enough to fold a rake or a step into the plane next to it. The Simplification panel's worst point shows how far. |
 | **A seating sector is cut where you wouldn't** | The split cuts a rake wherever one plane stops fitting it. It's an ordinary audience area in **Rationalise**: delete it, or untick **Split one-piece models** and draw your own. |
 | **A seating plane sits half a seat too low** | The floor under the seats was captured. Select the seating layer before drawing. |
 | **An aisle was swallowed** | The follow distance is wider than the aisle. Set it to the row pitch. |

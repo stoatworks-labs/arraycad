@@ -474,6 +474,13 @@ button.wide {
   margin-bottom: 0;
 }
 
+.heading-tools {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: -2px 0 6px;
+}
+
 .numwrap {
   position: relative;
   display: block;

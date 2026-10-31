@@ -54,6 +54,18 @@ Checked in the dev server. **No real scan tested** — the synthetic ones cannot
 shadow holes or drift. Also worth taking from ScanRuler later: auto-squaring the heading to the
 room's dominant wall, and three-mesh-bvh for picking. AGENTS.md §13.
 
+**2026-10-31, later: the rest of the ScanRuler list.** A scan's heading is squared to its walls
+at import (`squareToWalls`; a drawing gets a *Square up* button and ±90°): a hall scanned 23° off
+comes in at 22.98°. Agreement was first the share of wall area within ±8° of the peak, and on
+8 mm of noise that read 0.246, under the threshold, so the turned hall was not squared in the
+app although every test passed; it is now the mean resultant length. I also first justified
+squaring as stopping turned walls splitting into triangles. They don't: the turned hall was 7
+objects before and after. It is ArrayCalc's convention, nothing more. Second, a **deviation**
+check: *rms off the model* in the stats bar and a note in Simplification (worst point, area lost,
+area added); the turned hall reads ±4.6 mm rms, which is its noise. Third, **three-mesh-bvh**
+(MIT) behind every viewport raycast; picking and selecting checked in the dev server. Bundle
++72 kB. AGENTS.md §4, §5 and §13.
+
 **v0.2.0, released 2026-08-03: rationalisation.** `src/lib/geom/rationalise.ts` closes the one gap
 `planarize.ts` structurally cannot: a plan that models every seat separately, where the
 surfaces genuinely do not touch, so the flood fill is right to report hundreds of regions.

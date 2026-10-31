@@ -18,6 +18,7 @@ import {
 } from '../dbacv/types.ts'
 import { canonicalQuad, quadToTriangles } from '../dbacv/quad.ts'
 import type { ImportedNode } from '../import/types.ts'
+import { type Deviation, NO_DEVIATION, addDeviation } from './deviation.ts'
 import { type OutlineOptions, type RegionOutline, nodeOutlines } from './outline.ts'
 import { DEFAULT_PLANARIZE } from './planarize.ts'
 import { toFaces } from './polygon.ts'
@@ -137,6 +138,8 @@ export interface ConvertStats {
    * when nothing was.
    */
   scan?: ScanReport
+  /** How far the written venue sits from the included model, over every node. */
+  deviation: Deviation
 }
 
 export interface ConvertResult {
@@ -229,7 +232,14 @@ export function convertNodes(
 ): ConvertResult {
   const objects: RoomObject[] = []
   const warnings: string[] = []
-  const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0, quadsSplit: 0 }
+  const stats: ConvertStats = {
+    trianglesIn: 0,
+    regionsFound: 0,
+    objectsOut: 0,
+    regionsDropped: 0,
+    quadsSplit: 0,
+    deviation: NO_DEVIATION,
+  }
   let scanTriangles = 0
   let groupOrder = 101
 
@@ -256,6 +266,7 @@ export function convertNodes(
     stats.objectsOut += r.stats.objectsOut
     stats.regionsDropped += r.stats.regionsDropped
     stats.quadsSplit += r.stats.quadsSplit
+    stats.deviation = addDeviation(stats.deviation, r.stats.deviation)
     if (r.stats.scan && r.stats.trianglesIn > scanTriangles) {
       stats.scan = r.stats.scan
       scanTriangles = r.stats.trianglesIn

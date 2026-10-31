@@ -205,3 +205,129 @@ export function guessUpAxis(nodes: ImportedNode[]): 'y' | 'z' {
   if (spanZ > spanY * DECISIVE) return 'y'
   return 'z'
 }
+
+/** What `squareToWalls` read off the walls. */
+export interface Squareness {
+  /** Degrees to ADD to the heading to put the walls on the venue axes, in [-45, 45). */
+  turnDeg: number
+  /**
+   * 0 to 1: how strongly the walls agree on one set of right angles. The concentration of
+   * their folded facings (the mean resultant length), so a scanner's scatter costs little —
+   * 8 mm of noise on 10 cm triangles still reads above 0.8 — while a round or octagonal room,
+   * which has no one set, reads near 0.
+   */
+  agreement: number
+  /** m² of wall the answer was read from. */
+  wallArea: number
+}
+
+/** A surface is a wall if its normal is within this of level. Wide, for a scan's noise. */
+const WALL_TILT = Math.sin((20 * Math.PI) / 180)
+/** Less wall than this, in m², says nothing about which way the room runs. */
+const MIN_WALL_AREA = 0.5
+
+/**
+ * The turn that squares a room to the venue axes, read off its walls.
+ *
+ * A scan arrives at whatever heading the phone happened to face, and a drawing at whatever
+ * angle the building sits on its site. ArrayCalc wants the room down +X with Y symmetric about
+ * zero, and typing the heading by eye leaves it a degree or two out: every plane then goes
+ * into ArrayCalc turned 1.7° or 23.09°, and none of its numbers reads as a length or a width.
+ * (A turned wall is still one quad — `canonicalQuad` takes any rotation about Z — so this is
+ * about the venue a designer works in, not the object count.)
+ *
+ * A room's walls mostly face four ways at right angles. So each wall's facing is taken four
+ * times over (4φ, which folds those four onto one), the area-weighted histogram of that is
+ * smoothed, and its peak refined by mean shift over the walls near it. The peak, not the
+ * mean: a fan-shaped auditorium's splayed side walls are a minority that a mean would follow
+ * and a peak ignores. Only the ANGLE mod 90° is found. Which of the four ways the audience
+ * faces is the user's to say, which is why this returns the smallest turn.
+ *
+ * Read in venue space under `t`, so the turn is relative to the heading already set, but
+ * before the mirror, which is applied after the heading and would reverse its sense.
+ */
+export function squareToWalls(nodes: ImportedNode[], t: TransformOptions): Squareness | null {
+  const unmirrored: TransformOptions = { ...t, flipX: false, offset: { x: 0, y: 0, z: 0 } }
+  const angles: number[] = []
+  const weights: number[] = []
+  const walk = (ns: ImportedNode[]) => {
+    for (const n of ns) {
+      const p = applyTransform(n.positions, unmirrored)
+      for (let i = 0; i + 8 < p.length; i += 9) {
+        const ux = p[i + 3] - p[i]
+        const uy = p[i + 4] - p[i + 1]
+        const uz = p[i + 5] - p[i + 2]
+        const vx = p[i + 6] - p[i]
+        const vy = p[i + 7] - p[i + 1]
+        const vz = p[i + 8] - p[i + 2]
+        const nx = uy * vz - uz * vy
+        const ny = uz * vx - ux * vz
+        const nz = ux * vy - uy * vx
+        const twice = Math.hypot(nx, ny, nz)
+        if (twice === 0 || Math.abs(nz) > WALL_TILT * twice) continue
+        angles.push(4 * Math.atan2(ny, nx))
+        weights.push(twice / 2)
+      }
+      walk(n.children)
+    }
+  }
+  walk(nodes)
+  return squareness(angles, weights)
+}
+
+/** The fold-by-four histogram and mean shift behind `squareToWalls`, on 4φ in radians. */
+function squareness(angles: number[], weights: number[]): Squareness | null {
+  let wallArea = 0
+  for (const w of weights) wallArea += w
+  if (wallArea < MIN_WALL_AREA) return null
+
+  const BINS = 360
+  const hist = new Float64Array(BINS)
+  const bin = (a: number) => (((Math.floor((a * 180) / Math.PI) % BINS) + BINS) % BINS)
+  angles.forEach((a, i) => (hist[bin(a)] += weights[i]))
+  // ±10° of 4φ is ±2.5° of facing: wide enough that a scan's scattered normals make one
+  // hill rather than a comb.
+  let peak = 0
+  let best = -1
+  for (let b = 0; b < BINS; b++) {
+    let s = 0
+    for (let k = -10; k <= 10; k++) s += hist[(b + k + BINS) % BINS]
+    if (s > best) {
+      best = s
+      peak = b
+    }
+  }
+
+  const wrap = (a: number) => Math.atan2(Math.sin(a), Math.cos(a))
+  // ±10° of facing. Half that left a scan with 8 mm of noise 0.08° rms off over eight seeds,
+  // this 0.04°; a fan's 15° splay is still outside it.
+  const WINDOW = (40 * Math.PI) / 180
+  let c = ((peak + 0.5) * Math.PI) / 180
+  for (let iter = 0; iter < 8; iter++) {
+    let s = 0
+    let co = 0
+    angles.forEach((a, i) => {
+      const d = wrap(a - c)
+      if (Math.abs(d) > WINDOW) return
+      s += weights[i] * Math.sin(d)
+      co += weights[i] * Math.cos(d)
+    })
+    if (co <= 0) break
+    const step = Math.atan2(s, co)
+    c += step
+    if (Math.abs(step) < 1e-9) break
+  }
+
+  let along = 0
+  let across = 0
+  angles.forEach((a, i) => {
+    along += weights[i] * Math.cos(a - c)
+    across += weights[i] * Math.sin(a - c)
+  })
+  // The walls face φ = c/4 (mod 90°); turning by -φ puts them on the axes.
+  const facing = ((c * 180) / Math.PI / 4) % 90
+  let turnDeg = -facing
+  while (turnDeg < -45) turnDeg += 90
+  while (turnDeg >= 45) turnDeg -= 90
+  return { turnDeg, agreement: Math.hypot(along, across) / wallArea, wallArea }
+}
