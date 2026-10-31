@@ -20,6 +20,7 @@ import {
 } from './lib/geom/convert.ts'
 import { type PlanarizeOptions, DEFAULT_PLANARIZE } from './lib/geom/planarize.ts'
 import type { Pt2 } from './lib/geom/polygon.ts'
+import { type SurfaceKind, guessSurface } from './lib/geom/scan.ts'
 import {
   type CaptureFaces,
   type OutlineMode,
@@ -167,6 +168,12 @@ export interface Prepared {
   split: SplitStats | null
   options: PrepareSettings
   /**
+   * Whether the model was read as a scan when this was decided. Splitting found its planes
+   * that way, and re-cutting was skipped for it: re-cutting needs surfaces that are exactly
+   * flat, which a scan's never are.
+   */
+  surface: SurfaceKind
+  /**
    * The transform the plan was decided against.
    *
    * Recorded because a plan's thresholds are in metres and the unit setting behind them may
@@ -190,18 +197,20 @@ export function prepareScene(
   raw: ImportedScene,
   transform: TransformOptions,
   options: PrepareSettings,
+  surface: SurfaceKind = 'cad',
 ): Prepared {
   // A file that is already a venue is left exactly as its author built it. See
   // `ImportedScene.alreadyAVenue` — there is nothing here to improve on, and plenty to
   // damage.
   if (raw.alreadyAVenue) {
-    return { raw, scene: raw, plan: EMPTY_PLAN, simplify: null, split: null, options, transform }
+    return { raw, scene: raw, plan: EMPTY_PLAN, simplify: null, split: null, options, surface, transform }
   }
 
-  const split = options.splitOnePiece ? splitScene(raw, transform) : { scene: raw, stats: null }
-  const simplified = options.simplifyHeavy
-    ? simplifyScene(split.scene, transform, DEFAULT_SIMPLIFY)
-    : { scene: split.scene, stats: null }
+  const split = options.splitOnePiece ? splitScene(raw, transform, { surface }) : { scene: raw, stats: null }
+  const simplified =
+    options.simplifyHeavy && surface === 'cad'
+      ? simplifyScene(split.scene, transform, DEFAULT_SIMPLIFY)
+      : { scene: split.scene, stats: null }
   const scene = simplified.scene
   return {
     raw,
@@ -210,6 +219,7 @@ export function prepareScene(
     simplify: simplified.stats,
     split: split.stats,
     options,
+    surface,
     transform,
   }
 }
@@ -245,16 +255,27 @@ export function rationalisationsFromPlan(plan: PreparePlan | null): Rationalisat
   }))
 }
 
-/** Settings the importer can decide for us, so the user starts from the file's own facts. */
+/**
+ * Settings the importer can decide for us, so the user starts from the file's own facts.
+ *
+ * Whether the model is a scan is decided after the units, because welding — which is how
+ * `guessSurface` sees which triangles meet — is done in metres. A venue file is never one:
+ * every surface in it was typed in by whoever built it.
+ */
 export function settingsForScene(scene: ImportedScene): Settings {
   const bounds = boundsOf(scene.nodes)
+  const transform = {
+    ...DEFAULT_SETTINGS.transform,
+    unitsPerMetre: scene.unitsPerMetre ?? (bounds ? guessUnits(bounds) : 1),
+    upAxis: scene.upAxis ?? guessUpAxis(scene.nodes),
+  }
+  const surface = scene.alreadyAVenue
+    ? 'cad'
+    : guessSurface(scene.nodes, transform, DEFAULT_SETTINGS.planarize.weldTolerance).kind
   return {
     ...DEFAULT_SETTINGS,
-    transform: {
-      ...DEFAULT_SETTINGS.transform,
-      unitsPerMetre: scene.unitsPerMetre ?? (bounds ? guessUnits(bounds) : 1),
-      upAxis: scene.upAxis ?? guessUpAxis(scene.nodes),
-    },
+    transform,
+    planarize: { ...DEFAULT_SETTINGS.planarize, surface },
   }
 }
 

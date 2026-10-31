@@ -16,7 +16,7 @@ It runs in the browser with no backend and no upload, so the file never leaves y
 > export **byte for byte** and has been round-tripped through ArrayCalc until every object came
 > back untouched, a written Soundvision file was imported into Soundvision and read back surface
 > by surface, and EASE Focus opened and saved a project of 57 audience planes with all 57 labels
-> and every coordinate intact. 515 tests pin the reduction, and 38 more check it against four
+> and every coordinate intact. 535 tests pin the reduction, and 38 more check it against four
 > real venues' own published drawings.
 >
 > **What none of that proves is acoustic orientation.** No prediction has been run over an
@@ -106,6 +106,29 @@ using the units in force at that point, **so if the unit guess was wrong, fix it
 
 ---
 
+## Scans
+
+A LiDAR or photogrammetry scan is a mesh in which **nothing is quite flat**: every triangle of a
+scanned wall is tilted by the scanner's noise. The ordinary merge joins only triangles in exactly
+the same plane, so on a scan it finds nothing, and loosened far enough to find the floor it takes
+the ramp beside it in too.
+
+A scan is read differently. ArrayCAD **measures the noise off the mesh** and grows each plane from
+the flattest part of the surface, taking in whatever lies within that noise of it. Outlines are
+smoothed at the scan's mesh size and squared off where a rectangle fits; holes under a square
+metre (shadow the scanner never saw) are filled, a stair well isn't; a floor within the noise of
+level is set exactly level, so it stays **one** ArrayCalc object.
+
+It's decided as the file opens, from how the triangles meet. **Surfaces**, under *Simplification*,
+says *Modelled* or *Scanned* and how much noise it measured; switching it re-runs preparation. A
+synthetic 14 m hall with 8 mm of noise is **7 objects** read as a scan, and 6,273 read as a model.
+
+> **The scans it's been tested on are synthetic**, made with known noise so the answer is known. A
+> real scanner smooths, drifts and leaves holes, and everything in the room (chairs, people, the
+> rig) is just more surface with no name to prune it by.
+
+---
+
 ## Rationalising a seat-by-seat plan
 
 An architect's model draws every seat. A sound designer wants the seating *area*.
@@ -165,6 +188,7 @@ Try it on [`demo/demo-rigplot.dxf`](../demo/demo-rigplot.dxf), a made-up ballroo
 | **A mapping returns nothing, and the geometry looks right** | A surface is wound the wrong way. It lands in the right place and silently maps nothing — check a mapping early. |
 | **Everything came in at the wrong scale** | The unit guess, or a drawing that states the wrong units (look for the warning about its seats). Fix it and re-run the import; it reads the model once, with the units in force then. |
 | **The room is lying on its back** | The up-axis guess, on a format that doesn't state one. Switch Up axis and re-run. |
+| **A scanned room came back as thousands of scraps** | It was read as a model. Set **Surfaces** to *Scanned*. |
 | **A seating sector is cut where you wouldn't** | The split cuts a rake wherever one plane stops fitting it. It's an ordinary audience area in **Rationalise**: delete it, or untick **Split one-piece models** and draw your own. |
 | **A seating plane sits half a seat too low** | The floor under the seats was captured. Select the seating layer before drawing. |
 | **An aisle was swallowed** | The follow distance is wider than the aisle. Set it to the row pitch. |

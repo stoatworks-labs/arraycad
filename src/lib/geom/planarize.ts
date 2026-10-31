@@ -24,6 +24,7 @@ import {
   triArea,
   v3,
 } from './vec.ts'
+import type { SurfaceKind } from './scan.ts'
 
 export interface PlanarizeOptions {
   /** Metres. Vertices closer than this fuse, closing the cracks CAD exports are full of. */
@@ -34,6 +35,12 @@ export interface PlanarizeOptions {
   offsetTolerance: number
   /** Regions smaller than this (m^2) are dropped as noise — fixings, trim, stray facets. */
   minArea: number
+  /**
+   * Modelled or scanned. A scan's planes are found by `scan.ts:findScanRegions`, which reads
+   * the two tolerances above as floors and widens them to the noise it measures. Absent is
+   * modelled.
+   */
+  surface?: SurfaceKind
 }
 
 export const DEFAULT_PLANARIZE: PlanarizeOptions = {
@@ -41,6 +48,7 @@ export const DEFAULT_PLANARIZE: PlanarizeOptions = {
   angleTolerance: 5,
   offsetTolerance: 0.02,
   minArea: 0.05,
+  surface: 'cad',
 }
 
 export interface Region {

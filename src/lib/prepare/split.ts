@@ -56,6 +56,7 @@
 import type { ImportedNode, ImportedScene } from '../import/types.ts'
 import { DEFAULT_PLANARIZE, type Region, type WeldedMesh, findCoplanarRegions, weld } from '../geom/planarize.ts'
 import { smallestEigenvector } from '../geom/rationalise.ts'
+import { type SurfaceKind, findScanRegions } from '../geom/scan.ts'
 import { type TransformOptions, applyTransform } from '../geom/transform.ts'
 import { type Vec3, triArea, v3 } from '../geom/vec.ts'
 import { categorise } from './vocabulary.ts'
@@ -86,6 +87,11 @@ export interface SplitOptions {
   ceilingClearance: number
   /** Metres. Standing room: space above a level surface that makes it somewhere to be. */
   headroom: number
+  /**
+   * How the node's surfaces are found before any of the above is asked of them. A scan's
+   * treads and risers are flat only to within its noise; see `geom/scan.ts`.
+   */
+  surface: SurfaceKind
 }
 
 export const DEFAULT_SPLIT: SplitOptions = {
@@ -104,6 +110,7 @@ export const DEFAULT_SPLIT: SplitOptions = {
   // step or a dais is never that high.
   ceilingClearance: 2,
   headroom: 1.8,
+  surface: 'cad',
 }
 
 export interface SplitStats {
@@ -802,7 +809,10 @@ export function splitNode(
 
   const mesh = weld(venue, DEFAULT_PLANARIZE.weldTolerance)
   // Nothing may be dropped as too small: these are parts of a model, not its conversion.
-  const regions = findCoplanarRegions(mesh, { ...DEFAULT_PLANARIZE, minArea: 0 })
+  const regions =
+    opts.surface === 'scan'
+      ? findScanRegions(mesh, { ...DEFAULT_PLANARIZE, minArea: 0, surface: 'scan' }).regions
+      : findCoplanarRegions(mesh, { ...DEFAULT_PLANARIZE, minArea: 0 })
   const info = regions.map((r) => describe(r, mesh))
   const sources = mesh.sources ?? []
   const srcTri = (t: number): Tri => ({ src: tri9(node.positions, sources[t]), ven: tri9(venue, sources[t]) })

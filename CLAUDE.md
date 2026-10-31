@@ -91,6 +91,12 @@ comment that used to claim one is why this repo went weeks without shipping.
   tree and undone by one click. Clutter beats every other category and seating loses to all
   of them; whole-word matching only. Seating is found BEFORE the "too small" test, or a
   seat modelled as a flat pan is left out as trim. See AGENTS.md §12.
+- **A scan is not modelled geometry, and goes through `geom/scan.ts`.** Nothing in a scan is
+  exactly flat, so `findCoplanarRegions` finds nothing in it. `PlanarizeOptions.surface` is
+  `'cad'` or `'scan'`, guessed at import by `guessSurface` (how many triangles have an exactly
+  coplanar neighbour) and switchable in the Simplification panel. `findScanRegions` returns the
+  same `Region[]`, so nothing downstream forks. Winding is propagated across edges, never
+  re-wound per triangle; preparation splits a scan but never re-cuts it. See AGENTS.md §13.
 - **`prepare/split.ts` splits only a leaf whose NAME says nothing and which has height in it.**
   Rakes are found by their steps (treads a row deep, risers a step tall, no minimum riser —
   real stalls rise 30 mm a row), cut into sectors until each fits one plane, and flattened as

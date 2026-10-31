@@ -21,6 +21,7 @@ import type { ImportedNode } from '../import/types.ts'
 import { type OutlineOptions, type RegionOutline, nodeOutlines } from './outline.ts'
 import { DEFAULT_PLANARIZE } from './planarize.ts'
 import { toFaces } from './polygon.ts'
+import type { ScanReport } from './scan.ts'
 
 export type { FitMode } from './outline.ts'
 
@@ -131,6 +132,11 @@ export interface ConvertStats {
    * number looks arbitrary.
    */
   quadsSplit: number
+  /**
+   * What the largest node reduced as a scan measured as, for the panel to report. Absent
+   * when nothing was.
+   */
+  scan?: ScanReport
 }
 
 export interface ConvertResult {
@@ -224,6 +230,7 @@ export function convertNodes(
   const objects: RoomObject[] = []
   const warnings: string[] = []
   const stats: ConvertStats = { trianglesIn: 0, regionsFound: 0, objectsOut: 0, regionsDropped: 0, quadsSplit: 0 }
+  let scanTriangles = 0
   let groupOrder = 101
 
   /** One object goes out loose; several become a group, since a group of one is noise. */
@@ -249,6 +256,10 @@ export function convertNodes(
     stats.objectsOut += r.stats.objectsOut
     stats.regionsDropped += r.stats.regionsDropped
     stats.quadsSplit += r.stats.quadsSplit
+    if (r.stats.scan && r.stats.trianglesIn > scanTriangles) {
+      stats.scan = r.stats.scan
+      scanTriangles = r.stats.trianglesIn
+    }
     warnings.push(...r.warnings)
     emit(r.objects, entry.name)
   }

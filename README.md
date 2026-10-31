@@ -6,7 +6,7 @@
 > reproduces a real ArrayCalc export byte for byte and has been round-tripped through ArrayCalc
 > until every object came back untouched, Soundvision 3.18.0.15 imported a written `.txt` and read
 > it back surface by surface, and EASE Focus 3.1.260 opened and saved a project of 57 audience
-> planes with all 57 labels and every coordinate intact. 515 tests pin the reduction, and 38 more
+> planes with all 57 labels and every coordinate intact. 535 tests pin the reduction, and 38 more
 > check it against four real venues' own published drawings. What none of
 > that proves is **acoustic orientation**. No prediction has been run over an imported surface
 > yet, and a surface wound the wrong way lands right where it should and then silently returns no
@@ -106,6 +106,7 @@ see [Preparing a model on import](#preparing-a-model-on-import).
 | **MVR** | A whole show from a lighting visualiser — Capture, Depence, Vectorworks, WYSIWYG, grandMA3. Layers and classes arrive as the tree; truss, fixtures and supports are tagged by their MVR type, so the rig prunes itself whatever it was named. Millimetres and Z-up are stated by the format, so nothing is guessed. See [the format notes](docs/mvr-format.md). |
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
+| **Scans** | A LiDAR or photogrammetry scan of a room, in any of the mesh formats above. Read as a scan as it opens: flat to within the scanner's noise, not exactly flat. See [Scans](#scans). |
 | **`.dbacv`** | An existing ArrayCalc venue, for pruning, retyping and converting to Soundvision. See the caveat below. |
 | **Soundvision `.txt`** | An existing 3D room data export, for the same — and for converting to `.dbacv`. Surfaces are grouped by their label, which is your CAD layer name. |
 | **EASE Focus `.fc3`** | An existing EASE Focus 3 project. Audience zones arrive as raked planes, one object per profile segment. `.fc2` must be re-saved as `.fc3` in EASE Focus first. |
@@ -241,6 +242,35 @@ units panel says so. A DWG or DXF whose seats disagree with the units it states 
 rather than a quiet change. A row of seats is half a metre a seat in every theatre in the
 world, and the National Taichung Theater's published plans, which say millimetres and are drawn
 in centimetres, are how I know that's worth checking.
+
+## Scans
+
+A LiDAR or photogrammetry scan of a room is a mesh like any other, except that nothing in it is
+flat. Every triangle of a scanned wall is tilted a little by the scanner's noise, and the ordinary
+merge joins only triangles lying in exactly the same plane, so it finds no walls at all. A room
+scanned with 5 mm of noise on 5 cm triangles comes back as confetti, and loosening the merge until
+the floor reappears folds the ramp beside it into the floor as well.
+
+So a scan is read differently. ArrayCAD measures the scanner's noise off the mesh itself, then
+grows each plane from the flattest part of the surface, taking in whatever lies within that noise
+of the plane so far. A floor comes back as one floor, a ramp beside it as a plane of its own, a
+wall as a wall. Outlines are smoothed at the scan's own mesh size and squared off where a
+rectangle fits. Holes under a square metre are filled, on the grounds that they're the shadow
+under a seat the scanner never saw, while a stair well stays a hole. A floor within the noise of
+level is set exactly level, so it's one ArrayCalc object rather than two triangles.
+
+Whether a file is a scan is decided as it opens, from how its triangles meet: a modelled flat
+face is cut into triangles lying exactly in each other's plane, and a scanned one almost never
+is. **Surfaces**, under *Simplification*, shows the verdict (*Modelled* or *Scanned*) with the
+noise it measured, and switching it re-runs preparation. A synthetic 14 m hall meshed at 10 cm
+with 8 mm of noise is **7 ArrayCalc objects** read as a scan, and 6,273 read as a model.
+
+What it can't do: a scan holds whatever was in the room, so chairs, people and the lighting rig
+are just more surface, with no names to prune them by. Leave them out in the tree, or crop them
+in the scanning app first. And every scan this has been tested on is synthetic, made with known
+noise so the right answer is known. A real scanner smooths, drifts and leaves holes where it
+couldn't see. If you've a scan of a venue you're able to share, I'd like to see what it makes
+of it.
 
 ## Rationalising a seat-by-seat plan
 

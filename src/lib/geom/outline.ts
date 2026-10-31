@@ -13,7 +13,7 @@
  */
 
 import type { ImportedNode } from '../import/types.ts'
-import { type PlanarizeOptions, findCoplanarRegions, weld } from './planarize.ts'
+import { type PlanarizeOptions, type Region, findCoplanarRegions, weld } from './planarize.ts'
 import {
   type Pt2,
   boundaryLoops,
@@ -22,8 +22,16 @@ import {
   minAreaRect,
   simplifyClosed,
 } from './polygon.ts'
+import { type ScanReport, findScanRegions } from './scan.ts'
 import { type TransformOptions, applyTransform } from './transform.ts'
-import { type Basis, planeBasis, toPlane2D } from './vec.ts'
+import { type Basis, planeBasis, signedArea2, toPlane2D } from './vec.ts'
+
+/**
+ * m². In a scan, a hole smaller than this is somewhere the scanner did not see — under a
+ * seat, behind a pillar — not a doorway or a stair well, and it is left out of the outline
+ * rather than cut into the venue as a ring of extra objects. A door is two square metres.
+ */
+export const SCAN_MIN_HOLE = 1
 
 /** How a region's outline is turned into output geometry. */
 export type FitMode =
@@ -56,6 +64,8 @@ export interface OutlineStats {
   trianglesIn: number
   regionsFound: number
   regionsDropped: number
+  /** What the node measured as, when it was reduced as a scan. */
+  scan?: ScanReport
 }
 
 /**
@@ -77,7 +87,18 @@ export function nodeOutlines(
   if (stats.trianglesIn === 0) return { outlines: [], stats, warnings }
 
   const mesh = weld(positions, opts.planarize.weldTolerance)
-  let regions = findCoplanarRegions(mesh, opts.planarize)
+  let regions: Region[]
+  // A scan's outline is the zigzag of its triangles' edges, so it is shaved to at least the
+  // scale it was meshed at; anything finer is the mesh, not the room.
+  let tolerance = opts.simplifyTolerance
+  if (opts.planarize.surface === 'scan') {
+    const found = findScanRegions(mesh, opts.planarize)
+    regions = found.regions
+    stats.scan = found.report
+    tolerance = Math.max(tolerance, 1.5 * found.report.edge)
+  } else {
+    regions = findCoplanarRegions(mesh, opts.planarize)
+  }
   stats.regionsFound = regions.length
 
   if (opts.maxObjectsPerNode > 0 && regions.length > opts.maxObjectsPerNode) {
@@ -98,19 +119,22 @@ export function nodeOutlines(
     const basis = planeBasis(region.plane)
     const to2 = (loop: number[]): Pt2[] => loop.map((i) => toPlane2D(mesh.vertices[i], basis))
 
-    let outer = simplifyClosed(dropCollinear(to2(loops[0]), opts.simplifyTolerance), opts.simplifyTolerance)
+    let outer = simplifyClosed(dropCollinear(to2(loops[0]), tolerance), tolerance)
     let holes: Pt2[][] = []
-
-    if (opts.fit === 'rect' || forceRect) {
-      // Prefer a rectangle aligned to the plane's level direction: it is guaranteed to be
-      // writable as a single ArrayCalc quad, whereas the tightest rectangle on a tilted
-      // plane is usually diagonal and has to be split into two triangles. Falls back to
-      // the min-area rectangle on a horizontal plane, where every direction is level.
+    // Prefer a rectangle aligned to the plane's level direction: it is guaranteed to be
+    // writable as a single ArrayCalc quad, whereas the tightest rectangle on a tilted plane
+    // is usually diagonal and has to be split into two triangles. Falls back to the min-area
+    // rectangle on a horizontal plane, where every direction is level.
+    const rectangle = (): Pt2[] => {
       const levelled = levelAlignedRect(
         loops[0].map((i) => mesh.vertices[i]),
         region.plane.normal,
       )
-      outer = levelled ? levelled.map((p) => toPlane2D(p, basis)) : minAreaRect(outer)
+      return levelled ? levelled.map((p) => toPlane2D(p, basis)) : minAreaRect(outer)
+    }
+
+    if (opts.fit === 'rect' || forceRect) {
+      outer = rectangle()
       // A rectangle has no interior to preserve, so holes go with it. Deliberate: 'rect'
       // is the "give me the coverage area, not the joinery" mode.
       if (loops.length > 1) {
@@ -119,8 +143,25 @@ export function nodeOutlines(
     } else {
       holes = loops
         .slice(1)
-        .map((l) => simplifyClosed(dropCollinear(to2(l), opts.simplifyTolerance), opts.simplifyTolerance))
+        .map((l) => simplifyClosed(dropCollinear(to2(l), tolerance), tolerance))
         .filter((h) => h.length >= 3)
+        .filter((h) => !stats.scan || Math.abs(signedArea2(h)) / 2 >= SCAN_MIN_HOLE)
+      // A scanned rectangle comes back with its corners where the noise left them, a few
+      // centimetres out: not the symmetric trapezoid ArrayCalc takes as one quad, so every
+      // wall of a scanned room went out as two triangles. Where the rectangle covers the
+      // outline to within the shave tolerance all the way round, the difference is the
+      // scanner's, and the rectangle is the surface. An L or a fan is far outside it.
+      if (stats.scan && outer.length >= 4) {
+        const rect = rectangle()
+        let perimeter = 0
+        for (let i = 0; i < outer.length; i++) {
+          const a = outer[i]
+          const b = outer[(i + 1) % outer.length]
+          perimeter += Math.hypot(b[0] - a[0], b[1] - a[1])
+        }
+        const slack = Math.abs(signedArea2(rect)) / 2 - Math.abs(signedArea2(outer)) / 2
+        if (slack <= perimeter * tolerance) outer = rect
+      }
     }
 
     if (outer.length < 3) continue

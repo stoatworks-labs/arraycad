@@ -162,6 +162,12 @@ export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layers
             floor, ceiling and walls by where they are.
           </p>
         )}
+        {prepared.surface === 'scan' && options.simplifyHeavy && (
+          <p className="hint">
+            Read as a scan, so nothing is re-cut: a scan's surfaces are flat only to within its
+            noise, and re-cutting keeps only what is exactly flat.
+          </p>
+        )}
         {simplify && simplify.nodesSimplified > 0 && (
           <p className="hint">
             Re-cut {simplify.nodesSimplified} object{simplify.nodesSimplified === 1 ? '' : 's'}:{' '}
@@ -175,6 +181,7 @@ export function PreparePanel({ prepared, busy, onChange, flatPlan, units, layers
           </p>
         ))}
         {plan.notes.length === 0 &&
+          prepared.surface !== 'scan' &&
           (!simplify || simplify.nodesSimplified === 0) &&
           (!split || split.nodesSplit === 0) &&
           !flatPlan?.flat && (

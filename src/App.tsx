@@ -30,6 +30,7 @@ import {
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
 import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
+import type { SurfaceKind } from './lib/geom/scan.ts'
 import {
   type PrepareSettings,
   type Prepared,
@@ -243,7 +244,7 @@ export default function App() {
           // preparation's thresholds are in metres and it needs the scale to read them.
           const seeded = settingsForScene(s)
           setSettings(seeded)
-          setPrepared(prepareScene(s, seeded.transform, prepareOptions))
+          setPrepared(prepareScene(s, seeded.transform, prepareOptions, seeded.planarize.surface))
           setTraceDoc(null)
           setTraceFile(null)
           setCadScene(null)
@@ -285,7 +286,7 @@ export default function App() {
       // checkbox should be seen to tick before the tab stops answering.
       setTimeout(() => {
         try {
-          setPrepared(prepareScene(prepared.raw, settings.transform, options))
+          setPrepared(prepareScene(prepared.raw, settings.transform, options, settings.planarize.surface))
         } finally {
           setBusy(false)
         }
@@ -357,7 +358,7 @@ export default function App() {
     const seeded = settingsForScene(cadScene)
     const transform = { ...seeded.transform, ...placementOf(settings.transform) }
     setSettings({ ...seeded, transform })
-    setPrepared(prepareScene(cadScene, transform, prepareOptions))
+    setPrepared(prepareScene(cadScene, transform, prepareOptions, seeded.planarize.surface))
     setTraceDoc(null)
     setCadScene(null)
     setSelection([])
@@ -404,6 +405,30 @@ export default function App() {
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => (s ? { ...s, ...patch } : s))
   }, [])
+
+  /**
+   * Read the model as modelled or as scanned.
+   *
+   * A setting of the reduction, but also of preparation: splitting a one-piece model finds
+   * its treads and risers the same way. So it re-runs preparation from the raw scene, as a
+   * Prepare checkbox does, and for the same reason it is only ever a deliberate click.
+   */
+  const changeSurface = useCallback(
+    (surface: SurfaceKind) => {
+      if (!settings) return
+      patchSettings({ planarize: { ...settings.planarize, surface } })
+      if (!prepared) return
+      setBusy(true)
+      setTimeout(() => {
+        try {
+          setPrepared(prepareScene(prepared.raw, settings.transform, prepareOptions, surface))
+        } finally {
+          setBusy(false)
+        }
+      }, 0)
+    },
+    [settings, prepared, prepareOptions, patchSettings],
+  )
 
   /**
    * Take a point clicked in the 3D view as the venue origin.
@@ -1094,6 +1119,43 @@ export default function App() {
           </Panel>
 
           <Panel title="Simplification">
+            {!traceDoc && (
+              <>
+                <Field label="Surfaces" hint="How the model was made, which decides how its planes are found.">
+                  <Segmented
+                    value={settings.planarize.surface ?? 'cad'}
+                    onChange={changeSurface}
+                    options={[
+                      { value: 'cad', label: 'Modelled' },
+                      { value: 'scan', label: 'Scanned' },
+                    ]}
+                  />
+                </Field>
+                <p className="hint">
+                  {settings.planarize.surface === 'scan' ? (
+                    <>
+                      Read as a LiDAR or photogrammetry scan: a surface takes in anything within
+                      the scan's own noise of its plane, measured off the mesh.
+                      {result?.stats.scan && (
+                        <>
+                          {' '}
+                          Noise here is about ±{Math.round(result.stats.scan.noise * 1000)} mm, so
+                          a surface joins within ±{Math.round(result.stats.scan.band * 1000)} mm of
+                          its plane and its outline is shaved to{' '}
+                          {Math.round(Math.max(settings.simplifyTolerance, 1.5 * result.stats.scan.edge) * 100)} cm.
+                        </>
+                      )}{' '}
+                      The merge angle and offset below are minimums.
+                    </>
+                  ) : (
+                    'Drawn in a CAD or 3D tool: a flat surface is exactly flat, and only triangles that share its plane join it.'
+                  )}{' '}
+                  Picked when the file opened, from how its triangles meet. Changing it re-runs
+                  preparation.
+                </p>
+              </>
+            )}
+
             <Field label="Fit" hint="How each flat region becomes ArrayCalc geometry.">
               <Segmented
                 value={settings.fit}

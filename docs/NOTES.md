@@ -44,6 +44,16 @@ line work onto a sheet at 33 px/m with the drawing-units calibration, and the wa
 rooms on it. Checked headlessly on Amfar and in the built bundle under the real CSP. Amfar is a
 client drawing and is not in the repo; `demo/demo-rigplot.dxf` is the fixture. AGENTS.md §8.
 
+**2026-10-31: scans.** Prompted by looking at ScanRuler (CNC Kitchen's scan measuring tool,
+AGPL-3.0-only, so ideas only, no code). A synthetic probe showed `planarize` returns NOTHING for
+a room scanned with 5 mm or more of noise: every triangle's normal is noise. `geom/scan.ts`
+measures the noise and grows planes within it; `guessSurface` picks scan or model at import from
+the share of triangles with an exactly coplanar neighbour; the Simplification panel's *Surfaces*
+switches it. A 14 m synthetic hall with 8 mm noise: 7 objects as a scan, 6,273 as a model.
+Checked in the dev server. **No real scan tested** — the synthetic ones cannot show smoothing,
+shadow holes or drift. Also worth taking from ScanRuler later: auto-squaring the heading to the
+room's dominant wall, and three-mesh-bvh for picking. AGENTS.md §13.
+
 **v0.2.0, released 2026-08-03: rationalisation.** `src/lib/geom/rationalise.ts` closes the one gap
 `planarize.ts` structurally cannot: a plan that models every seat separately, where the
 surfaces genuinely do not touch, so the flood fill is right to report hundreds of regions.

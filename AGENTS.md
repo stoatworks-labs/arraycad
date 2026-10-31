@@ -75,6 +75,7 @@ src/
   lib/geom/             THE ENGINE
     vec.ts              small vector maths, deliberately three-free
     planarize.ts        weld + coplanar flood fill. The module that makes this possible
+    scan.ts             the same regions from a SCAN, flat only to within its noise. See §13
     polygon.ts          boundary loops, simplification, quad/triangle fitting
     transform.ts        units, up-axis, datum. The ONLY place these are applied
     outline.ts          the SHARED reduction: ImportedNode -> planar outlines
@@ -114,6 +115,9 @@ Flood fill compares each candidate triangle against the **region's accumulated p
 against its neighbour. That is deliberate and there is a test for it: pairwise comparison
 walks all the way around a cylinder one tolerable step at a time and swallows the whole
 thing into one region.
+
+All of that rests on a modelled flat surface being EXACTLY flat. A scan is not, and gets a
+second path that returns the same regions: §13.
 
 ## 4. Invariants
 
@@ -358,6 +362,10 @@ The ones that matter most:
   ONE Y-up mesh with a stray OBJ line, a stepped fan of stalls, a balcony overhanging them, a
   stage stair and a floor wound upside down. Its slopes are written down in the generator, so
   "each sector sits within a step of a plane at the rake drawn" is an assertion.
+- `scan.test.ts` — synthetic SCANS: rooms meshed on a grid with seeded Gaussian noise, so
+  "the floor is 80 m², level, one ArrayCalc object" is an assertion. It also measures the gap
+  (the CAD flood fill keeps under 1 m² of a room at 5 mm of noise) and what must not merge (a
+  stepped rake, a column, a modelled box). No real scan is in the repo; see §13.
 - `realVenues.test.ts` — **LOCAL ONLY.** Four venues' own published DWGs (Epsom Playhouse,
   Tower Theatre, Theatre Royal Bury St Edmunds, National Taichung Theater; AutoCAD 2000 to
   2018) against the dimensions in their own specifications: a published figure must exist
@@ -867,7 +875,65 @@ Preparation is a different kind of thing: it exists because an exported file has
 what the plug-in can still read directly out of the drawing — the class names, the object
 types, the seating solids. Inside Vectorworks the answer is available rather than inferred.
 
-## 13. Deploy
+## 13. Scans: flat only to within the noise
+
+§3's flood fill rests on a modelled flat surface being EXACTLY flat. A LiDAR or
+photogrammetry mesh of the same wall has every triangle tilted by the scanner's noise — 5 mm of
+it on 5 cm triangles scatters the normals past the 5° tolerance — so the flood fill stops at the
+first triangle, every region falls under `minArea`, and the room comes back empty. Loosening the
+tolerances is not a fix: at 45° and 0.5 m the floor comes back and takes a 1:2 rake beside it
+into the same plane. `scan.test.ts` measures both.
+
+`geom/scan.ts:findScanRegions` is the other path, and it returns the same `Region[]`, so the
+outline, every target and `split.ts` take a scan with no code of their own: planes fitted through
+a patch round each triangle, the noise measured off them, regions grown from the flattest seeds
+against their own refitted plane, rims absorbed, neighbours merged where their union still fits,
+leftovers kept. The module comment has the detail. A second or two for 150,000 triangles.
+
+`PlanarizeOptions.surface` chooses: `'cad'` (and absent means that) or `'scan'`. In scan mode
+the angle and offset tolerances are FLOORS that the measured noise widens, capped at 30° and 5×.
+`state.ts:settingsForScene` picks it at import with `guessSurface`; the Simplification panel's
+Surfaces control changes it and re-runs preparation, since `split.ts` reads it too.
+
+### What has to stay true
+
+- **The guess reads how triangles meet.** A modelled flat face is meshed into triangles exactly
+  coplanar (within 0.5°) with a neighbour; a scanned one almost never is. Under a fifth of the
+  surface with such a neighbour is a scan. Every demo file and the d3 stock venues read 0.98 to
+  1.0; d3's sculpted performers read 0.06 to 0.5, which is the edge of it, and a performer is not
+  a venue. A file that is already a venue is never a scan.
+- **Regions merge by distance, never by normal.** The noisy patches of one floor tilt 5–10°:
+  they are the patches growth stopped at, selected for being tilted, so no angle test joins
+  them. Two neighbours merge when their union's rms is within half the band and neither sits
+  further than the band off the union's plane.
+- **Moments include each triangle's own spread**, not just its centroid. Centroids alone cannot
+  tell a two-triangle face from the face at right angles to it, and a modelled box came back as
+  two regions.
+- **Area is projected onto the plane.** Noise crumples a scanned floor bigger than the floor, by
+  a tenth at 10 mm on 5 cm triangles.
+- **Winding is carried across shared edges, never re-wound per triangle** as `planarize.ts`
+  does. Noise folds the odd scanned triangle over, and turning it to face the region leaves an
+  edge running the same way on both sides, which `boundaryLoops` reads as outline: a floor came
+  back as 114 loops. Each connected piece agrees with itself, then faces the plane; the region
+  faces the way most of its surface was wound in the file.
+- **Nearly level is set level, nearly plumb is set plumb**, where the turn moves no part of the
+  region more than half the band. A scanned floor fits a plane a hundredth of a degree off
+  level; that gives its rectangle no level edge, and `canonicalQuad` splits it into two
+  triangles. A floor that really falls (1:100 over 10 m is 10 cm) keeps its fall.
+- **The outline is simplified at 1.5 mesh edges, and squared off** where the rectangle adds no
+  more than a strip that wide round the perimeter. Holes under `SCAN_MIN_HOLE` (1 m²) are
+  shadow and are dropped; a stair well is kept.
+- **Preparation splits a scan but never re-cuts it.** `simplify.ts`'s guards are about regions
+  that are only nearly flat, and every region of a scan is only nearly flat.
+- **`split.ts` still finds rakes by their steps.** A smooth scanned ramp goes into the Floor
+  part, though it converts as a plane of its own.
+- **The Vectorworks plug-in has no scan path and needs none.** It reads drawings.
+
+The scans in `scan.test.ts` are made, not measured: nobody has handed over a real scan with a
+licence to keep. A real scanner's smoothing, shadow holes and drift are untested. That is the
+gap to close with the first one.
+
+## 14. Deploy
 
 Static-assets Worker, not Cloudflare Pages.
 
