@@ -71,6 +71,26 @@ export function isUninformativeName(name: string): boolean {
   return /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(s)
 }
 
+/**
+ * The label a tree row shows: the node's own name, or one read off its children.
+ *
+ * `nameOf` is the name a node goes by now — the user's rename when there is one. Here
+ * rather than in the tree component so the MCP server lists a row under the label the app
+ * shows, and so grouping on that label (see `autoGroup`) has one definition of it.
+ */
+export function rowLabel(
+  node: { id: string; name: string; children: { id: string; name: string }[] },
+  nameOf: (id: string) => string | undefined,
+): string {
+  const chosen = nameOf(node.id)
+  if (chosen && !isUninformativeName(chosen)) return chosen
+  if (node.children.length > 0) {
+    const derived = deriveLabel(node.children.map((c) => nameOf(c.id) ?? c.name))
+    if (derived) return derived
+  }
+  return chosen ?? node.name
+}
+
 /** What a sibling list turned into. `loose` keeps document order, as do the groups. */
 export interface NameGroup<T> {
   key: string

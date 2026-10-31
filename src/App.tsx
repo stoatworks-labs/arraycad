@@ -1,6 +1,4 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { type VenueFile } from './lib/dbacv/types.ts'
-import { formatDbacvDate, writeDbacv } from './lib/dbacv/write.ts'
 import {
   type ImportedNode,
   type ImportedScene,
@@ -10,12 +8,7 @@ import {
   flattenNodes,
   importFile,
 } from './lib/import/index.ts'
-import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
-import { writeSoundvision } from './lib/soundvision/write.ts'
-import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
-import { writeEaseFocus } from './lib/easefocus/write.ts'
-import { convertNodesToMvr } from './lib/mvr/convert.ts'
-import { writeMvr } from './lib/mvr/write.ts'
+import { dbacvFile, easeFocusFile, mvrFile, soundvisionFile } from './targets.ts'
 import {
   type LayerChoice,
   type TraceDocument,
@@ -39,13 +32,10 @@ import {
   DEFAULT_PREPARE_SETTINGS,
   DEFAULT_SETTINGS,
   applyPlan,
-  conversionEntries,
-  convertOptions,
   mergeDecisions,
   newRationalisation,
   prepareScene,
   rationalisationsFromPlan,
-  rationalisedAreas,
   seedDecisions,
   settingsForScene,
   subtreeIds,
@@ -529,21 +519,11 @@ export default function App() {
     setTraceDoc((d) => (d ? updater(d) : d))
   }, [])
 
+  /** The live ArrayCalc result is already the venue; only the file header is added. */
   const exportFile = useCallback(() => {
-    if (!result || result.objects.length === 0) return
-    const venue: VenueFile = {
-      // The version this format was reverse-engineered from. ArrayCalc reads its own older
-      // files, so claiming the version we actually understand is the honest choice.
-      appVersion: '12.8.2',
-      venueVersion: '9',
-      projectName,
-      date: formatDbacvDate(),
-      author: 'ArrayCAD',
-      projectComments: '',
-      venueComments: `Converted from ${scene?.format ?? 'CAD'} by ArrayCAD.`,
-      objects: result.objects,
-    }
-    download(writeDbacv(venue), `${projectName || 'venue'}.dbacv`, 'application/xml')
+    if (!result) return
+    const f = dbacvFile(result, projectName, scene?.format)
+    if (f.count > 0) download(f.data, `${projectName || 'venue'}${f.extension}`, f.mime)
   }, [result, projectName, scene])
 
   /**
@@ -552,41 +532,23 @@ export default function App() {
    * docs/soundvision-format.md. It is converted on demand rather than alongside the live
    * ArrayCalc result: nothing on screen depends on it, and planarising twice on every
    * slider movement would halve the frame rate for a file most sessions never export.
+   * `targets.ts` says why it starts from outlines rather than from that result.
    */
   const exportSoundvision = useCallback(() => {
     if (!scene || !settings?.transform) return
-    // Rationalised areas are recomputed here rather than taken from the live ArrayCalc
-    // result, because that result holds RoomObjects — already through the canonical quad
-    // frame and possibly split into triangles to fit it. Soundvision wants the outline
-    // whole, so it starts from the same outlines the other target did.
-    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
-    const r = convertNodesToSoundvision(
-      conversionEntries(scene, decisions, effective),
-      { ...convertOptions(settings), winding: 'up' },
-      exportAreas,
-    )
-    if (r.scene.faces.length === 0) return
-    download(writeSoundvision(r.scene), `${projectName || 'venue'}.txt`, 'text/plain')
+    const f = soundvisionFile({ scene, decisions, settings, rationalisations })
+    if (f.count > 0) download(f.data, `${projectName || 'venue'}${f.extension}`, f.mime)
   }, [scene, decisions, settings, projectName, rationalisations])
 
   /**
    * EASE Focus has no geometry import at all — its guide offers typed coordinates or
    * tracing over a picture — so the project file itself is the only route in, and this
-   * export writes one. Same on-demand pattern as the Soundvision export, and the same
-   * reason it starts from outlines rather than the live ArrayCalc result: a zone wants
-   * the plane whole, not the canonical quad frame.
+   * export writes one. Same on-demand pattern as the Soundvision export.
    */
   const exportEaseFocus = useCallback(() => {
     if (!scene || !settings?.transform) return
-    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
-    const r = convertNodesToEaseFocus(
-      conversionEntries(scene, decisions, effective),
-      convertOptions(settings),
-      exportAreas,
-      projectName || 'ArrayCAD export',
-    )
-    if (r.project.zones.length === 0) return
-    download(writeEaseFocus(r.project), `${projectName || 'venue'}.fc3`, 'application/octet-stream')
+    const f = easeFocusFile({ scene, decisions, settings, rationalisations }, projectName)
+    if (f.count > 0) download(f.data, `${projectName || 'venue'}${f.extension}`, f.mime)
   }, [scene, decisions, settings, projectName, rationalisations])
 
   /**
@@ -596,20 +558,12 @@ export default function App() {
    * glTF, and glTF wants exactly what `planarize.ts` produced on the way to a parametric
    * plane. So this is the one export where nothing is lost to the format — what a
    * visualiser gets is the simplified room, one object per plane, under the names the user
-   * pruned by. Same on-demand pattern and the same start-from-outlines reason as the other
-   * two: a plane wants to be whole, not in the canonical quad frame.
+   * pruned by. Same on-demand pattern as the other two.
    */
   const exportMvr = useCallback(() => {
     if (!scene || !settings?.transform) return
-    const { areas: exportAreas, effective } = rationalisedAreas(scene, rationalisations, settings)
-    const r = convertNodesToMvr(
-      conversionEntries(scene, decisions, effective),
-      convertOptions(settings),
-      exportAreas,
-      projectName || 'ArrayCAD export',
-    )
-    if (r.scene.objects.length === 0) return
-    download(writeMvr(r.scene).bytes, `${projectName || 'venue'}.mvr`, 'application/octet-stream')
+    const f = mvrFile({ scene, decisions, settings, rationalisations }, projectName)
+    if (f.count > 0) download(f.data, `${projectName || 'venue'}${f.extension}`, f.mime)
   }, [scene, decisions, settings, projectName, rationalisations])
 
   // ---------------------------------------------------------------- render

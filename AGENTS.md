@@ -89,6 +89,9 @@ src/
   lib/realVenues.test.ts  real venues' published drawings. LOCAL ONLY; see §7
   components/           Viewport (three.js), Tree, Inspector, TraceEditor, TracePanel, ui
   state.ts              decisions, settings, the debounced conversion hook
+  targets.ts            the four output files, assembled. Shared by the export buttons and mcp/
+  mcp/                  the MCP server: the app's panels as tools, over stdio. See §15
+scripts/mcp-server.mjs  its launcher: Vite's module runner, because the library has enums
 vectorworks/            a SECOND implementation, in Python 3.9, for the VW plug-in
 test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
 test/fixtures/roomdata.txt    a synthetic Soundvision export, in the exact byte format
@@ -374,6 +377,11 @@ The ones that matter most:
   `python3 scripts/fetch_real_venues.py` downloads them by the URLs and checksums in
   `test/real-venues/venues.json`, and the suite skips without them, which is what CI does.
   Add a venue there, not a file here.
+- `mcp.test.ts` — the MCP server from the protocol up: version negotiation and strict
+  schemas; the tools driven as a model drives them, over the demo files, with every file
+  `export` writes read back by the importer that would read it in the target's place; and the
+  real server process over its own stdio, which is the only test that sees the launcher, the
+  module runner and stdout carrying nothing but protocol.
 - `soundvision.test.ts` — round trip of `roomdata.txt`, the winding rule, and the fact a
   six-sided region stays ONE surface. The writer was additionally checked byte for byte
   against a real 7,194-face Vectorworks export (1.0 MB, 29,760 coordinates); that file is a
@@ -940,6 +948,60 @@ Static-assets Worker, not Cloudflare Pages.
 ```bash
 cf-run npx wrangler deploy
 ```
+
+## 15. The MCP server: the app without the page
+
+`src/mcp/` is ArrayCAD as an MCP server, so a model can do the conversion: open, read the
+tree, prune, type, rationalise, convert, write. Twelve tools, one per thing a person does in a
+panel, over stdio, run by `scripts/mcp-server.mjs`:
+
+```
+  mcp/protocol.ts       the wire: JSON-RPC over stdio, initialize/ping/tools, progress, cancel
+  mcp/session.ts        one open model and its decisions. A thin wrapper over what App.tsx calls
+  mcp/tools.ts          the tools and their schemas
+  mcp/server.ts         serveStdio(SERVER_INFO, arraycadTools())
+```
+
+**Headless, not paired with a browser tab.** Everything the page knows is in the file, the
+decisions and the settings, and §2's pipeline already runs in node. Pairing would need a
+socket in `App.tsx` and buy a viewport the model cannot look at anyway. What it costs is
+tracing, which is a person clicking inside rooms and stays in the page. The tool refuses a
+trace file and says so.
+
+### What has to stay true
+
+- **The server has no geometry of its own.** Every tool calls what `App.tsx` calls. What used
+  to sit in the export callbacks (the `.dbacv` header, the Soundvision winding, the project
+  name a zone file carries) is in `src/targets.ts` for both, and the tree's row label is
+  `grouping.ts:rowLabel` for both `Tree.tsx` and `list_tree`. Geometry written in `src/mcp/`
+  is §6's drift, one level up. It belongs in `lib/`, where both callers reach it.
+- **`targets.ts:convertVenue` is a second copy of `useConversion`'s memo**, four lines,
+  marked "change one, change both". The hook is a memo over debounced inputs and could not
+  simply be called. Fold the hook onto it next time either is touched.
+- **stdout is the protocol.** The launcher sends `console.log`/`info`/`debug`/`warn` to stderr
+  BEFORE anything loads. One stray line is a corrupt message, and only the spawn test in
+  `mcp.test.ts` can see it.
+- **The launcher is Vite's module runner** because Node's type stripping refuses enums
+  (`PlaneType`, `Shape`). It is the transform vitest already runs the tests through: no build,
+  no server, no dependency added. `ssr.noExternal: ['dxf-parser']` because that package's ESM
+  imports its own files without extensions. The XML readers borrow jsdom's `DOMParser`,
+  loaded lazily, as the tests do, so it needs `npm install` with dev dependencies.
+- **The protocol is hand-rolled, not `@modelcontextprotocol/sdk`.** The SDK brings an HTTP
+  server, a schema library and a dozen transitive packages, each a Dependabot pull request,
+  to frame newline-delimited JSON. The spawn test is what the SDK would have guaranteed.
+  Cosplay's server runs on the same `protocol.ts`; a fix to one belongs in both.
+- **Unknown arguments are refused, not ignored.** A misspelt `planeType` must not come back
+  "done" with nothing changed. Refusals are tool results with `isError`, which the model
+  reads, never protocol errors, which only the client sees.
+- **Plane types are code AND label**, with "(inferred)" on the unconfirmed ones, as in the
+  inspector.
+- **`originAt` is `withOriginAt` given a venue-space point**, never an inverse transform (§5).
+- **`prepare` reseeds**, as unticking a Prepare box does: hand pruning and areas are lost, and
+  the tool's description says so. A units or axis change marks preparation stale rather than
+  re-running it behind the model's back.
+- **Tool calls run one at a time**, in arrival order; pings and cancellations are answered at
+  once. Two calls run together could read a scene that an `open_model` was halfway through
+  replacing.
 
 ## Notes
 

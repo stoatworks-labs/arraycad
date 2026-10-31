@@ -18,7 +18,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { PLANE_TYPES, PlaneType } from '../lib/dbacv/types.ts'
 import type { ImportedNode } from '../lib/import/index.ts'
-import { autoGroup, deriveLabel, isUninformativeName } from '../lib/grouping.ts'
+import { autoGroup, rowLabel } from '../lib/grouping.ts'
 import type { Decisions } from '../state.ts'
 import { PLANE_UI_COLOUR as PLANE_DOT } from './planeColours.ts'
 
@@ -53,13 +53,7 @@ function geomIds(node: ImportedNode, out: string[] = []): string[] {
 
 /** The label a row should show: the node's own name, or one read off its children. */
 function labelFor(node: ImportedNode, decisions: Decisions): string {
-  const chosen = decisions[node.id]?.name
-  if (chosen && !isUninformativeName(chosen)) return chosen
-  if (node.children.length > 0) {
-    const derived = deriveLabel(node.children.map((c) => decisions[c.id]?.name ?? c.name))
-    if (derived) return derived
-  }
-  return chosen ?? node.name
+  return rowLabel(node, (id) => decisions[id]?.name)
 }
 
 /** How many of `ids` are included: none, some or all. */

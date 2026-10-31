@@ -558,6 +558,41 @@ What that means in practice:
 > ⚠️ The Soundvision caveat above applies to this route too: the geometry is confirmed to
 > import, but no prediction has yet been run over an imported surface.
 
+## Drive it from Claude
+
+ArrayCAD also runs as an MCP server, so Claude Code (or any other MCP client) can do the
+conversion itself: open a model, read the tree, prune and type it, flatten the seating and
+write the file. It's the same library the page runs, working on files on your own machine,
+and nothing is uploaded.
+
+```bash
+npm install
+```
+
+```bash
+claude mcp add arraycad -- node /path/to/arraycad/scripts/mcp-server.mjs
+```
+
+Then ask for what you'd do in the page: *open ~/venues/theatre.dwg, leave out the lighting,
+check the seating came out as one plane per tier and write a .dbacv*. The tools are the
+page's panels:
+
+- `open_model` imports and prepares, with units and up axis overridable. `status` says
+  whether each was stated or guessed, and gives the venue's size so a wrong unit shows up as a
+  number.
+- `list_tree` and `set_nodes` do the tree: include, exclude, plane type, rename.
+- `set_placement` sets units, axis, heading, mirror and offset, or puts the origin on a point.
+- `set_reduction` and `prepare` set the fit and tolerances and re-run preparation.
+- `add_area`, `edit_area` and `remove_area` rationalise seating.
+- `convert` reports the object count and every warning, and `export` writes `.dbacv`,
+  Soundvision `.txt`, EASE Focus `.fc3` or `.mvr` beside the model. It won't overwrite
+  without being told to.
+
+Two things it can't do. It can't trace a PDF or an image, because that's you clicking inside
+rooms, so it stays in the page. And it can't show you the result. Open what it wrote in the
+page or the target application before you trust it. The plane-type caveat applies here too,
+which is why every answer gives the code next to the label.
+
 ## Develop
 
 ```bash

@@ -14,7 +14,10 @@ npm run build        # tsc -b && vite build -> dist/
 npm run preview      # serve the built dist/ (does NOT apply _headers)
 npm run serve:dist   # serve dist/ WITH _headers applied — use this to check the CSP
 npx tsc -b           # typecheck only
+node scripts/mcp-server.mjs   # the MCP server over stdio; see AGENTS.md §15
 ```
+
+Add it to Claude Code with `claude mcp add arraycad -- node "$PWD/scripts/mcp-server.mjs"`.
 
 The Vectorworks plug-in is Python and has its own tests. None need Vectorworks:
 
@@ -197,6 +200,13 @@ comment that used to claim one is why this repo went weeks without shipping.
   to v5. It is validated before use; a bump that changes it must show up as a warning and
   no geometry, never as wrong geometry.
 - Regenerate the demo plan with `python3 scripts/make_demo_plan.py`.
+- **The MCP server (`src/mcp/`) has no geometry of its own.** It calls what `App.tsx` calls,
+  and the export assembly lives in `src/targets.ts` for both. A reduction written there is
+  the AGENTS.md §6 drift. See AGENTS.md §15.
+- **stdout belongs to the MCP protocol.** `scripts/mcp-server.mjs` moves console output to
+  stderr before anything loads. Nothing under `src/` may write to `process.stdout`.
+- `src/mcp/protocol.ts` is the same file in Cosplay (`cosplay/src/mcp/protocol.ts`). A fix
+  to one belongs in both.
 - **A flat DXF/DWG plan goes to the tracer, not the reducer.** `trace/cad.ts` decides it on
   what is LEFT IN, as an area share — never a height span, because rig plots carry 3D speaker
   symbols on layers the vocabulary does not know. It draws the importer's `linework` onto a
