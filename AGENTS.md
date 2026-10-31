@@ -1043,7 +1043,8 @@ trace file and says so.
 - **The protocol is hand-rolled, not `@modelcontextprotocol/sdk`.** The SDK brings an HTTP
   server, a schema library and a dozen transitive packages, each a Dependabot pull request,
   to frame newline-delimited JSON. The spawn test is what the SDK would have guaranteed.
-  Cosplay's server runs on the same `protocol.ts`; a fix to one belongs in both.
+  `protocol.ts` is vendored from `stoatworks-backend/mcp/protocol.ts`, which Cosplay's
+  server shares; fix it there and re-sync with `scripts/sync-mcp.py`, never here.
 - **Unknown arguments are refused, not ignored.** A misspelt `planeType` must not come back
   "done" with nothing changed. Refusals are tool results with `isError`, which the model
   reads, never protocol errors, which only the client sees.

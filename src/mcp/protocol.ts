@@ -1,3 +1,9 @@
+/* ---------------------------------------------------------------------------
+ * VENDORED from stoatworks-backend/mcp/protocol.ts. Do not edit here: the next
+ * sync overwrites it. Change the master, then run
+ *     stoatworks-backend/scripts/sync-mcp.py --apply
+ * and commit this copy in every repo that has one.
+ * --------------------------------------------------------------------------- */
 /**
  * The Model Context Protocol, as much of it as a tool server needs.
  *
@@ -8,12 +14,13 @@
  * Hand-rolled rather than taken from `@modelcontextprotocol/sdk`. The SDK brings an HTTP
  * server, a schema library and a dozen transitive packages into a static web app, every
  * one of them a Dependabot pull request, to frame messages this simple. What it would have
- * guaranteed — that a real client can talk to this — is what `mcp.test.ts` checks, by
- * driving the actual server process over its own stdio.
+ * guaranteed — that a real client can talk to this — is what each server's `mcp.test.ts`
+ * checks, by driving the actual server process over its own stdio.
  *
- * Nothing here knows about ArrayCAD. `tools.ts` is the application; this is the wire.
- * Cosplay's server runs on the same file (`cosplay/src/mcp/protocol.ts`), so a fix to
- * one belongs in the other.
+ * Nothing here knows about any one application. `tools.ts` beside it is the application;
+ * this is the wire, and every server has the same copy of it. So it depends on nothing but
+ * Node and uses no syntax Node's type stripping refuses: a server run straight from source
+ * and one run through Vite's module runner both load it as it is.
  */
 
 /** The subset of JSON Schema the tools use, and the subset `validate` checks. */
@@ -57,7 +64,7 @@ export interface Tool {
 }
 
 /**
- * A refusal the model should read and act on: no model open, a file that already exists.
+ * A refusal the model should read and act on: nothing open yet, a file that already exists.
  * Reported as a tool result with `isError`, never as a protocol error, because the model
  * sees the first and only the client sees the second.
  */
@@ -89,8 +96,8 @@ class RpcError extends Error {
 /**
  * Check `value` against `schema`. Returns every problem found, worded for the model.
  *
- * Unknown properties are refused rather than ignored. A model that writes `planetype`
- * for `planeType` would otherwise get a cheerful "done" and nothing changed.
+ * Unknown properties are refused rather than ignored. A model that writes `outputpath`
+ * for `outputPath` would otherwise get a cheerful "done" and nothing changed.
  */
 export function validate(schema: JsonSchema, value: unknown, path = 'arguments'): string[] {
   if (schema.oneOf) {
@@ -152,10 +159,10 @@ export function formatJson(value: unknown): string {
 /**
  * The server. `handle` takes one line of input; everything it has to say goes to `send`.
  *
- * Tool calls run one at a time, in the order they arrive. The tools share one open model
+ * Tool calls run one at a time, in the order they arrive. The tools share one open document
  * and some of them wait on I/O, and a client is free to send several calls at once; run
- * concurrently, a `list_tree` could read a scene that an `open_model` behind it is halfway
- * through replacing. Pings and cancellations are answered at once, ahead of the queue.
+ * concurrently, a read could see a document that an open call behind it is halfway through
+ * replacing. Pings and cancellations are answered at once, ahead of the queue.
  */
 export function createMcpServer(info: ServerInfo, tools: Tool[], send: (message: object) => void) {
   const byName = new Map(tools.map((t) => [t.name, t]))
@@ -270,8 +277,8 @@ export function createMcpServer(info: ServerInfo, tools: Tool[], send: (message:
  * Serve over this process's stdin and stdout until stdin closes.
  *
  * stdout carries protocol and nothing else, so anything the libraries print has to go
- * elsewhere — and has to be moved BEFORE they load, which is why the launcher does that
- * and not this function. Lines are handled as they arrive, not one after another: a ping
+ * elsewhere — and has to be moved BEFORE they load, which is why each server's entry point
+ * does that and not this function. Lines are handled as they arrive, not one after another: a ping
  * must be answered while a long tool call is still running. When stdin closes, calls
  * already received are finished and answered before this resolves.
  */

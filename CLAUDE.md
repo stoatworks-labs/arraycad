@@ -212,8 +212,9 @@ comment that used to claim one is why this repo went weeks without shipping.
   the AGENTS.md §6 drift. See AGENTS.md §15.
 - **stdout belongs to the MCP protocol.** `scripts/mcp-server.mjs` moves console output to
   stderr before anything loads. Nothing under `src/` may write to `process.stdout`.
-- `src/mcp/protocol.ts` is the same file in Cosplay (`cosplay/src/mcp/protocol.ts`). A fix
-  to one belongs in both.
+- **`src/mcp/protocol.ts` is VENDORED** from `stoatworks-backend/mcp/protocol.ts`, the
+  same file in every tool's server. Never edit it here: change the master and run
+  `stoatworks-backend/scripts/sync-mcp.py --apply`, or the next sync reverts the fix.
 - **A flat DXF/DWG plan goes to the tracer, not the reducer.** `trace/cad.ts` decides it on
   what is LEFT IN, as an area share — never a height span, because rig plots carry 3D speaker
   symbols on layers the vocabulary does not know. It draws the importer's `linework` onto a
