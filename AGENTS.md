@@ -1028,9 +1028,10 @@ trace file and says so.
   name a zone file carries) is in `src/targets.ts` for both, and the tree's row label is
   `grouping.ts:rowLabel` for both `Tree.tsx` and `list_tree`. Geometry written in `src/mcp/`
   is §6's drift, one level up. It belongs in `lib/`, where both callers reach it.
-- **`targets.ts:convertVenue` is a second copy of `useConversion`'s memo**, four lines,
-  marked "change one, change both". The hook is a memo over debounced inputs and could not
-  simply be called. Fold the hook onto it next time either is touched.
+- **One conversion: `state.ts:convertVenue`.** `useConversion` runs it on its debounced
+  inputs, and the server runs it on demand. Square up reads the walls off the entries it
+  returns (`includedSquareness`), so the button and `set_placement squareUp` judge the
+  same walls, and `normalHeading` keeps a heading as the panel does.
 - **stdout is the protocol.** The launcher sends `console.log`/`info`/`debug`/`warn` to stderr
   BEFORE anything loads. One stray line is a corrupt message, and only the spawn test in
   `mcp.test.ts` can see it.
@@ -1049,6 +1050,8 @@ trace file and says so.
 - **Plane types are code AND label**, with "(inferred)" on the unconfirmed ones, as in the
   inspector.
 - **`originAt` is `withOriginAt` given a venue-space point**, never an inverse transform (§5).
+  The bounds it is read from are every vertex transformed and then measured. The source's
+  box transformed grows by the corners it sweeps as soon as the heading turns the room.
 - **`prepare` reseeds**, as unticking a Prepare box does: hand pruning and areas are lost, and
   the tool's description says so. A units or axis change marks preparation stale rather than
   re-running it behind the model's back.

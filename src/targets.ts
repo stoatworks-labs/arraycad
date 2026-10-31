@@ -16,23 +16,14 @@
 
 import type { VenueFile } from './lib/dbacv/types.ts'
 import { formatDbacvDate, writeDbacv } from './lib/dbacv/write.ts'
-import type { ImportedScene } from './lib/import/index.ts'
-import { type ConvertResult, convertNodes } from './lib/geom/convert.ts'
+import type { ConvertResult } from './lib/geom/convert.ts'
 import { convertNodesToSoundvision } from './lib/soundvision/convert.ts'
 import { writeSoundvision } from './lib/soundvision/write.ts'
 import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
 import { writeEaseFocus } from './lib/easefocus/write.ts'
 import { convertNodesToMvr } from './lib/mvr/convert.ts'
 import { writeMvr } from './lib/mvr/write.ts'
-import {
-  type Decisions,
-  type RationalisedArea,
-  type Rationalisation,
-  type Settings,
-  conversionEntries,
-  convertOptions,
-  rationalisedAreas,
-} from './state.ts'
+import { type VenueInputs, conversionEntries, convertOptions, rationalisedAreas } from './state.ts'
 
 export type Target = 'dbacv' | 'soundvision' | 'fc3' | 'mvr'
 
@@ -45,27 +36,6 @@ export interface TargetFile {
   count: number
   stats: object
   warnings: string[]
-}
-
-/** What a venue is assembled from: the same four things `useConversion` reads. */
-export interface VenueInputs {
-  scene: ImportedScene
-  decisions: Decisions
-  settings: Settings
-  rationalisations: Rationalisation[]
-}
-
-/**
- * The ArrayCalc conversion, as `useConversion` runs it on every settled change.
- *
- * The hook keeps its own copy of these four lines because it is a memo over debounced
- * inputs; this is the copy for callers that have no render loop. Change one, change both.
- */
-export function convertVenue(v: VenueInputs): { result: ConvertResult; areas: RationalisedArea[] } {
-  const r = rationalisedAreas(v.scene, v.rationalisations, v.settings)
-  const result = convertNodes(conversionEntries(v.scene, v.decisions, r.effective), convertOptions(v.settings), r.areas)
-  result.warnings.push(...r.warnings)
-  return { result, areas: r.areas }
 }
 
 export function dbacvFile(result: ConvertResult, projectName: string, sourceFormat?: string): TargetFile {

@@ -600,7 +600,8 @@ page's panels:
   whether each was stated or guessed, and gives the venue's size so a wrong unit shows up as a
   number.
 - `list_tree` and `set_nodes` do the tree: include, exclude, plane type, rename.
-- `set_placement` sets units, axis, heading, mirror and offset, or puts the origin on a point.
+- `set_placement` sets units, axis, heading, mirror and offset, squares the room up to its
+  walls, or puts the origin on a point.
 - `set_reduction` and `prepare` set the fit and tolerances and re-run preparation.
 - `add_area`, `edit_area` and `remove_area` rationalise seating.
 - `convert` reports the object count and every warning, and `export` writes `.dbacv`,

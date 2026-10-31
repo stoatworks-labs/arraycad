@@ -470,6 +470,46 @@ export function convertOptions(settings: Settings): ConvertOptions {
   }
 }
 
+/** What a venue is converted from: the four things the live view reads. */
+export interface VenueInputs {
+  scene: ImportedScene
+  decisions: Decisions
+  settings: Settings
+  rationalisations: Rationalisation[]
+}
+
+/**
+ * The ArrayCalc conversion, as the live view shows it. `useConversion` runs it on every
+ * settled change and the MCP server (`src/mcp/`) on demand, so both see one result.
+ * `entries` is what went in, for a caller that reads the included walls.
+ */
+export function convertVenue(v: VenueInputs): {
+  result: ConvertResult
+  areas: RationalisedArea[]
+  entries: ReturnType<typeof conversionEntries>
+} {
+  const r = rationalisedAreas(v.scene, v.rationalisations, v.settings)
+  const entries = conversionEntries(v.scene, v.decisions, r.effective)
+  const result = convertNodes(entries, convertOptions(v.settings), r.areas)
+  result.warnings.push(...r.warnings)
+  return { result, areas: r.areas, entries }
+}
+
+/** How far the included walls sit off the venue axes: what the heading's Square up reads. */
+export function includedSquareness(entries: ReturnType<typeof conversionEntries>, t: TransformOptions): Squareness | null {
+  // Read off what is going into the venue, so a truss left out at an angle has no say.
+  const included = entries.filter((e) => e.include).map((e) => ({ ...e.node, children: [] }))
+  return squareToWalls(included, t)
+}
+
+/** A heading as the panel keeps it: to a hundredth of a degree, in (-180, 180]. */
+export function normalHeading(deg: number): number {
+  let d = Math.round(deg * 100) / 100
+  while (d > 180) d -= 360
+  while (d <= -180) d += 360
+  return d
+}
+
 /**
  * Run the conversion whenever the inputs settle.
  *
@@ -511,15 +551,15 @@ export function useConversion(
     if (!scene || !debouncedSettings?.transform) {
       return { result: null, areas: [] as RationalisedArea[], square: null }
     }
-    const r = rationalisedAreas(scene, debouncedRats, debouncedSettings)
-    const entries = conversionEntries(scene, debouncedDecisions, r.effective)
-    const converted = convertNodes(entries, convertOptions(debouncedSettings), r.areas)
-    converted.warnings.push(...r.warnings)
-    // Read off what is going into the venue, so a truss left out at an angle has no say.
-    const included = entries.filter((e) => e.include).map((e) => ({ ...e.node, children: [] }))
-    const found = squareToWalls(included, debouncedSettings.transform)
+    const { result, areas, entries } = convertVenue({
+      scene,
+      decisions: debouncedDecisions,
+      settings: debouncedSettings,
+      rationalisations: debouncedRats,
+    })
+    const found = includedSquareness(entries, debouncedSettings.transform)
     const square = found && { ...found, atHeading: debouncedSettings.transform.headingDeg }
-    return { result: converted, areas: r.areas, square }
+    return { result, areas, square }
   }, [scene, debouncedDecisions, debouncedSettings, debouncedRats])
 
   useEffect(() => {

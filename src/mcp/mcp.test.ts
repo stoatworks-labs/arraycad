@@ -256,6 +256,39 @@ describe('a drawing, through the tools', () => {
   })
 })
 
+describe('a room drawn at an angle', () => {
+  it('is squared onto its walls by set_placement, as the Square up button does', async () => {
+    // A 20 x 10 x 8 m box turned 20° about Z: four walls that agree on one set of right angles.
+    const turn = (20 * Math.PI) / 180
+    const plan = [[-10, -5], [10, -5], [10, 5], [-10, 5]].map(([x, y]) => [
+      x * Math.cos(turn) - y * Math.sin(turn),
+      x * Math.sin(turn) + y * Math.cos(turn),
+    ])
+    const obj = [
+      ...plan.map(([x, y]) => `v ${x} ${y} 0`),
+      ...plan.map(([x, y]) => `v ${x} ${y} 8`),
+      'o room',
+      ...['1 4 3 2', '5 6 7 8', '1 2 6 5', '2 3 7 6', '3 4 8 7', '4 1 5 8'].map((f) => `f ${f}`),
+    ].join('\n')
+    const path = join(scratch(), 'turned.obj')
+    writeFileSync(path, obj)
+
+    const c = client()
+    await c.call('open_model', { path, units: 'm', upAxis: 'z' })
+    // A drawing keeps the angle it was drawn at: only a scan is squared at import.
+    expect((await c.call('status')).json.placement.headingDeg).toBe(0)
+    expect((await c.call('convert')).json.offSquare).toMatch(/20(\.0)?° off the venue axes/)
+
+    const squared = (await c.call('set_placement', { squareUp: true })).json
+    expect(squared.squareUp).toMatch(/^Turned -?20°/)
+    expect(Math.abs(squared.placement.headingDeg)).toBeCloseTo(20, 1)
+    expect(squared.venueBounds.size[0]).toBeCloseTo(20, 1)
+    expect(squared.venueBounds.size[1]).toBeCloseTo(10, 1)
+    expect((await c.call('convert')).json.offSquare).toBeUndefined()
+    expect((await c.call('set_placement', { squareUp: true })).json.squareUp).toMatch(/Already square/)
+  })
+})
+
 describe('seats modelled one by one', () => {
   it('arrives as two prepared areas, and as thousands of objects without them', async () => {
     // demo-seats.dxf is 3,710 ArrayCalc objects unrationalised (AGENTS.md §11).

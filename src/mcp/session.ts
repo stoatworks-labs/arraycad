@@ -3,7 +3,7 @@
  *
  * The MCP server is a second FRONT END to ArrayCAD, not a second pipeline. Every step here
  * is a call into the functions `App.tsx` makes — `settingsForScene`, `prepareScene`,
- * `applyPlan`, `rationalisationsFromPlan`, `rationalisedAreas`, `targets.ts` — in the order
+ * `applyPlan`, `rationalisationsFromPlan`, `convertVenue`, `targets.ts` — in the order
  * the app makes them. If what comes out differs from what the app gives for the same
  * clicks, the bug is in this file. It is never a reason to fork the reduction (AGENTS.md §6).
  *
@@ -24,7 +24,7 @@ import {
   flattenNodes,
   importFile,
 } from '../lib/import/index.ts'
-import { type TransformOptions, UNIT_PRESETS, applyTransform, boundsOf, withOriginAt } from '../lib/geom/transform.ts'
+import { type TransformOptions, UNIT_PRESETS, applyTransform, withOriginAt } from '../lib/geom/transform.ts'
 import type { FitMode } from '../lib/geom/outline.ts'
 import type { SurfaceKind } from '../lib/geom/scan.ts'
 import type { CaptureFaces, OutlineMode } from '../lib/geom/rationalise.ts'
@@ -40,8 +40,14 @@ import {
   type Rationalisation,
   type Settings,
   DEFAULT_PREPARE_SETTINGS,
+  SQUARE_AGREEMENT,
+  SQUARE_MIN_TURN,
   applyPlan,
+  conversionEntries,
+  convertVenue,
+  includedSquareness,
   newRationalisation,
+  normalHeading,
   prepareScene,
   rationalisationsFromPlan,
   rationalisedAreas,
@@ -50,7 +56,7 @@ import {
   settingsForScene,
   subtreeIds,
 } from '../state.ts'
-import { type Target, type TargetFile, convertVenue, dbacvFile, easeFocusFile, mvrFile, soundvisionFile } from '../targets.ts'
+import { type Target, type TargetFile, dbacvFile, easeFocusFile, mvrFile, soundvisionFile } from '../targets.ts'
 import { ToolError } from './protocol.ts'
 
 export interface Session {
@@ -65,6 +71,8 @@ export interface Session {
   rationalisations: Rationalisation[]
   /** Numbers the areas made here, as the app's own counter does. */
   areaSeq: number
+  /** The heading a scan was squared to at import, when it was (`settingsForScene`). */
+  squaredAtImport?: number
 }
 
 export interface OpenOptions {
@@ -136,6 +144,8 @@ export async function openModel(path: string, opts: OpenOptions = {}): Promise<S
     decisions: {},
     rationalisations: [],
     areaSeq: 0,
+    // The default heading is 0; only squaring a scan to its walls moves it at import.
+    ...(settings.transform.headingDeg !== 0 ? { squaredAtImport: settings.transform.headingDeg } : {}),
   }
   reseed(s)
   return s
@@ -181,21 +191,28 @@ export function parsePlaneType(v: unknown): PlaneType {
   )
 }
 
-/** Venue-space box of some nodes: the source box's corners, through the one transform. */
+/** Venue-space box of some nodes, through the one transform. */
 function venueBounds(nodes: ImportedNode[], t: TransformOptions) {
-  const b = boundsOf(nodes)
-  if (!b) return null
-  const corners: number[] = []
-  for (const x of [b.min.x, b.max.x]) for (const y of [b.min.y, b.max.y]) for (const z of [b.min.z, b.max.z]) corners.push(x, y, z)
-  const v = applyTransform(new Float64Array(corners), t)
+  // Every vertex transformed, then measured. The source's own box, transformed, is quicker
+  // and wrong once the heading turns the room: it grows by the corners it sweeps.
   const min = [Infinity, Infinity, Infinity]
   const max = [-Infinity, -Infinity, -Infinity]
-  for (let i = 0; i < v.length; i += 3) {
-    for (let k = 0; k < 3; k++) {
-      min[k] = Math.min(min[k], v[i + k])
-      max[k] = Math.max(max[k], v[i + k])
+  const walk = (ns: ImportedNode[]) => {
+    for (const n of ns) {
+      if (n.positions.length > 0) {
+        const v = applyTransform(n.positions, t)
+        for (let i = 0; i + 2 < v.length; i += 3) {
+          for (let k = 0; k < 3; k++) {
+            if (v[i + k] < min[k]) min[k] = v[i + k]
+            if (v[i + k] > max[k]) max[k] = v[i + k]
+          }
+        }
+      }
+      walk(n.children)
     }
   }
+  walk(nodes)
+  if (min[0] === Infinity) return null
   return { min: min.map((n) => round(n)), max: max.map((n) => round(n)), size: max.map((n, k) => round(n - min[k])) }
 }
 
@@ -283,7 +300,12 @@ export function status(s: Session) {
     },
     units: unitsReport(s),
     upAxis: { axis: t.upAxis, source: raw.upAxis === undefined ? 'guessed from the way the surfaces face' : raw.upAxis === t.upAxis ? 'stated by the file' : 'set by hand' },
-    placement: { headingDeg: t.headingDeg, offset: [t.offset.x, t.offset.y, t.offset.z], flipX: t.flipX },
+    placement: {
+      headingDeg: t.headingDeg,
+      ...(s.squaredAtImport !== undefined && t.headingDeg === s.squaredAtImport ? { headingSource: 'squared to the scanned walls at import' } : {}),
+      offset: [t.offset.x, t.offset.y, t.offset.z],
+      flipX: t.flipX,
+    },
     venueBounds: venueBounds(scene.nodes, t),
     reduction: {
       surface: s.settings.planarize.surface ?? 'cad',
@@ -526,8 +548,15 @@ export interface PlacementPatch {
   upAxis?: 'y' | 'z'
   headingDeg?: number
   flipX?: boolean
+  /** Turn the heading onto the included walls, as the Placement panel's Square up does. */
+  squareUp?: boolean
   offset?: [number, number, number]
   originAt?: [number, number, number]
+}
+
+/** Whether the walls agree well enough, and sit far enough off, for Square up to be offered. */
+function worthSquaring(sq: { agreement: number; turnDeg: number } | null): boolean {
+  return !!sq && sq.agreement >= SQUARE_AGREEMENT && Math.abs(sq.turnDeg) >= SQUARE_MIN_TURN
 }
 
 /**
@@ -542,14 +571,32 @@ export function setPlacement(s: Session, p: PlacementPatch) {
   let t: TransformOptions = { ...s.settings.transform }
   if (p.metresPerUnit !== undefined) t.unitsPerMetre = p.metresPerUnit
   if (p.upAxis !== undefined) t.upAxis = p.upAxis
-  if (p.headingDeg !== undefined) t.headingDeg = p.headingDeg
+  if (p.headingDeg !== undefined) t.headingDeg = normalHeading(p.headingDeg)
   if (p.flipX !== undefined) t.flipX = p.flipX
+  let squared: string | undefined
+  if (p.squareUp) {
+    // Read off the same entries the conversion takes, at the units and axis just set.
+    const { scene } = s.prepared
+    const { effective } = rationalisedAreas(scene, s.rationalisations, { ...s.settings, transform: t })
+    const sq = includedSquareness(conversionEntries(scene, s.decisions, effective), t)
+    if (sq && worthSquaring(sq)) {
+      t.headingDeg = normalHeading(t.headingDeg + sq.turnDeg)
+      squared = `Turned ${round(sq.turnDeg, 2)}° onto the walls (agreement ${round(sq.agreement, 2)}, read off ${Math.round(sq.wallArea)} m² of wall).`
+    } else if (sq && sq.agreement >= SQUARE_AGREEMENT) {
+      squared = 'Already square to the walls; the heading is unchanged.'
+    } else {
+      squared = sq
+        ? `The included walls do not agree on one set of right angles (agreement ${round(sq.agreement, 2)}), so the heading is unchanged.`
+        : 'No walls are included to square to; the heading is unchanged.'
+    }
+  }
   if (p.offset) t.offset = { x: p.offset[0], y: p.offset[1], z: p.offset[2] }
   if (p.originAt) t = withOriginAt(t, { x: p.originAt[0], y: p.originAt[1], z: p.originAt[2] })
   s.settings = { ...s.settings, transform: t }
   const st = status(s)
   const prep = st.preparation
   return {
+    ...(squared ? { squareUp: squared } : {}),
     units: st.units,
     upAxis: st.upAxis,
     placement: st.placement,
@@ -685,7 +732,8 @@ function leafObjects(objects: RoomObject[], group?: string, out: { o: RoomObject
 
 /** The ArrayCalc conversion the app shows live, with its statistics and warnings. */
 export function convert(s: Session, opts: { objects?: boolean; limit?: number } = {}) {
-  const { result, areas } = convertVenue({ ...inputs(s) })
+  const { result, areas, entries } = convertVenue(inputs(s))
+  const square = includedSquareness(entries, s.settings.transform)
   const leaves = leafObjects(result.objects)
   const byType: Record<string, number> = {}
   for (const { o } of leaves) byType[planeTypeLabel(o.planeType)] = (byType[planeTypeLabel(o.planeType)] ?? 0) + 1
@@ -706,6 +754,12 @@ export function convert(s: Session, opts: { objects?: boolean; limit?: number } 
     stats: result.stats,
     warnings: [...new Set(result.warnings)],
     areas: areas.map((a) => ({ id: a.id, name: a.name, planeType: planeTypeLabel(a.planeType), outlines: a.outlines.length, ...a.stats })),
+    // The hint the Placement panel shows beside its Square up button.
+    ...(square && worthSquaring(square)
+      ? {
+          offSquare: `The included walls are ${round(Math.abs(square.turnDeg), 1)}° off the venue axes, so every plane goes into ArrayCalc turned by that much. set_placement squareUp: true turns the room onto them.`,
+        }
+      : {}),
     ...(flat?.flat
       ? {
           flatPlan: `${Math.round(flat.share * 100)}% of what is left in lies level at ${round(flat.levelM, 2)} m: this is a 2D plan, and converted as a model every surface lands on that level. Trace it in the ArrayCAD app instead.`,

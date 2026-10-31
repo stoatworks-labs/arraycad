@@ -38,6 +38,7 @@ import {
   applyPlan,
   mergeDecisions,
   newRationalisation,
+  normalHeading,
   prepareScene,
   rationalisationsFromPlan,
   seedDecisions,
@@ -402,9 +403,7 @@ export default function App() {
 
   /** A heading, kept in (-180, 180] and to the hundredth of a degree the field shows. */
   const setHeading = useCallback((deg: number) => {
-    let d = Math.round(deg * 100) / 100
-    while (d > 180) d -= 360
-    while (d <= -180) d += 360
+    const d = normalHeading(deg)
     setSettings((s) => (s ? { ...s, transform: { ...s.transform, headingDeg: d } } : s))
   }, [])
 

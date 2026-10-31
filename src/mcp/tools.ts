@@ -190,15 +190,17 @@ export function arraycadTools(state: { session: Session | null } = { session: nu
       title: 'Units, axis and origin',
       description:
         'The Placement panel. Units and up axis, then heading (degrees about Z, to aim the room down +X), mirror, offset, and last originAt: a point in VENUE metres, from status.venueBounds or list_tree bounds, that becomes the origin. ' +
-        'Set the heading before the origin, or in the same call. Changing units or axis does not re-run preparation; the answer says when it should be.',
+        'Set the heading before the origin, or in the same call. squareUp turns the heading onto the included walls, as the Square up button does; which end the audience is at is not something walls say, so add 90 or 180 after it if the stage is not at -X. ' +
+        'Changing units or axis does not re-run preparation; the answer says when it should be.',
       inputSchema: {
         type: 'object',
         additionalProperties: false,
         properties: {
           units: UNITS,
           upAxis: { type: 'string', enum: ['y', 'z'] },
-          headingDeg: { type: 'number' },
+          headingDeg: { type: 'number', description: 'Degrees about Z. Kept to a hundredth, in (-180, 180].' },
           flipX: { type: 'boolean', description: 'Mirror X, for a model that came in back to front.' },
+          squareUp: { type: 'boolean', description: 'Turn the heading onto the included walls, after any headingDeg given.' },
           offset: { ...XYZ, description: 'Metres: where the source origin lands in venue space.' },
           originAt: { ...XYZ, description: 'A venue-space point, in metres, to move the origin onto.' },
         },
@@ -209,6 +211,7 @@ export function arraycadTools(state: { session: Session | null } = { session: nu
           upAxis: a.upAxis as 'y' | 'z' | undefined,
           headingDeg: a.headingDeg as number | undefined,
           flipX: a.flipX as boolean | undefined,
+          squareUp: a.squareUp as boolean | undefined,
           offset: a.offset as [number, number, number] | undefined,
           originAt: a.originAt as [number, number, number] | undefined,
         }),
