@@ -6,7 +6,7 @@
 > reproduces a real ArrayCalc export byte for byte and has been round-tripped through ArrayCalc
 > until every object came back untouched, Soundvision 3.18.0.15 imported a written `.txt` and read
 > it back surface by surface, and EASE Focus 3.1.260 opened and saved a project of 57 audience
-> planes with all 57 labels and every coordinate intact. 535 tests pin the reduction, and 38 more
+> planes with all 57 labels and every coordinate intact. 549 tests pin the reduction, and 38 more
 > check it against four real venues' own published drawings. What none of
 > that proves is **acoustic orientation**. No prediction has been run over an imported surface
 > yet, and a surface wound the wrong way lands right where it should and then silently returns no
@@ -265,6 +265,14 @@ is. **Surfaces**, under *Simplification*, shows the verdict (*Modelled* or *Scan
 noise it measured, and switching it re-runs preparation. A synthetic 14 m hall meshed at 10 cm
 with 8 mm of noise is **7 ArrayCalc objects** read as a scan, and 6,273 read as a model.
 
+A scan also comes in at whatever angle the scanner started at, and ArrayCalc lays a room along
+its own axes: the audience towards +X, Y symmetric about zero. So a scan is **squared to its
+walls** as it opens. ArrayCAD reads which way the walls face and turns the **Heading** by however
+far they sit off the axes: a hall scanned 23° off comes in at 22.98°. A splayed wall doesn't pull
+it off a room that's otherwise square, and a room with no one set of right angles (an octagon,
+say) is left as it came. Which end the audience is at is a question walls can't answer, so that's
+still yours: **−90°** and **+90°** beside the heading turn the room a quarter at a time.
+
 What it can't do: a scan holds whatever was in the room, so chairs, people and the lighting rig
 are just more surface, with no names to prune them by. Leave them out in the tree, or crop them
 in the scanning app first. And every scan this has been tested on is synthetic, made with known
@@ -370,7 +378,10 @@ the Vectorworks API hasn't been verified. Run its probe script first. See
    corner, so a corner lands on the corner rather than a millimetre off it, and picking
    works on the converted planes as well as on the source. Esc cancels. Set the **heading**
    before the origin: the room turns about the model's own datum, which carries the picked
-   point off zero.
+   point off zero. **−90°** and **+90°** under it turn the room a quarter at a time, and a
+   model drawn off square gets a **Square up** button there, which turns it onto its own
+   walls. Nothing goes wrong if you don't: a turned wall is still one ArrayCalc object. It's
+   ArrayCalc's convention you'd be leaving, not its geometry.
 4. **Choose a fit.** *Rectangle* collapses each region to one rectangle, aligned to the
    level direction of its own plane so it can always be written as a single ArrayCalc quad.
    That's one object per region, and usually what you want for seating. *Follow outline*
@@ -378,6 +389,14 @@ the Vectorworks API hasn't been verified. Run its probe script first. See
    isn't a symmetric trapezoid has to be split into two triangles.
 5. **Watch the object count.** If it's in the hundreds, raise the merge tolerances, raise
    the minimum area, or switch to rectangle fit.
+6. **Check what it cost.** **rms off the model**, beside the object count, is how far the
+   written surfaces sit from the triangles they stand for, as a root mean square weighted by
+   area. The Simplification panel adds the worst point, any area that went into no object at
+   all (pieces under the minimum area, or past the object cap) and any the outlines added. A few millimetres is a
+   modelled room written faithfully; on a scan, expect about the scanner's own noise, and
+   the panel says when that's what it is. Rectangle fit costs area rather than distance:
+   every point of an L is still on the rectangle drawn round it, so it's the *adds* line
+   that tells you how much floor the rectangle invented.
 
 ### Pruning a long object list
 

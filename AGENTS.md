@@ -77,8 +77,9 @@ src/
     planarize.ts        weld + coplanar flood fill. The module that makes this possible
     scan.ts             the same regions from a SCAN, flat only to within its noise. See §13
     polygon.ts          boundary loops, simplification, quad/triangle fitting
-    transform.ts        units, up-axis, datum. The ONLY place these are applied
+    transform.ts        units, up-axis, datum. The ONLY place these are applied. + squareToWalls
     outline.ts          the SHARED reduction: ImportedNode -> planar outlines
+    deviation.ts        what the reduction cost: each region against its OWN written surface
     rationalise.ts      many objects -> ONE outline. The case outline.ts cannot reach
     convert.ts          the ArrayCalc half: outlines -> RoomObject
   lib/prepare/          what the file already says, decided at import. See §12
@@ -147,6 +148,23 @@ seats — rows of one block at half a metre in some metric power of ten of the s
 and adds `ImportedScene.unitsDoubt` and a warning. It never changes `unitsPerMetre`: a
 layout that looks like seating is evidence, and the setting is the user's. Only powers of ten
 are suggested, because a 0.2 m fly-bar pitch read as inches is a plausible seat.
+
+### What the reduction cost is measured against what was written for it
+
+`geom/deviation.ts:measureDeviation` runs at the end of `nodeOutlines`, so every target gets it
+with no code of its own. Each region's own triangles are measured against the outline written
+for THAT region: off its plane, then outside its outer ring or inside a hole. Never against the
+nearest written surface, which in a corner credits the floor with the wall's triangles. rms is
+area-weighted at centroids; max takes the corners too, since a shaved outline and a squared-off
+rectangle only show at the edge. Strided to 2,000 triangles a region, which costs nothing next
+to `findScanRegions`.
+
+- **lost** is source area in no written region (under `minArea`, past the cap, no outline);
+  **added** is written area beyond `region.area`. Rectangle fit costs area, not distance: every
+  point of an L is still on its rectangle, so max stays 0 and added is the bite.
+- **Nodes pool by kept area** (`addDeviation`), never by count.
+- **The demo venue's max is 89 mm with rms under 5 mm.** Not a bug in the measure: the flood
+  fill tests each triangle against the plane as it stood then, and the plane goes on moving.
 
 ### `ParentVenueObjectId` is derived on write, never stored
 
@@ -281,6 +299,16 @@ and six stray edges in one object, and imported as "contains no triangles". `mes
 `l` and `p` statements out before the loader sees them (`withoutLinesOrPoints`), joining
 continuations first as the loader does.
 
+### Picking goes through a BVH, and only in the components
+
+`Viewport` raycasts with three-mesh-bvh (MIT): `withBounds` builds a `MeshBVH` on a mesh's first
+raycast and swaps in `acceleratedRaycast`, and `raycaster.firstHitOnly` is set because every
+caller takes `[0]`. Three's own raycast tests every triangle, and **Pick in view** raycasts on
+every pointer move: 12 ms a ray on a half-million-triangle scan, 0.01 ms through the tree
+(measured in node). Built on first pick, not with the mesh (140 ms for that scan), because most
+placement changes rebuild the meshes and are never followed by a pick. It stays out of
+`src/lib`, which is three-free (§2).
+
 ### A mesh rebuild loses its colours
 
 `Viewport` builds source meshes with a default material and colours them in a *separate*
@@ -365,7 +393,11 @@ The ones that matter most:
 - `scan.test.ts` — synthetic SCANS: rooms meshed on a grid with seeded Gaussian noise, so
   "the floor is 80 m², level, one ArrayCalc object" is an assertion. It also measures the gap
   (the CAD flood fill keeps under 1 m² of a room at 5 mm of noise) and what must not merge (a
-  stepped rake, a column, a modelled box). No real scan is in the repo; see §13.
+  stepped rake, a column, a modelled box). No real scan is in the repo; see §13. Its squaring
+  block turns those rooms by a known angle, so "the heading comes back within 0.2° through
+  8 mm of noise" and "an octagon is left alone" are assertions too.
+- `deviation.test.ts` — shapes whose cost is known by construction: a rectangle costs nothing,
+  rectangle fit round an L adds exactly the 12 m² bite, a scrap under `minArea` is lost.
 - `realVenues.test.ts` — **LOCAL ONLY.** Four venues' own published DWGs (Epsom Playhouse,
   Tower Theatre, Theatre Royal Bury St Edmunds, National Taichung Theater; AutoCAD 2000 to
   2018) against the dimensions in their own specifications: a published figure must exist
@@ -928,6 +960,27 @@ Surfaces control changes it and re-runs preparation, since `split.ts` reads it t
 - **`split.ts` still finds rakes by their steps.** A smooth scanned ramp goes into the Floor
   part, though it converts as a plane of its own.
 - **The Vectorworks plug-in has no scan path and needs none.** It reads drawings.
+
+### Squaring the heading to the walls
+
+A scan arrives at whatever angle the scanner started at. `transform.ts:squareToWalls` reads the
+facings of every near-vertical triangle (within 20° of plumb), folds them by 4φ so a room's four
+walls are one direction, and returns the smallest turn in [−45°, 45°) that puts them on the
+venue axes. `settingsForScene` adds it to the heading for a scan at import; a drawing only gets
+the **Square up** button, because its heading is the architect's.
+
+- **Measured in venue space with the mirror off and the offset zero**, so the turn adds to the
+  heading already set, whatever the up axis or the mirror.
+- **Agreement is the mean resultant length** of the folded facings, and under
+  `SQUARE_AGREEMENT` (0.25) nothing is turned. It was once the share within ±8° of the peak:
+  8 mm of noise on 10 cm triangles read 0.246 and a 23°-turned hall was not squared. The
+  resultant length reads over 0.8 there and near 0 for an octagon.
+- **The peak is refined by mean shift in a ±10° window** (40° in 4φ). 20° gave 0.08° rms over
+  eight seeds and 40° gives 0.04°; a fan's 15° splays sit outside it and don't pull the room.
+- **A turned wall is still one quad.** `canonicalQuad` takes any turn about Z. Squaring is
+  about ArrayCalc's convention (audience down +X, Y symmetric about zero), not the object
+  count. It was once justified here as stopping walls splitting into triangles; they don't.
+- **Which end the audience is at is not decided.** Walls cannot say; −90°/+90° are the user's.
 
 The scans in `scan.test.ts` are made, not measured: nobody has handed over a real scan with a
 licence to keep. A real scanner's smoothing, shadow holes and drift are untested. That is the

@@ -40,7 +40,14 @@ import {
   simplifyScene,
   splitScene,
 } from './lib/prepare/index.ts'
-import { type TransformOptions, boundsOf, guessUnits, guessUpAxis } from './lib/geom/transform.ts'
+import {
+  type Squareness,
+  type TransformOptions,
+  boundsOf,
+  guessUnits,
+  guessUpAxis,
+  squareToWalls,
+} from './lib/geom/transform.ts'
 
 export interface NodeDecision {
   include: boolean
@@ -261,6 +268,11 @@ export function rationalisationsFromPlan(plan: PreparePlan | null): Rationalisat
  * Whether the model is a scan is decided after the units, because welding — which is how
  * `guessSurface` sees which triangles meet — is done in metres. A venue file is never one:
  * every surface in it was typed in by whoever built it.
+ *
+ * A scan is also squared to its walls. Its heading is whichever way the phone faced when the
+ * scan began, so nothing is lost by turning it, and the room lands on ArrayCalc's axes. A
+ * drawing keeps the heading it was drawn at: the angle may be the site's, and the
+ * panel offers the same squaring as a button instead.
  */
 export function settingsForScene(scene: ImportedScene): Settings {
   const bounds = boundsOf(scene.nodes)
@@ -272,12 +284,26 @@ export function settingsForScene(scene: ImportedScene): Settings {
   const surface = scene.alreadyAVenue
     ? 'cad'
     : guessSurface(scene.nodes, transform, DEFAULT_SETTINGS.planarize.weldTolerance).kind
+  if (surface === 'scan') {
+    const square = squareToWalls(scene.nodes, transform)
+    if (square && square.agreement >= SQUARE_AGREEMENT && Math.abs(square.turnDeg) >= SQUARE_MIN_TURN) {
+      transform.headingDeg = Math.round((transform.headingDeg + square.turnDeg) * 100) / 100
+    }
+  }
   return {
     ...DEFAULT_SETTINGS,
     transform,
     planarize: { ...DEFAULT_SETTINGS.planarize, surface },
   }
 }
+
+/**
+ * Below this agreement the room has no dominant set of right angles worth squaring to — a
+ * round room, an octagon, a fan with more splay than straight. Shared with the panel's button.
+ */
+export const SQUARE_AGREEMENT = 0.25
+/** Degrees. A turn smaller than this is noise in the reading, not a room off square. */
+export const SQUARE_MIN_TURN = 0.05
 
 /**
  * Debounce a value, but adopt it immediately when `key` changes.
@@ -456,7 +482,17 @@ export function useConversion(
   decisions: Decisions,
   settings: Settings | null,
   rationalisations: Rationalisation[] = [],
-): { result: ConvertResult | null; areas: RationalisedArea[]; running: boolean } {
+): {
+  result: ConvertResult | null
+  areas: RationalisedArea[]
+  /**
+   * How far the included walls sit off the venue axes, for the heading's Square up, with the
+   * heading that was measured at: Square up sets that plus the turn, so a second click before
+   * the next conversion lands in the same place rather than turning the room twice.
+   */
+  square: (Squareness & { atHeading: number }) | null
+  running: boolean
+} {
   const debouncedSettings = useDebounced(settings, 250, scene)
   const debouncedDecisions = useDebounced(decisions, 250, scene)
   const debouncedRats = useDebounced(rationalisations, 250, scene)
@@ -467,20 +503,23 @@ export function useConversion(
   const [running, setRunning] = useState(false)
   const firstRun = useRef(true)
 
-  const { result, areas } = useMemo(() => {
+  const { result, areas, square } = useMemo(() => {
     // The debounced settings lag the scene by one debounce interval, so on the render
     // right after an import they still describe the PREVIOUS file — or, on the first
     // import, nothing at all. Converting against those is meaningless and, with no
     // transform to read, throws. Wait for them to catch up.
-    if (!scene || !debouncedSettings?.transform) return { result: null, areas: [] as RationalisedArea[] }
+    if (!scene || !debouncedSettings?.transform) {
+      return { result: null, areas: [] as RationalisedArea[], square: null }
+    }
     const r = rationalisedAreas(scene, debouncedRats, debouncedSettings)
-    const converted = convertNodes(
-      conversionEntries(scene, debouncedDecisions, r.effective),
-      convertOptions(debouncedSettings),
-      r.areas,
-    )
+    const entries = conversionEntries(scene, debouncedDecisions, r.effective)
+    const converted = convertNodes(entries, convertOptions(debouncedSettings), r.areas)
     converted.warnings.push(...r.warnings)
-    return { result: converted, areas: r.areas }
+    // Read off what is going into the venue, so a truss left out at an angle has no say.
+    const included = entries.filter((e) => e.include).map((e) => ({ ...e.node, children: [] }))
+    const found = squareToWalls(included, debouncedSettings.transform)
+    const square = found && { ...found, atHeading: debouncedSettings.transform.headingDeg }
+    return { result: converted, areas: r.areas, square }
   }, [scene, debouncedDecisions, debouncedSettings, debouncedRats])
 
   useEffect(() => {
@@ -491,7 +530,7 @@ export function useConversion(
     setRunning(!settled)
   }, [settled])
 
-  return { result, areas, running: running && !settled }
+  return { result, areas, square, running: running && !settled }
 }
 
 /**

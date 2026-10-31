@@ -29,8 +29,10 @@ import {
 } from './lib/trace/index.ts'
 import type { InkMaskOptions } from './lib/trace/raster.ts'
 import { TRACE_EXTENSIONS, isTraceFile, loadTraceSource } from './lib/trace/source.ts'
+import type { Deviation } from './lib/geom/deviation.ts'
+import type { FitMode } from './lib/geom/outline.ts'
 import { UNIT_PRESETS, withOriginAt } from './lib/geom/transform.ts'
-import type { SurfaceKind } from './lib/geom/scan.ts'
+import type { ScanReport, SurfaceKind } from './lib/geom/scan.ts'
 import {
   type PrepareSettings,
   type Prepared,
@@ -38,6 +40,8 @@ import {
   type ViewMode,
   DEFAULT_PREPARE_SETTINGS,
   DEFAULT_SETTINGS,
+  SQUARE_AGREEMENT,
+  SQUARE_MIN_TURN,
   applyPlan,
   conversionEntries,
   convertOptions,
@@ -173,7 +177,7 @@ export default function App() {
     return () => window.removeEventListener('keydown', onKey)
   }, [tool, modelVisible])
 
-  const { result, areas, running } = useConversion(scene, decisions, settings, rationalisations)
+  const { result, areas, square, running } = useConversion(scene, decisions, settings, rationalisations)
   const areaStats = useMemo(() => new Map(areas.map((a) => [a.id, a.stats])), [areas])
 
   /**
@@ -404,6 +408,14 @@ export default function App() {
 
   const patchSettings = useCallback((patch: Partial<Settings>) => {
     setSettings((s) => (s ? { ...s, ...patch } : s))
+  }, [])
+
+  /** A heading, kept in (-180, 180] and to the hundredth of a degree the field shows. */
+  const setHeading = useCallback((deg: number) => {
+    let d = Math.round(deg * 100) / 100
+    while (d > 180) d -= 360
+    while (d <= -180) d += 360
+    setSettings((s) => (s ? { ...s, transform: { ...s.transform, headingDeg: d } } : s))
   }, [])
 
   /**
@@ -920,6 +932,13 @@ export default function App() {
                 tone="warn"
               />
             )}
+            {!traceDoc && result && result.stats.deviation.area > 0 && (
+              <Stat
+                label="rms off the model"
+                value={running ? '…' : `±${metresText(result.stats.deviation.rms)}`}
+                tone={result.stats.deviation.rms > DEVIATION_WARN ? 'warn' : 'ok'}
+              />
+            )}
           </div>
         </main>
 
@@ -1036,6 +1055,31 @@ export default function App() {
                 onChange={(v) => patchSettings({ transform: { ...settings.transform, headingDeg: v } })}
               />
             </Field>
+            <div className="heading-tools">
+              <button type="button" className="tool" onClick={() => setHeading(settings.transform.headingDeg - 90)} title="Turn the room a quarter turn clockwise.">
+                −90°
+              </button>
+              <button type="button" className="tool" onClick={() => setHeading(settings.transform.headingDeg + 90)} title="Turn the room a quarter turn anticlockwise.">
+                +90°
+              </button>
+              {square && square.agreement >= SQUARE_AGREEMENT && Math.abs(square.turnDeg) >= SQUARE_MIN_TURN && (
+                <button
+                  type="button"
+                  className="tool"
+                  onClick={() => setHeading(square.atHeading + square.turnDeg)}
+                  title="Turn the room by the smallest angle that puts its walls on the venue axes."
+                >
+                  Square up
+                </button>
+              )}
+            </div>
+            {square && square.agreement >= SQUARE_AGREEMENT && Math.abs(square.turnDeg) >= SQUARE_MIN_TURN ? (
+              <p className="hint warn-text">
+                The walls are {Math.abs(square.turnDeg).toFixed(1)}° off the venue axes, so every
+                plane goes into ArrayCalc turned by that much. <strong>Square up</strong> turns
+                the room onto them. Which end the audience is at is still yours to say: ±90°.
+              </p>
+            ) : null}
 
             <div className="origin-head">
               <span className="field-label">Origin</span>
@@ -1171,6 +1215,9 @@ export default function App() {
                 ? 'Every region becomes one rectangle, aligned to the level direction of its own plane so it is always writable as a single ArrayCalc quad. Usually what you want for seating blocks.'
                 : 'Outlines are kept and split into quads and triangles. Faithful, but a ragged CAD outline makes many objects.'}
             </p>
+            {!traceDoc && result && result.stats.deviation.area > 0 && (
+              <DeviationNote deviation={result.stats.deviation} fit={settings.fit} scan={result.stats.scan} />
+            )}
             {(result?.stats.quadsSplit ?? 0) > 0 && (
               <p className="hint warn-text">
                 {result!.stats.quadsSplit} face(s) could not be written as an ArrayCalc quad
@@ -1246,6 +1293,49 @@ export default function App() {
         </aside>
       </div>
     </div>
+  )
+}
+
+/** Metres, as a person reads a distance in a room: millimetres up to a metre. */
+function metresText(m: number): string {
+  if (m < 0.01) return `${(m * 1000).toFixed(1)} mm`
+  if (m < 1) return `${Math.round(m * 1000)} mm`
+  return `${m.toFixed(2)} m`
+}
+
+/** Square metres, to the nearest tenth below ten and the nearest whole above. */
+function areaText(a: number): string {
+  return a < 10 ? `${a.toFixed(1)} m²` : `${Math.round(a).toLocaleString()} m²`
+}
+
+/** An rms past this means planes standing for a surface they are not near. */
+const DEVIATION_WARN = 0.05
+
+/**
+ * What the reduction cost, in the model's own terms. Each line only when it says something:
+ * a CAD model is usually inside a couple of millimetres and loses nothing.
+ */
+function DeviationNote({ deviation: d, fit, scan }: { deviation: Deviation; fit: FitMode; scan?: ScanReport }) {
+  const share = (a: number) => (d.area > 0 ? Math.round((100 * a) / d.area) : 0)
+  return (
+    <p className={`hint${d.rms > DEVIATION_WARN ? ' warn-text' : ''}`}>
+      The written surfaces sit within ±{metresText(d.rms)} rms of the model, {metresText(d.max)} at
+      the worst point{scan && d.rms <= 2 * scan.noise ? ', which is about the scan\'s own noise' : ''}.
+      {d.lost >= 0.1 && (
+        <>
+          {' '}
+          {areaText(d.lost)} of it ({share(d.lost)}%) is in no plane: pieces under the minimum area,
+          or past the object cap.
+        </>
+      )}
+      {d.added >= 0.1 && (
+        <>
+          {' '}
+          {fit === 'rect' ? 'Rectangle fit adds' : 'Simplifying the outlines adds'} {areaText(d.added)}{' '}
+          the model doesn't have.
+        </>
+      )}
+    </p>
   )
 }
 

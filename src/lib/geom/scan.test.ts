@@ -10,13 +10,13 @@
 
 import { describe, expect, it } from 'vitest'
 import type { ImportedNode } from '../import/types.ts'
-import { DEFAULT_PREPARE_SETTINGS, prepareScene, settingsForScene } from '../../state.ts'
+import { DEFAULT_PREPARE_SETTINGS, SQUARE_AGREEMENT, prepareScene, settingsForScene } from '../../state.ts'
 import { RAKE_TAG, splitNode } from '../prepare/split.ts'
 import { DEFAULT_CONVERT, convertNodes } from './convert.ts'
 import { nodeOutlines } from './outline.ts'
 import { DEFAULT_PLANARIZE, type PlanarizeOptions, findCoplanarRegions, weld } from './planarize.ts'
 import { findScanRegions, guessSurface } from './scan.ts'
-import { DEFAULT_TRANSFORM, type TransformOptions } from './transform.ts'
+import { DEFAULT_TRANSFORM, type TransformOptions, squareToWalls } from './transform.ts'
 
 const metres: TransformOptions = { ...DEFAULT_TRANSFORM, unitsPerMetre: 1, upAxis: 'z' }
 const SCAN: PlanarizeOptions = { ...DEFAULT_PLANARIZE, surface: 'scan' }
@@ -195,8 +195,14 @@ describe('a scanned room', () => {
     // rectangle has no level edge and splits into two triangles.
     expect(converted.stats.objectsOut).toBe(5)
     expect(converted.stats.quadsSplit).toBe(0)
+    // What that cost: the planes sit about the scan's own noise off it, and nothing is lost.
+    const d = converted.stats.deviation
+    expect(d.rms).toBeGreaterThan(0.75 * stats.scan!.noise)
+    expect(d.rms).toBeLessThan(1.5 * stats.scan!.noise)
+    expect(d.lost / d.area).toBeLessThan(0.01)
     expect(converted.stats.scan?.band).toBeGreaterThan(0)
-  })
+    // 150,000 triangles reduced twice: a few seconds, and more on a busy machine.
+  }, 30_000)
 
   it('leaves out a small hole the scanner did not see, and keeps a stair well', () => {
     const missed = (cx: number, cy: number, n: number) => (i: number, j: number) =>
@@ -264,6 +270,11 @@ describe('what it must not merge', () => {
     for (const r of regions) expect(r.area).toBeCloseTo(4, 6)
   })
 })
+
+/** One side of a regular octagon of radius `r`, so a grid of a quarter of it fits each side. */
+function len8(r: number): number {
+  return 2 * r * Math.sin(Math.PI / 8)
+}
 
 /** Edge length of one strip of the 64-strip column, so the grid fits it exactly. */
 function len64(): number {
@@ -341,5 +352,94 @@ describe('splitting a scanned one-piece theatre', () => {
     // Re-cutting is for exactly flat surfaces, which a scan has none of.
     expect(prepared.simplify).toBeNull()
     expect(prepared.plan.seating.length).toBeGreaterThanOrEqual(1)
+  })
+})
+
+/** Patches turned `deg` about the vertical through the origin. */
+function turned(patches: Patch[], deg: number): Patch[] {
+  const r = (deg * Math.PI) / 180
+  const t = (p: V): V => [p[0] * Math.cos(r) - p[1] * Math.sin(r), p[0] * Math.sin(r) + p[1] * Math.cos(r), p[2]]
+  return patches.map((p) => ({ ...p, o: t(p.o), u: t(p.u), v: t(p.v) }))
+}
+
+describe('squaring the heading to the walls', () => {
+  const modelled = (deg: number) => [node(scanOf(turned(ROOM, deg), 0.5, 0))]
+
+  it('finds the smallest turn that puts the walls on the axes', () => {
+    expect(squareToWalls(modelled(17.3), metres)!.turnDeg).toBeCloseTo(-17.3, 6)
+    expect(squareToWalls(modelled(-40), metres)!.turnDeg).toBeCloseTo(40, 6)
+    // 50° off is 40° short of the next axis, the other way.
+    expect(squareToWalls(modelled(50), metres)!.turnDeg).toBeCloseTo(40, 6)
+    const square = squareToWalls(modelled(0), metres)!
+    expect(Math.abs(square.turnDeg)).toBeLessThan(1e-6)
+    expect(square.agreement).toBeCloseTo(1, 6)
+    expect(square.wallArea).toBeCloseTo(108, 6)
+  })
+
+  it('is relative to the heading already set, and to the room the heading turns', () => {
+    const at = squareToWalls(modelled(17.3), { ...metres, headingDeg: 10 })!
+    expect(at.turnDeg).toBeCloseTo(-27.3, 6)
+    const done = squareToWalls(modelled(17.3), { ...metres, headingDeg: 10 + at.turnDeg })!
+    expect(Math.abs(done.turnDeg)).toBeLessThan(1e-6)
+    // The mirror comes after the heading. Squaring is the same turn either way.
+    expect(squareToWalls(modelled(17.3), { ...metres, flipX: true })!.turnDeg).toBeCloseTo(-17.3, 6)
+  })
+
+  it('reads a Y-up model in venue space', () => {
+    // The room turned 17.3° about Z, then written Y-up: venue (x, y, z) is source (x, z, -y).
+    const zUp = scanOf(turned(ROOM, 17.3), 0.5, 0)
+    const yUp = new Float64Array(zUp.length)
+    for (let i = 0; i < zUp.length; i += 3) {
+      yUp[i] = zUp[i]
+      yUp[i + 1] = zUp[i + 2]
+      yUp[i + 2] = -zUp[i + 1]
+    }
+    expect(squareToWalls([node(yUp)], { ...metres, upAxis: 'y' })!.turnDeg).toBeCloseTo(-17.3, 6)
+  })
+
+  it('follows the room, not a splayed wall', () => {
+    // A fan: back and side walls square at 12°, two long splays at 12 ± 15° on top.
+    const splay = (deg: number): Patch => ({ o: [20, 0, 0], u: [Math.cos((deg * Math.PI) / 180), Math.sin((deg * Math.PI) / 180), 0], v: Z, lu: 12, lv: 3 })
+    const fan = [...turned(ROOM, 12), ...turned([splay(90 - 15), splay(90 + 15)], 12)]
+    const found = squareToWalls([node(scanOf(fan, 0.5, 0))], metres)!
+    expect(found.turnDeg).toBeCloseTo(-12, 6)
+    expect(found.agreement).toBeLessThan(1)
+  })
+
+  it('reads a scan through its noise', () => {
+    const found = squareToWalls([node(scanOf(turned(ROOM, 23), 0.1, 0.01))], metres)!
+    expect(found.turnDeg).toBeCloseTo(-23, 0)
+    expect(Math.abs(found.turnDeg + 23)).toBeLessThan(0.2)
+    // Each wall triangle faces up to ten degrees astray, and the walls still agree. Counting
+    // only the walls within 2° of the answer read this as a quarter of the room, and the
+    // first scan tried in the app was not squared.
+    expect(found.agreement).toBeGreaterThan(0.6)
+  })
+
+  it('does not square a room with no one set of right angles', () => {
+    // An octagon: its walls face every 45°, so no turn puts more of them on the axes.
+    const r = 8
+    const sides: Patch[] = []
+    for (let k = 0; k < 8; k++) {
+      const a0 = (k * Math.PI) / 4
+      const a1 = ((k + 1) * Math.PI) / 4
+      const p0: V = [r * Math.cos(a0), r * Math.sin(a0), 0]
+      const len = Math.hypot(r * Math.cos(a1) - p0[0], r * Math.sin(a1) - p0[1])
+      sides.push({ o: p0, u: [(r * Math.cos(a1) - p0[0]) / len, (r * Math.sin(a1) - p0[1]) / len, 0], v: Z, lu: len, lv: 3 })
+    }
+    const found = squareToWalls([node(scanOf(sides, len8(r) / 4, 0))], metres)!
+    expect(found.agreement).toBeLessThan(SQUARE_AGREEMENT)
+  })
+
+  it('has nothing to say about a plan with no walls', () => {
+    expect(squareToWalls([node(scanOf([ROOM[0]], 0.5, 0))], metres)).toBeNull()
+  })
+
+  it('squares a scan when the file opens, and leaves a drawing as drawn', () => {
+    const scan = { format: 'OBJ', sourceName: 'scan.obj', nodes: [node(scanOf(turned(ROOM, 23), 0.1, 0.008))], warnings: [], unitsPerMetre: 1, upAxis: 'z' as const }
+    expect(settingsForScene(scan).transform.headingDeg).toBeCloseTo(-23, 0)
+    const drawing = { ...scan, nodes: modelled(23) }
+    expect(settingsForScene(drawing).planarize.surface).toBe('cad')
+    expect(settingsForScene(drawing).transform.headingDeg).toBe(0)
   })
 })

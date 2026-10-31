@@ -13,6 +13,7 @@
  */
 
 import type { ImportedNode } from '../import/types.ts'
+import { type Deviation, type Written, NO_DEVIATION, measureDeviation } from './deviation.ts'
 import { type PlanarizeOptions, type Region, findCoplanarRegions, weld } from './planarize.ts'
 import {
   type Pt2,
@@ -66,6 +67,8 @@ export interface OutlineStats {
   regionsDropped: number
   /** What the node measured as, when it was reduced as a scan. */
   scan?: ScanReport
+  /** How far the written surfaces sit from the triangles they stand for. */
+  deviation: Deviation
 }
 
 /**
@@ -80,7 +83,7 @@ export function nodeOutlines(
   forceRect = false,
 ): { outlines: RegionOutline[]; stats: OutlineStats; warnings: string[] } {
   const warnings: string[] = []
-  const stats: OutlineStats = { trianglesIn: 0, regionsFound: 0, regionsDropped: 0 }
+  const stats: OutlineStats = { trianglesIn: 0, regionsFound: 0, regionsDropped: 0, deviation: NO_DEVIATION }
 
   const positions = applyTransform(node.positions, opts.transform)
   stats.trianglesIn = positions.length / 9
@@ -108,6 +111,7 @@ export function nodeOutlines(
   }
 
   const outlines: RegionOutline[] = []
+  const written: Written[] = []
 
   for (const region of regions) {
     const loops = boundaryLoops(region, mesh)
@@ -167,7 +171,9 @@ export function nodeOutlines(
     if (outer.length < 3) continue
 
     outlines.push({ basis, outer, holes })
+    written.push({ region, basis, outer, holes })
   }
 
+  stats.deviation = measureDeviation(mesh, written)
   return { outlines, stats, warnings }
 }

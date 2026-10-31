@@ -12,6 +12,7 @@
 import { useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js'
+import { MeshBVH, acceleratedRaycast } from 'three-mesh-bvh'
 import { type RoomObject, PlaneType, Shape } from '../lib/dbacv/types.ts'
 import { type ImportedNode } from '../lib/import/index.ts'
 import { applyTransform, type TransformOptions } from '../lib/geom/transform.ts'
@@ -75,6 +76,26 @@ interface Props {
   onAreaPoints?: (pts: [number, number][]) => void
   /** A closed area, in venue XY. */
   onAreaDone?: (pts: [number, number][]) => void
+}
+
+/**
+ * Give every mesh about to be raycast a bounding volume hierarchy, the first time it is.
+ *
+ * three's own raycast tests every triangle, and the origin picker raycasts on every pointer
+ * move: 12 ms a ray on a half-million-triangle scan (measured in node, three 0.186), which
+ * is a cursor that stutters across the model. Through a BVH the same ray is 0.01 ms. Built
+ * on first use rather than with the mesh — 140 ms for the same scan — because most
+ * placement changes rebuild the meshes and are never followed by a pick.
+ */
+function withBounds(objects: THREE.Object3D[]): THREE.Object3D[] {
+  for (const o of objects) {
+    const m = o as THREE.Mesh
+    if (!m.isMesh) continue
+    const g = m.geometry as THREE.BufferGeometry
+    if (!g.boundsTree) g.boundsTree = new MeshBVH(g)
+    m.raycast = acceleratedRaycast
+  }
+  return objects
 }
 
 /** Flat triangle list -> a BufferGeometry with normals, ready to render. */
@@ -203,6 +224,8 @@ export function Viewport(props: Props) {
     el.appendChild(marqueeEl)
 
     const raycaster = new THREE.Raycaster()
+    // Every caller takes the nearest hit and no other, and the BVH can stop at it.
+    raycaster.firstHitOnly = true
     state.current = {
       renderer,
       scene,
@@ -259,7 +282,7 @@ export function Viewport(props: Props) {
       if (convertedGroup.visible) {
         targets.push(...convertedGroup.children.filter((o) => (o as THREE.Mesh).isMesh))
       }
-      const hit = raycaster.intersectObjects(targets, true)[0]
+      const hit = raycaster.intersectObjects(withBounds(targets), true)[0]
       if (!hit) return null
       return nearestCorner(hit, camera, rect, px, py) ?? { point: hit.point.clone(), snapped: false }
     }
@@ -283,7 +306,7 @@ export function Viewport(props: Props) {
       )
       raycaster.setFromCamera(ndc, camera)
 
-      const hit = raycaster.intersectObjects(sourceGroup.children, true)[0]
+      const hit = raycaster.intersectObjects(withBounds(sourceGroup.children), true)[0]
       if (hit) {
         if (areaHeight === null) areaHeight = hit.point.z
         return [hit.point.x, hit.point.y]
@@ -472,7 +495,7 @@ export function Viewport(props: Props) {
         -((ev.clientY - rect.top) / rect.height) * 2 + 1,
       )
       raycaster.setFromCamera(ndc, camera)
-      const hits = raycaster.intersectObjects(sourceGroup.children, true)
+      const hits = raycaster.intersectObjects(withBounds(sourceGroup.children), true)
       const id = hits[0]?.object.userData.nodeId as string | undefined
       if (id) propsRef.current.onSelect(id, ev.shiftKey || ev.metaKey)
     }

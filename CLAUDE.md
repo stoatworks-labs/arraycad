@@ -97,6 +97,13 @@ comment that used to claim one is why this repo went weeks without shipping.
   coplanar neighbour) and switchable in the Simplification panel. `findScanRegions` returns the
   same `Region[]`, so nothing downstream forks. Winding is propagated across edges, never
   re-wound per triangle; preparation splits a scan but never re-cuts it. See AGENTS.md §13.
+- **A scan's heading is squared to its walls at import; a drawing's never is.**
+  `squareToWalls` measures in venue space with the mirror off, so its turn adds to the heading
+  set. It is ArrayCalc's axes convention, not the object count: a turned wall is still one
+  quad. Which end the audience is at stays the user's (±90°). See AGENTS.md §13.
+- **Deviation is measured per region against the outline written for it**, never against
+  the nearest written surface (`geom/deviation.ts`, run at the end of `nodeOutlines`). Nodes
+  pool by kept area.
 - **`prepare/split.ts` splits only a leaf whose NAME says nothing and which has height in it.**
   Rakes are found by their steps (treads a row deep, risers a step tall, no minimum riser —
   real stalls rise 30 mm a row), cut into sectors until each fits one plane, and flattened as
