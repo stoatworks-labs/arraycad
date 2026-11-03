@@ -1,0 +1,16 @@
+# ArrayCAD
+
+> A venue drawing in, ArrayCalc, Soundvision or EASE Focus out
+
+Turns a venue drawing into a file a loudspeaker prediction tool will open (d&b ArrayCalc, L-Acoustics Soundvision or AFMG EASE Focus 3) and converts between the three. An ArrayCalc venue is a few dozen parametric planes, and a CAD export of the same theatre is tens of thousands of triangles, so most of the work is boiling it down: weld, merge the coplanar bits, recover each outline and write it back as the quads and triangles ArrayCalc will actually accept. It reads the drawing on the way in, too. Layers named as dimensions, rigging or services get left out, plane types come off the layer names, banks of individually modelled seats become the audience plane they're standing in for, and meshed surfaces are re-cut from their own outlines. A theatre plan where somebody modelled every seat lands as 17 objects instead of 3,710, all of them visible and one click from being put back. It reads DWG directly, plus DXF, glTF, IFC, the usual mesh formats and MVR from any lighting visualiser, and writes MVR back so the finished venue can go home to the visualiser it came from. No 3D model? Drop in a PDF or an image of the plan, set the scale, click inside a room to find its outline and type a height at each corner, whether it's level, raked, raised or sunk. The .dbacv format isn't documented anywhere, so this reproduces a real export byte for byte, and it's been round-tripped through ArrayCalc until every object came back untouched.
+
+It's a Stoatworks Labs web tool: free, and it runs in a web browser.
+
+## Links
+
+- [ArrayCAD, the app](https://arraycad.stoatworks-labs.com/): runs in the browser, free
+- [Project page](https://stoatworks-labs.com/software/arraycad/)
+- [Web tool page](https://stoatworks-labs.com/web-tools/arraycad/)
+- [User guide](https://stoatworks-labs.com/software/arraycad/guide/)
+- [Source on GitHub](https://github.com/stoatworks-labs/arraycad)
+- [Self-hosting](https://stoatworks-labs.com/web-tools/self-hosting/): run it on your own server

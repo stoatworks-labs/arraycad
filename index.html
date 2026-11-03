@@ -5,9 +5,52 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Convert CAD venue models into d&b ArrayCalc venue files. Import, prune, assign plane types, export .dbacv."
+      content="Turns a venue drawing (DWG, DXF, glTF, IFC, MVR or a PDF plan) into a file d&amp;b ArrayCalc, L-Acoustics Soundvision or AFMG EASE Focus 3 will open. Free, and it runs in your browser."
     />
-    <title>ArrayCAD — CAD to ArrayCalc venue</title>
+    <title>ArrayCAD — a venue drawing in, ArrayCalc, Soundvision or EASE Focus out</title>
+    <link rel="canonical" href="https://arraycad.stoatworks-labs.com/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Stoatworks Labs" />
+    <meta property="og:title" content="ArrayCAD — a venue drawing in, ArrayCalc, Soundvision or EASE Focus out" />
+    <meta property="og:description" content="Turns a venue drawing (DWG, DXF, glTF, IFC, MVR or a PDF plan) into a file d&amp;b ArrayCalc, L-Acoustics Soundvision or AFMG EASE Focus 3 will open. Free, and it runs in your browser." />
+    <meta property="og:url" content="https://arraycad.stoatworks-labs.com/" />
+    <meta property="og:image" content="https://stoatworks-labs.com/thumbs/arraycad.png" />
+    <meta property="og:image:width" content="1280" />
+    <meta property="og:image:height" content="720" />
+    <meta property="og:image:alt" content="ArrayCAD" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- One entity with the tool's page on stoatworks-labs.com: same @id there. -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "@id": "https://arraycad.stoatworks-labs.com#app",
+        "name": "ArrayCAD",
+        "url": "https://arraycad.stoatworks-labs.com",
+        "description": "Turns a venue drawing (DWG, DXF, glTF, IFC, MVR or a PDF plan) into a file d&b ArrayCalc, L-Acoustics Soundvision or AFMG EASE Focus 3 will open. Free, and it runs in your browser.",
+        "applicationCategory": "MultimediaApplication",
+        "operatingSystem": "Any (runs in a web browser)",
+        "isAccessibleForFree": true,
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "GBP"
+        },
+        "author": {
+          "@id": "https://stoatworks-labs.com/#organization",
+          "@type": "Organization",
+          "name": "Stoatworks Labs",
+          "url": "https://stoatworks-labs.com/"
+        },
+        "publisher": {
+          "@id": "https://stoatworks-labs.com/#organization"
+        },
+        "sameAs": [
+          "https://stoatworks-labs.com/web-tools/arraycad/",
+          "https://github.com/stoatworks-labs/arraycad"
+        ]
+      }
+    </script>
     <link rel="manifest" href="/manifest.webmanifest" />
     <!-- iOS ignores the manifest's icons entirely and wants a PNG of its own. -->
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
@@ -15,6 +58,18 @@
     <meta name="theme-color" content="#0a1420" />
   </head>
   <body>
+    <noscript>
+      <h1>ArrayCAD</h1>
+      <p>A venue drawing in, ArrayCalc, Soundvision or EASE Focus out.</p>
+      <p>Turns a venue drawing into a file a loudspeaker prediction tool will open (d&amp;b ArrayCalc, L-Acoustics Soundvision or AFMG EASE Focus 3) and converts between the three. An ArrayCalc venue is a few dozen parametric planes, and a CAD export of the same theatre is tens of thousands of triangles, so most of the work is boiling it down: weld, merge the coplanar bits, recover each outline and write it back as the quads and triangles ArrayCalc will actually accept. It reads the drawing on the way in, too. Layers named as dimensions, rigging or services get left out, plane types come off the layer names, banks of individually modelled seats become the audience plane they're standing in for, and meshed surfaces are re-cut from their own outlines. A theatre plan where somebody modelled every seat lands as 17 objects instead of 3,710, all of them visible and one click from being put back. It reads DWG directly, plus DXF, glTF, IFC, the usual mesh formats and MVR from any lighting visualiser, and writes MVR back so the finished venue can go home to the visualiser it came from. No 3D model? Drop in a PDF or an image of the plan, set the scale, click inside a room to find its outline and type a height at each corner, whether it's level, raked, raised or sunk. The .dbacv format isn't documented anywhere, so this reproduces a real export byte for byte, and it's been round-tripped through ArrayCalc until every object came back untouched.</p>
+      <p>ArrayCAD runs in the browser and needs JavaScript.</p>
+      <ul>
+        <li><a href="https://stoatworks-labs.com/software/arraycad/">ArrayCAD on stoatworks-labs.com</a></li>
+        <li><a href="https://stoatworks-labs.com/software/arraycad/guide/">User guide</a></li>
+        <li><a href="https://github.com/stoatworks-labs/arraycad">Source on GitHub</a></li>
+        <li><a href="https://stoatworks-labs.com/web-tools/self-hosting/">Running it on your own server</a></li>
+      </ul>
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
     <!--

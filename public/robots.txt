@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://arraycad.stoatworks-labs.com/sitemap.xml

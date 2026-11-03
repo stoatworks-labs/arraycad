@@ -48,6 +48,8 @@ leaves your machine.
 
 **[Try it →](https://arraycad.stoatworks-labs.com)**
 
+There's more on [its page at stoatworks-labs.com](https://stoatworks-labs.com/web-tools/arraycad/), along with the [user guide](https://stoatworks-labs.com/software/arraycad/guide/) and [notes on running it on your own server](https://stoatworks-labs.com/web-tools/self-hosting/).
+
 ### Watch
 
 [![3,710 objects down to 17, on the drop](docs/video-prepare-thumb.png)](https://www.youtube.com/watch?v=HZ3ln72t0HA)

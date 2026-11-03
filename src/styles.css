@@ -113,6 +113,12 @@ code {
   margin-left: auto;
 }
 
+/* The link to the tool's page on stoatworks-labs.com, after About. */
+.topbar-link {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
 .brand {
   font-weight: 650;
   letter-spacing: -0.01em;

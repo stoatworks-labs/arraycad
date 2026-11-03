@@ -1310,6 +1310,9 @@ function Topbar({ children }: { children?: React.ReactNode }) {
       <button type="button" className="topbar-about" data-stoatworks-about>
         About
       </button>
+      <a className="topbar-link" href="https://stoatworks-labs.com/web-tools/arraycad/" target="_blank" rel="noopener">
+        stoatworks-labs.com
+      </a>
     </header>
   )
 }
