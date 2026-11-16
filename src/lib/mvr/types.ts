@@ -4,8 +4,8 @@
  * Unlike every other format in this repo, MVR is NOT reverse-engineered. It is an open
  * standard — DIN SPEC 15801:2023-12, published at https://github.com/mvrdevelopment/spec
  * — and everything asserted here is quoted from the v1.6 specification. The one thing the
- * spec does NOT settle is the unit of embedded glTF geometry; see UNITS below and
- * docs/mvr-format.md.
+ * spec does NOT settle is the unit (and axes) of embedded glTF geometry; see UNITS below
+ * and docs/mvr-format.md, where ArrayCalc 13's own files settle it.
  *
  * Why this format matters: MVR is the door into every lighting visualiser at once.
  * Capture imports MVR 1.4+ and exports MVR 1.4 with venue geometry; Depence imports MVR;
@@ -35,12 +35,62 @@ export const MVR_UNITS_PER_METRE = 0.001
 /**
  * Metres per unit of an embedded glTF/glb, by the glTF 2.0 specification.
  *
- * DEDUCED, NOT STATED BY MVR. Table 46 constrains `.3ds` to millimetres and leaves glTF
- * to its own specification, which is metres. Every glb therefore gets scaled by
+ * MVR does not state it — Table 46 constrains `.3ds` to millimetres and leaves glTF to its
+ * own specification, which is metres — but a real producer now settles it: ArrayCalc
+ * 13.2.1 beta writes its default venue's 53 x 40 m floor as a glb spanning 1.78..54.78 by
+ * -20..20, which is metres. Every glb therefore gets scaled by
  * `GLTF_METRES_PER_UNIT / MVR_UNITS_PER_METRE` (i.e. x1000) on the way into MVR space.
- * See docs/mvr-format.md for what a real file proved.
+ * See docs/mvr-format.md §5.
  */
 export const GLTF_METRES_PER_UNIT = 1
+
+/**
+ * Embedded glTF -> MVR axes. glTF is Y-up by its own specification ("+Y is up"), MVR is
+ * Z-up, so a glb's (x, y, z) is MVR's (x, -z, y) — the same right-handed fix
+ * `geom/transform.ts` makes for a glTF opened directly.
+ *
+ * Confirmed against ArrayCalc 13.2.1 beta, in both directions: its exported glbs lay the
+ * floor in glTF's XZ plane with the height in Y, and an ArrayCAD glb written Z-up arrived
+ * in it lying on its back — the plan view showing the section. The swap is applied to
+ * glTF only; `.3ds` is MVR's own millimetre, Z-up space.
+ */
+export const GLTF_TO_MVR: MvrMatrix = {
+  u: [1, 0, 0],
+  v: [0, 0, 1],
+  w: [0, -1, 0],
+  o: [0, 0, 0],
+}
+
+/**
+ * ArrayCalc venue space -> MVR plan orientation, as ArrayCalc itself writes MVR.
+ *
+ * ArrayCalc aims the room down +X (stage at the negative end); an MVR from it aims the room
+ * down -Y, the way a lighting plot is drawn with the audience at the bottom of the sheet.
+ * Its Export MVR and Import MVR dialogs both default to "Rotate around z: 90°", and the
+ * two are exact inverses: the default venue exported at 90° and imported at 90° comes back
+ * with its floor on 1.78..54.78 x -20..20 again. Read off that export, ArrayCalc (x, y)
+ * becomes MVR (y, -x) — the right corner of its default room, at y = -20..-45, is written
+ * at MVR x = -20..-45.
+ *
+ * ArrayCAD's venue space IS ArrayCalc's (that is what a `.dbacv` holds), so the writer
+ * applies this and the importer its inverse. An ArrayCAD MVR then imports into ArrayCalc
+ * correctly at the dialog's default, sits in Vectorworks or Capture the way ArrayCalc's
+ * own export does, and an MVR from either lands in ArrayCAD aimed down +X.
+ */
+export const ARRAYCALC_TO_MVR: MvrMatrix = {
+  u: [0, -1, 0],
+  v: [1, 0, 0],
+  w: [0, 0, 1],
+  o: [0, 0, 0],
+}
+
+/** The inverse of `ARRAYCALC_TO_MVR`: MVR (x, y) becomes ArrayCalc (-y, x). */
+export const MVR_TO_ARRAYCALC: MvrMatrix = {
+  u: [0, 1, 0],
+  v: [-1, 0, 0],
+  w: [0, 0, 1],
+  o: [0, 0, 0],
+}
 
 /** Metres per unit of an embedded `.3ds`. Table 46: "1 unit = 1 mm". Stated, not deduced. */
 export const TDS_METRES_PER_UNIT = 0.001
@@ -110,6 +160,13 @@ export function scaleMatrix(s: number): MvrMatrix {
  * Carried through onto `ImportedNode.tags` verbatim, because in a visualiser model the
  * node type is what says an object is rigging rather than room — far more reliable than
  * the name, which in a real show file is as likely to be "Sunstrip 12" as "TRUSS 1".
+ *
+ * The last three are not in any released MVR. They come from the `audio-proposal` branch
+ * of github.com/mvrdevelopment/spec, and ArrayCalc 13.2.1 beta writes them when its export
+ * targets Vectorworks 2027: each listening plane as a `ListeningPlane` (with an SPL heat
+ * map beside it), each cabinet as a `Speaker` naming a GDTF, each flown array's frame as a
+ * `SpeakerBumper` holding them. ArrayCalc's importer keys on `ListeningPlane` — it is what
+ * makes a plane arrive as Listening rather than Background — so `write.ts` emits it too.
  */
 export type MvrObjectType =
   | 'SceneObject'
@@ -120,6 +177,9 @@ export type MvrObjectType =
   | 'Truss'
   | 'VideoScreen'
   | 'Projector'
+  | 'ListeningPlane'
+  | 'Speaker'
+  | 'SpeakerBumper'
 
 export const OBJECT_TYPES: readonly MvrObjectType[] = [
   'SceneObject',
@@ -130,6 +190,9 @@ export const OBJECT_TYPES: readonly MvrObjectType[] = [
   'Truss',
   'VideoScreen',
   'Projector',
+  'ListeningPlane',
+  'Speaker',
+  'SpeakerBumper',
 ]
 
 /** `Geometries > Geometry3D`: geometry from another file in the archive. */

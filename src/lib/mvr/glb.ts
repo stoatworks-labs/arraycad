@@ -29,14 +29,33 @@ const padTo4 = (n: number) => (4 - (n % 4)) % 4
 export class GlbError extends Error {}
 
 /**
- * Triangle soup -> a glb holding one mesh of that name.
+ * MVR-space triangle soup -> a glb holding one mesh of that name.
  *
- * `positions` is flat xyz, 9 numbers per triangle, in the units the caller wants the file
- * to be in. This function applies no scale of its own: glTF is metres by specification and
- * `convert.ts` hands over metres, so there is nothing here to convert. See
- * docs/mvr-format.md §5 for why that is the interesting half of the decision.
+ * `positions` is flat xyz, 9 numbers per triangle, in METRES and in MVR's Z-up axes. glTF
+ * is metres and Y-up by its own specification, so the scale is left alone and the axes are
+ * turned: MVR (x, y, z) is written as glTF (x, z, -y), the inverse of `GLTF_TO_MVR` in
+ * types.ts. Writing the Z-up numbers straight in, as this did until ArrayCalc 13 could be
+ * tried, makes a reader that honours glTF stand every floor on its edge — ArrayCalc showed
+ * the section in its plan view. See docs/mvr-format.md §5.
  */
 export function writeGlb(name: string, positions: Float64Array): Uint8Array {
+  const yUp = new Float64Array(positions.length)
+  for (let i = 0; i + 2 < positions.length; i += 3) {
+    yUp[i] = positions[i]
+    yUp[i + 1] = positions[i + 2]
+    // `0 -` rather than unary minus, so a floor at y = 0 is written +0 and not -0.
+    yUp[i + 2] = 0 - positions[i + 1]
+  }
+  return encodeGlb(name, yUp)
+}
+
+/**
+ * glTF-space triangle soup -> a glb, positions written exactly as given.
+ *
+ * The container half of `writeGlb`, without the axis turn. Exported for the tests, which
+ * use it to rebuild a glb as another application wrote it, numbers and all.
+ */
+export function encodeGlb(name: string, positions: Float64Array): Uint8Array {
   const count = Math.floor(positions.length / 3)
   if (count < 3) {
     throw new GlbError(`"${name}" has ${count} vertices, which is not a triangle.`)

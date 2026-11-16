@@ -368,6 +368,15 @@ describe('MVR tagging', () => {
     expect(categorise(screen.name, screen.tags)).not.toBe('clutter')
   })
 
+  it('reads an ArrayCalc listening plane as audience, whatever it is called', async () => {
+    // "Right Corner" says nothing; the node type says everything.
+    const xml = oneLayer('<ListeningPlane uuid="p1" name="Right Corner"><Geometries><Geometry3D fileName="a.3ds"/></Geometries></ListeningPlane>')
+    const { nodes } = await build(xml)
+    const plane = flattenNodes(nodes).find((n) => n.name === 'Right Corner')!
+    expect(plane.tags).toContain('ListeningPlane')
+    expect(categorise(plane.name, plane.tags)).toBe('seating')
+  })
+
   it('carries the class name through as a tag', async () => {
     const xml = mvrXml(
       `<Scene>
@@ -396,6 +405,24 @@ describe('MVR fixtures and gaps', () => {
     expect(fixturesSkipped).toBe(2)
     expect(warnings.some((w) => /2 lighting fixture/.test(w))).toBe(true)
     expect(flattenNodes(nodes).map((n) => n.name)).not.toContain('Mac Aura')
+  })
+
+  it('counts loudspeakers apart from lighting fixtures', async () => {
+    // ArrayCalc 13 writes each cabinet as a Speaker naming a GDTF. Calling them lighting
+    // fixtures in the warning would be wrong in exactly the file this tool sees most.
+    const xml = oneLayer(
+      `<SpeakerBumper uuid="b1" name="VFlyingFrame"><ChildList>
+         <Speaker uuid="s1" name="V8"><GDTFSpec>V8.gdtf</GDTFSpec></Speaker>
+         <Speaker uuid="s2" name="V8"><GDTFSpec>V8.gdtf</GDTFSpec></Speaker>
+       </ChildList></SpeakerBumper>
+       <SceneObject uuid="o1" name="Deck"><Geometries><Geometry3D fileName="a.3ds"/></Geometries></SceneObject>`,
+    )
+    const { nodes, warnings, fixturesSkipped, speakersSkipped } = await build(xml)
+    expect(speakersSkipped).toBe(2)
+    expect(fixturesSkipped).toBe(0)
+    expect(warnings.some((w) => /2 loudspeaker/.test(w))).toBe(true)
+    expect(warnings.some((w) => /lighting fixture/.test(w))).toBe(false)
+    expect(flattenNodes(nodes).map((n) => n.name)).not.toContain('V8')
   })
 
   it('keeps a fixture that does carry its own placeholder geometry', async () => {

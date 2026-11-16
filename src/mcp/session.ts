@@ -790,7 +790,12 @@ export const TARGETS: Record<Target, string> = {
   dbacv: 'ArrayCalc venue (.dbacv)',
   soundvision: 'Soundvision 3D room data (.txt) — import with 3D room data > Import 3D room data',
   fc3: 'EASE Focus 3 project (.fc3) — Listening planes only, one audience zone each',
-  mvr: 'MVR (.mvr) for lighting visualisers — the room as surfaces, one object per node',
+  mvr:
+    'MVR (.mvr) for ArrayCalc 13 and Vectorworks 2027 — the room as surfaces, one object per node, ' +
+    'listening planes as ListeningPlane so ArrayCalc types them Listening; import at its default 90°',
+  'mvr-visualiser':
+    'MVR 1.4 (.mvr) for lighting visualisers (Capture, Depence, grandMA3) — the same room, every ' +
+    'plane a plain SceneObject',
 }
 
 /** The file a target would be, without writing it. */
@@ -803,6 +808,8 @@ export function buildTarget(s: Session, target: Target, projectName: string): Ta
     case 'fc3':
       return easeFocusFile(inputs(s), projectName)
     case 'mvr':
-      return mvrFile(inputs(s), projectName)
+      return mvrFile(inputs(s), projectName, 'arraycalc')
+    case 'mvr-visualiser':
+      return mvrFile(inputs(s), projectName, 'visualiser')
   }
 }

@@ -15,7 +15,7 @@
  */
 
 import type { ImportedNode } from '../import/types.ts'
-import { PLANE_TYPES, type PlaneType } from '../dbacv/types.ts'
+import { PLANE_TYPES, PlaneType } from '../dbacv/types.ts'
 import { type OutlineOptions, type RegionOutline, nodeOutlines } from '../geom/outline.ts'
 import { DEFAULT_PLANARIZE } from '../geom/planarize.ts'
 import { toFaces, triangulateRing } from '../geom/polygon.ts'
@@ -118,7 +118,12 @@ export function convertNodesToMvr(
 
     const positions = outlinesToPositions(reduced.outlines)
     if (positions.length === 0) continue
-    objects.push({ name: entry.name, positions, className: classNameFor(entry.planeType) })
+    objects.push({
+      name: entry.name,
+      positions,
+      className: classNameFor(entry.planeType),
+      listening: entry.planeType === PlaneType.Listening,
+    })
   }
 
   // A rationalised area's triangles are already counted under the nodes it was captured
@@ -127,7 +132,12 @@ export function convertNodesToMvr(
     const positions = outlinesToPositions(area.outlines)
     if (positions.length === 0) continue
     stats.regionsFound += area.outlines.length
-    objects.push({ name: area.name, positions, className: classNameFor(area.planeType) })
+    objects.push({
+      name: area.name,
+      positions,
+      className: classNameFor(area.planeType),
+      listening: area.planeType === PlaneType.Listening,
+    })
   }
 
   stats.objectsOut = objects.length
@@ -136,7 +146,8 @@ export function convertNodesToMvr(
   if (objects.length > 0) {
     warnings.push(
       'MVR carries geometry and names. Materials, acoustic properties and listener heights ' +
-        'are not part of the format, so the room arrives in the visualiser as plain surfaces.',
+        'are not part of the format: ArrayCalc 13 takes listening planes as Listening and ' +
+        'asks you to type the rest, and a visualiser shows them all as plain surfaces.',
     )
   }
 

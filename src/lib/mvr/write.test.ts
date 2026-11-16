@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { JSDOM } from 'jsdom'
 import { strFromU8, unzipSync } from 'fflate'
-import { GlbError, writeGlb } from './glb.ts'
+import { GlbError, encodeGlb, writeGlb } from './glb.ts'
 import { geometryFileName, stableUuid, writeMvr } from './write.ts'
 import {
   DEFAULT_MVR_CONVERT,
@@ -11,7 +11,7 @@ import {
 } from './convert.ts'
 import { readMembers, readRootFile } from './container.ts'
 import { parseMvr } from './read.ts'
-import { type MeshDecoder, buildMvrNodes, referencedFiles } from './scene.ts'
+import { type MeshDecoder, buildMvrNodes, intoArrayCalcFrame, referencedFiles } from './scene.ts'
 import { PlaneType } from '../dbacv/types.ts'
 import type { ImportedNode } from '../import/types.ts'
 import { flattenNodes } from '../import/types.ts'
@@ -71,19 +71,31 @@ describe('glb writer', () => {
   })
 
   it('writes accessor bounds that actually bound the data', () => {
-    const doc = glbJson(writeGlb('Deck', new Float64Array(DECK)))
+    const doc = glbJson(encodeGlb('Deck', new Float64Array(DECK)))
     expect(doc.accessors[0].min).toEqual([0, 0, 0])
     expect(doc.accessors[0].max).toEqual([10, 6, 0])
   })
 
   it('round-trips the positions it was given', () => {
-    expect(glbPositions(writeGlb('Deck', new Float64Array(DECK)))).toEqual(DECK)
+    expect(glbPositions(encodeGlb('Deck', new Float64Array(DECK)))).toEqual(DECK)
+  })
+
+  it('writes Y-up, because glTF is Y-up whatever the MVR around it says', () => {
+    // MVR (x, y, z) -> glTF (x, z, -y). A floor stays a floor: it lies in glTF's XZ plane
+    // with the height in Y, which is how ArrayCalc 13 writes its own. Written Z-up, the
+    // same deck arrived in ArrayCalc lying on its back.
+    const bytes = writeGlb('Deck', new Float64Array(DECK))
+    const expected: number[] = []
+    for (let i = 0; i < DECK.length; i += 3) expected.push(DECK[i], DECK[i + 2], 0 - DECK[i + 1])
+    expect(glbPositions(bytes)).toEqual(expected)
+    expect(glbJson(bytes).accessors[0].min).toEqual([0, 0, -6])
+    expect(glbJson(bytes).accessors[0].max).toEqual([10, 0, 0])
   })
 
   it('pads both chunks to four bytes', () => {
     // "Ω" is two bytes in UTF-8 and one JS character; a length taken from the string would
     // truncate the JSON and misplace the BIN chunk.
-    const bytes = writeGlb('Ωmega', new Float64Array(DECK))
+    const bytes = encodeGlb('Ωmega', new Float64Array(DECK))
     expect(bytes.length % 4).toBe(0)
     expect(glbJson(bytes).meshes[0].name).toBe('Ωmega')
     expect(glbPositions(bytes)).toEqual(DECK)
@@ -162,15 +174,59 @@ describe('MVR writer', () => {
     ].sort())
   })
 
-  it('declares the version it conforms to, not the newest one it can read', () => {
-    const xml = strFromU8(unzipSync(writeMvr(scene).bytes)['GeneralSceneDescription.xml'])
+  const rootXml = (flavour?: 'arraycalc' | 'visualiser') =>
+    strFromU8(unzipSync(writeMvr(scene, flavour).bytes)['GeneralSceneDescription.xml'])
+
+  it('declares the version each flavour conforms to, not the newest one it can read', () => {
+    // ListeningPlane exists only in the audio proposal, which ArrayCalc 13 writes as 1.6.
+    expect(rootXml()).toContain('verMajor="1" verMinor="6"')
     // 1.4 is the floor Capture and Depence both accept, and nothing written is newer.
-    expect(xml).toContain('verMajor="1" verMinor="4"')
-    expect(xml).toContain('provider="ArrayCAD"')
+    expect(rootXml('visualiser')).toContain('verMajor="1" verMinor="4"')
+    expect(rootXml()).toContain('provider="ArrayCAD"')
+  })
+
+  it('writes listening planes as ListeningPlane for ArrayCalc, the rest as SceneObject', () => {
+    // ArrayCalc 13's importer types an object Listening from this node and nothing else —
+    // not from the class name, which it ignores. An unknown object defaults to Background.
+    const xml = strFromU8(unzipSync(writeMvr({
+      projectName: 'V',
+      layerName: 'V',
+      objects: [
+        { name: 'STALLS', positions: new Float64Array(DECK), listening: true },
+        { name: 'CEILING', positions: new Float64Array(DECK) },
+      ],
+    }).bytes)['GeneralSceneDescription.xml'])
+    expect(xml).toMatch(/<ListeningPlane uuid="[^"]+" name="STALLS">[\s\S]*?<\/ListeningPlane>/)
+    expect(xml).toMatch(/<SceneObject uuid="[^"]+" name="CEILING">/)
+    expect(() => parseMvr(xml, parser)).not.toThrow()
+  })
+
+  it('writes nothing but SceneObjects for a visualiser, under the same uuids', () => {
+    const objects = [{ name: 'STALLS', positions: new Float64Array(DECK), listening: true }]
+    const ac = strFromU8(unzipSync(writeMvr({ projectName: 'V', layerName: 'V', objects }).bytes)['GeneralSceneDescription.xml'])
+    const vis = strFromU8(unzipSync(writeMvr({ projectName: 'V', layerName: 'V', objects }, 'visualiser').bytes)['GeneralSceneDescription.xml'])
+    expect(vis).not.toContain('ListeningPlane')
+    // Switching flavour must not turn one room into two in an application that tracks ids.
+    const uuidOf = (xml: string) => xml.match(/uuid="([^"]+)" name="STALLS"/)![1]
+    expect(uuidOf(vis)).toBe(uuidOf(ac))
+  })
+
+  it('turns the room into the plan orientation ArrayCalc writes MVR in', () => {
+    // Venue (x, y) -> MVR (y, -x), then Y-up: the deck's 10 m along venue X ends up along
+    // glTF Z and its 6 m along venue Y along glTF X. ArrayCalc's own export of its default
+    // venue does exactly this, and its importer undoes it at the dialog's default 90°.
+    const files = unzipSync(writeMvr({
+      projectName: 'V',
+      layerName: 'V',
+      objects: [{ name: 'DECK', positions: new Float64Array(DECK) }],
+    }).bytes)
+    const doc = glbJson(files['001_DECK.glb'])
+    expect(doc.accessors[0].min).toEqual([0, 0, 0])
+    expect(doc.accessors[0].max).toEqual([6, 0, 10])
   })
 
   it('declares each plane type once as a Class and refers to it by uuid', () => {
-    const xml = strFromU8(unzipSync(writeMvr(scene).bytes)['GeneralSceneDescription.xml'])
+    const xml = rootXml()
     expect(xml.match(/<Class /g)).toHaveLength(2)
     const listening = xml.match(/<Class uuid="([^"]+)" name="Listening \(1\)"/)![1]
     // Both audience planes point at the same class, which is what makes them toggleable
@@ -203,7 +259,8 @@ describe('MVR writer', () => {
   })
 
   it('writes no Matrix at all, which the spec reads as the identity', () => {
-    const xml = strFromU8(unzipSync(writeMvr(scene).bytes)['GeneralSceneDescription.xml'])
+    // The frame change is baked into the vertices, as ArrayCalc bakes its own.
+    const xml = rootXml()
     expect(xml).not.toContain('<Matrix>')
   })
 })
@@ -239,6 +296,14 @@ describe('MVR conversion', () => {
     expect(r.scene.objects).toHaveLength(0)
   })
 
+  it('marks listening planes, and only those, for the ArrayCalc flavour', () => {
+    const r = convertNodesToMvr([entry('STALLS', DECK), entry('STAGE', DECK, PlaneType.Stage)])
+    expect(r.scene.objects.map((o) => [o.name, o.listening])).toEqual([
+      ['STALLS', true],
+      ['STAGE', false],
+    ])
+  })
+
   it('writes a rationalised area alongside the ordinary nodes', () => {
     const basis = planeBasis({ point: { x: 0, y: 0, z: 0 }, normal: { x: 0, y: 0, z: 1 } })
     const r = convertNodesToMvr(
@@ -251,6 +316,7 @@ describe('MVR conversion', () => {
       }],
     )
     expect(r.scene.objects.map((o) => o.name)).toEqual(['STAGE', 'STALLS'])
+    expect(r.scene.objects[1].listening).toBe(true)
   })
 })
 
@@ -284,18 +350,25 @@ describe('MVR round trip', () => {
     const back = parseMvr(readRootFile(bytes), parser)
     const files = readMembers(bytes, referencedFiles(back))
     const built = await buildMvrNodes(back, { files, decode: decodeGlb })
+    intoArrayCalcFrame(built.nodes)
 
     const names = flattenNodes(built.nodes).map((n) => n.name)
     expect(names).toContain('Theatre')
     expect(names).toContain('STALLS RAKE')
     expect(names).toContain('CEILING')
 
-    // The importer normalises glTF metres into MVR millimetres, so a 10 m deck comes back
-    // as 10000. This is the assumption in docs/mvr-format.md §5, checked against itself:
-    // the two halves agree, which is what makes an ArrayCAD -> ArrayCAD trip lossless.
-    const deck = flattenNodes(built.nodes).find((n) => n.name === 'STALLS RAKE')!
-    const xs = [...deck.positions].filter((_, i) => i % 3 === 0)
-    expect(Math.max(...xs) - Math.min(...xs)).toBeCloseTo(10000, 3)
+    // Metres out, millimetres back, in the same venue axes: the deck that left on
+    // 0..10 x 0..6 at floor level comes back on 0..10000 x 0..6000 at 0, and the ceiling
+    // at 9000. Two halves agreeing proves only that they agree — the import test and
+    // docs/mvr-format.md §8 cite ArrayCalc 13 for the axes themselves.
+    const flat = flattenNodes(built.nodes)
+    const bounds = (name: string) => {
+      const p = [...flat.find((n) => n.name === name)!.positions]
+      const axis = (a: number) => p.filter((_, i) => i % 3 === a)
+      return [0, 1, 2].map((a) => [Math.min(...axis(a)), Math.max(...axis(a))].map((v) => Math.round(v) + 0))
+    }
+    expect(bounds('STALLS RAKE')).toEqual([[0, 10000], [0, 6000], [0, 0]])
+    expect(bounds('CEILING')).toEqual([[0, 10000], [0, 6000], [9000, 9000]])
   })
 
   it('brings the plane-type class back as a tag', async () => {

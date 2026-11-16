@@ -145,13 +145,23 @@ comment that used to claim one is why this repo went weeks without shipping.
   nothing, and a file that is not room data must say so rather than import as an empty venue.
 - **MVR is the door into every lighting visualiser, and the ONLY open format among them.**
   Capture, Depence, WYSIWYG, grandMA3 and Vectorworks all read and write it; none of their
-  own project formats is public and none needs to be. Don't add a second visualiser
-  importer — add to `lib/mvr/`.
+  own project formats is public and none needs to be. ArrayCalc 13 reads and writes it too.
+  Don't add a second visualiser importer — add to `lib/mvr/`.
 - **MVR states millimetres, but does NOT state the unit of the glTF inside it**, which by
-  the glTF spec is metres. Getting that backwards is a 1000× error, so `mvr/scene.ts`
-  normalises every embedded file into millimetres before any matrix is applied and
-  range-checks the result. The constant is `GLTF_METRES_PER_UNIT`; it is a deduction and
-  is labelled as one. See `docs/mvr-format.md` §5.
+  the glTF spec is metres AND Y-up. ArrayCalc 13's own exports confirm both. `mvr/scene.ts`
+  normalises every embedded glb into millimetres and Z-up (`GLTF_TO_MVR`, glTF only)
+  before any matrix is applied, and range-checks the result; `glb.ts` writes Y-up. Both
+  halves used to be Z-up, and because the two errors cancelled, the self round trip passed
+  while ArrayCalc got the room on its back. A self round trip proves nothing about axes.
+  See `docs/mvr-format.md` §5.
+- **MVR and venue space differ by a quarter turn**: venue (x, y) is MVR (y, −x), which is
+  ArrayCalc's "Rotate around z: 90°" default. `write.ts` bakes `ARRAYCALC_TO_MVR` into the
+  vertices; `import/mvr.ts` calls `intoArrayCalcFrame` once, on the finished scene. Never
+  inside `scene.ts`'s matrix chain, and never twice.
+- **ArrayCalc types a plane Listening only from a `ListeningPlane` node.** It ignores class
+  names, and everything else arrives as Background. So the default `arraycalc` flavour
+  writes listening planes as `ListeningPlane`; the `visualiser` flavour writes nothing but
+  `SceneObject`s for software that predates the audio proposal. See `docs/mvr-format.md` §9.
 - **`mvr/scene.ts` takes its geometry decoder as a parameter.** That is what keeps three.js
   out of it and the matrix, instancing and unit logic testable in node. Import `mesh.ts`
   there and the tests can no longer reach any of it.
@@ -165,9 +175,12 @@ comment that used to claim one is why this repo went weeks without shipping.
   four hundred `STALLS RAKE` entries is worse than the one the user pruned by.
 - **MVR uuids are stable, not random**, keyed on the object NAME plus its occurrence count
   — never the array index, or inserting a plane renumbers everything after it. MVR asks for
-  persistent ids and Depence uses them to update in place instead of duplicating the room.
-- **The `.mvr` writer declares 1.4, not 1.6.** Nothing written postdates 1.4 and that is
-  the floor Capture and Depence accept. Don't "update" it to match `read.ts`.
+  persistent ids; ArrayCalc 13 uses them to update in place (checked), and so does Depence.
+  The key leaves out the node type, so switching flavour keeps every id.
+- **The `visualiser` flavour declares 1.4; the `arraycalc` flavour 1.6.** Nothing in the
+  first postdates 1.4, the floor Capture and Depence accept. `ListeningPlane` is in no
+  released version and ArrayCalc writes it under 1.6. Don't "update" the 1.4 one to match
+  `read.ts`.
 - The CSP in `public/_headers` needs `'wasm-unsafe-eval'` for web-ifc. Removing it breaks
   IFC import only, which does not look like a CSP problem.
 - **pdf.js fetches its JPEG 2000, JBIG2 and ICC decoders at runtime from `wasmUrl`.**

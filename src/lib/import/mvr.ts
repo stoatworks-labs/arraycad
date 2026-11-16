@@ -16,7 +16,7 @@ import { type ImportedNode, type ImportedScene, ImportError } from './types.ts'
 import { type MeshFormat, decodeMeshNodes } from './mesh.ts'
 import { readMembers, readRootFile } from '../mvr/container.ts'
 import { parseMvr } from '../mvr/read.ts'
-import { buildMvrNodes, referencedFiles } from '../mvr/scene.ts'
+import { buildMvrNodes, intoArrayCalcFrame, referencedFiles } from '../mvr/scene.ts'
 import { MVR_UNITS_PER_METRE } from '../mvr/types.ts'
 
 /**
@@ -59,12 +59,17 @@ export async function importMvr(
   }
 
   const built = await buildMvrNodes(scene, { files, decode })
+  // MVR aims a room down -Y, as ArrayCalc writes it; venue space aims it down +X. Turned
+  // here, once, so an MVR exported from ArrayCalc lands where ArrayCalc had it and an
+  // ArrayCAD export comes back exactly as it left. types.ts ARRAYCALC_TO_MVR says how.
+  intoArrayCalcFrame(built.nodes)
 
   if (built.nodes.length === 0) {
+    const skipped = built.fixturesSkipped + built.speakersSkipped
     throw new ImportError(
       'This MVR loaded but contains no geometry this tool can use.',
-      built.fixturesSkipped > 0
-        ? `Its ${built.fixturesSkipped} object(s) are all lighting fixtures, whose shapes ` +
+      skipped > 0
+        ? `Its ${skipped} object(s) are all lighting fixtures or loudspeakers, whose shapes ` +
           'live in separate GDTF files. Export the venue itself — the stage, seating and ' +
           'walls — from the visualiser as well, or send a DWG or glTF of the room instead.'
         : 'It may hold only fixtures, focus points or empty layers. The room surfaces have ' +

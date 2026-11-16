@@ -9,6 +9,7 @@ import {
   importFile,
 } from './lib/import/index.ts'
 import { dbacvFile, easeFocusFile, mvrFile, soundvisionFile } from './targets.ts'
+import type { MvrFlavour } from './lib/mvr/write.ts'
 import {
   type LayerChoice,
   type TraceDocument,
@@ -563,19 +564,24 @@ export default function App() {
   }, [scene, decisions, settings, projectName, rationalisations])
 
   /**
-   * Back out to the lighting visualisers, the way in came.
+   * MVR, in the two flavours ArrayCalc 13's own export offers: `arraycalc` for ArrayCalc 13
+   * and Vectorworks 2027, `visualiser` (plain MVR 1.4) for Capture, Depence and the rest.
    *
    * The only target that keeps the model as SURFACES rather than reducing it: MVR carries
    * glTF, and glTF wants exactly what `planarize.ts` produced on the way to a parametric
-   * plane. So this is the one export where nothing is lost to the format — what a
-   * visualiser gets is the simplified room, one object per plane, under the names the user
-   * pruned by. Same on-demand pattern as the other two.
+   * plane. So this is the one export where nothing is lost to the format — what arrives is
+   * the simplified room, one object per plane, under the names the user pruned by. Same
+   * on-demand pattern as the other targets.
    */
-  const exportMvr = useCallback(() => {
-    if (!scene || !settings?.transform) return
-    const f = mvrFile({ scene, decisions, settings, rationalisations }, projectName)
-    if (f.count > 0) download(f.data, `${projectName || 'venue'}${f.extension}`, f.mime)
-  }, [scene, decisions, settings, projectName, rationalisations])
+  const exportMvr = useCallback(
+    (flavour: MvrFlavour) => {
+      if (!scene || !settings?.transform) return
+      const f = mvrFile({ scene, decisions, settings, rationalisations }, projectName, flavour)
+      const suffix = flavour === 'visualiser' ? ' (MVR 1.4)' : ''
+      if (f.count > 0) download(f.data, `${projectName || 'venue'}${suffix}${f.extension}`, f.mime)
+    },
+    [scene, decisions, settings, projectName, rationalisations],
+  )
 
   // ---------------------------------------------------------------- render
 
@@ -710,26 +716,46 @@ export default function App() {
           Export .fc3
         </button>
         {/*
-          NOT yet confirmed in a visualiser. The file is a valid MVR 1.4 archive and its
-          glbs read back through three's own loader, but nobody has opened one in Capture
-          or Depence, and the unit of embedded glTF is the one thing MVR does not state
-          (docs/mvr-format.md section 5). The tooltip says so rather than implying a
-          verified route.
+          Checked against ArrayCalc 13.2.1 beta on 2026-11-16 (docs/mvr-format.md §8, §9):
+          the room arrives at the right size and the right way up, ListeningPlane nodes come
+          in typed Listening, each simplified plane is one venue element at every detail
+          level, and a second import updates every object in place by uuid. The quarter
+          turn for its 90° default is read off ArrayCalc's own export and round trip; the
+          export with that turn built in has not itself been imported yet.
+
+          Still NOT opened in a lighting visualiser — the 1.4 flavour is the same geometry
+          and ids under plain SceneObjects, which is what Capture and Depence read, but
+          nobody has loaded one. The tooltip says so.
         */}
         <button
           type="button"
-          onClick={exportMvr}
+          onClick={() => exportMvr('arraycalc')}
           disabled={!result || result.objects.length === 0}
           title={
-            'MVR — back to a lighting visualiser: Capture, Depence, WYSIWYG, grandMA3, ' +
-            'Vectorworks. One object per plane, keeping the names, with the plane types as ' +
-            'MVR classes so audience areas can be toggled as a set.\n\n' +
-            'The only export that keeps the room as surfaces rather than reducing it.\n\n' +
-            'Not yet confirmed against a visualiser: MVR states millimetres but not the ' +
-            'unit of the 3D files inside it. Check the size after importing.'
+            'MVR for ArrayCalc 13 (Import MVR, at its default 90°) and Vectorworks 2027. ' +
+            'One object per plane, keeping the names; listening planes arrive typed as ' +
+            'Listening, the rest for you to type as Obstacle, Structure or Background.\n\n' +
+            'The only export that keeps the room as surfaces rather than reducing it. ' +
+            'Re-exporting the same venue updates it in ArrayCalc instead of duplicating it.\n\n' +
+            'Checked against ArrayCalc 13.2.1 beta. Look at where the room lands the first ' +
+            'time, and leave Rotate around z at 90°.'
           }
         >
           Export .mvr
+        </button>
+        <button
+          type="button"
+          onClick={() => exportMvr('visualiser')}
+          disabled={!result || result.objects.length === 0}
+          title={
+            'MVR 1.4 — for lighting visualisers that predate MVR\'s audio extensions: ' +
+            'Capture, Depence, WYSIWYG, grandMA3, older Vectorworks. The same room as ' +
+            'Export .mvr, every plane a plain scene object, with the plane types as MVR ' +
+            'classes so audience areas can be toggled as a set.\n\n' +
+            'Not yet opened in a visualiser. Check the size and orientation after importing.'
+          }
+        >
+          Export .mvr 1.4
         </button>
         <button
           type="button"

@@ -1,6 +1,14 @@
 /**
  * Write a `.mvr`: `GeneralSceneDescription.xml` plus one glb per venue plane, zipped.
  *
+ * Two flavours, the same two ArrayCalc 13's own Export MVR dialog offers. `arraycalc`
+ * writes each listening plane as a `ListeningPlane` node from the MVR audio proposal, which
+ * is what ArrayCalc's importer reads as Listening; everything else stays a `SceneObject`
+ * for the user to type as Obstacle, Structure or Background there. `visualiser` writes
+ * every plane as a plain `SceneObject` and declares 1.4, for applications that have never
+ * heard of the proposal and may drop a node they do not know — which, for a lighting
+ * visualiser, would be the audience areas.
+ *
  * The shape written here is the one that makes an ArrayCAD venue useful on the other side:
  * **one `SceneObject` per plane**, each with its own small glb and an identity matrix, all
  * under one `Layer` named for the project. A visualiser then shows the plane names the
@@ -16,20 +24,24 @@
 
 import { strToU8, zipSync } from 'fflate'
 import { writeGlb } from './glb.ts'
+import { ARRAYCALC_TO_MVR, applyMatrix } from './types.ts'
 
 /** One venue plane, ready to write. */
 export interface MvrWriteObject {
   name: string
   /**
-   * Venue-space triangle soup, 9 numbers per triangle, in METRES.
+   * Venue-space triangle soup, 9 numbers per triangle, in METRES and in ArrayCalc's axes
+   * (Z up, the room aimed down +X) — the space every other target is written from.
    *
-   * Metres because that is what glTF states, and because the importer reads a glb back as
-   * metres — so an ArrayCAD export re-imported into ArrayCAD is the same room. That is a
-   * decision, not a certainty; see docs/mvr-format.md §5.
+   * The writer turns it into MVR's plan orientation (`ARRAYCALC_TO_MVR`) and `glb.ts` into
+   * glTF's Y-up; metres stay metres, which is what glTF states and what ArrayCalc 13 writes.
+   * See docs/mvr-format.md §5.
    */
   positions: Float64Array
   /** MVR Class name, used for visibility filtering. */
   className?: string
+  /** An audience plane: written as `ListeningPlane` in the `arraycalc` flavour. */
+  listening?: boolean
 }
 
 export interface MvrWriteScene {
@@ -39,23 +51,36 @@ export interface MvrWriteScene {
   objects: MvrWriteObject[]
 }
 
+/**
+ * Who the file is for. `arraycalc` (the default) is ArrayCalc 13's "latest MVR audio
+ * extensions" choice; `visualiser` its "applications that only support earlier MVR
+ * versions" one.
+ */
+export type MvrFlavour = 'arraycalc' | 'visualiser'
+
 /** What names this exporter as the producer, per the `provider` attributes. */
 export const PROVIDER = 'ArrayCAD'
 export const PROVIDER_VERSION = '0.3.0'
 
 /**
- * The MVR version DECLARED on export, which is the oldest one this file conforms to — not
- * the newest one `read.ts` understands.
+ * The MVR version DECLARED on export, per flavour — the oldest one each file conforms to,
+ * not the newest one `read.ts` understands.
  *
- * Nothing written here — Layer, SceneObject, Geometries, Geometry3D, Class, Classing —
- * postdates 1.4, and 1.4 is the floor both Capture and Depence state they accept. A
- * consumer reads these attributes to decide how to parse, so declaring 1.6 would promise
- * features this file does not use and could turn a readable export into a refused one for
- * nothing. Same instinct as the `.dbacv` writer claiming 12.8.2: say what is actually
- * there.
+ * In the `visualiser` flavour nothing written — Layer, SceneObject, Geometries, Geometry3D,
+ * Class, Classing — postdates 1.4, and 1.4 is the floor both Capture and Depence state they
+ * accept. A consumer reads these attributes to decide how to parse, so declaring 1.6 would
+ * promise features this file does not use and could turn a readable export into a refused
+ * one for nothing. Same instinct as the `.dbacv` writer claiming 12.8.2: say what is
+ * actually there.
+ *
+ * The `arraycalc` flavour carries `ListeningPlane`, which no released version has. ArrayCalc
+ * 13.2.1 beta writes that node under 1.6 — the only implementation there is — so this
+ * declares the same, rather than a 1.4 that would claim the node predates 1.6.
  */
-export const WRITE_VER_MAJOR = 1
-export const WRITE_VER_MINOR = 4
+export const WRITE_VERSION: Record<MvrFlavour, { major: number; minor: number }> = {
+  arraycalc: { major: 1, minor: 6 },
+  visualiser: { major: 1, minor: 4 },
+}
 
 const escapeXml = (s: string) =>
   s
@@ -123,7 +148,7 @@ export interface MvrWriteResult {
   skipped: string[]
 }
 
-export function writeMvr(scene: MvrWriteScene): MvrWriteResult {
+export function writeMvr(scene: MvrWriteScene, flavour: MvrFlavour = 'arraycalc'): MvrWriteResult {
   const files: Record<string, Uint8Array> = {}
   const skipped: string[] = []
   const body: string[] = []
@@ -140,7 +165,11 @@ export function writeMvr(scene: MvrWriteScene): MvrWriteResult {
   scene.objects.forEach((obj, i) => {
     let glb: Uint8Array
     try {
-      glb = writeGlb(obj.name, obj.positions)
+      // Baked into the vertices, as ArrayCalc does, rather than written as a Matrix: a
+      // consumer that composes matrices wrongly cannot then turn the room.
+      const mvr = obj.positions.slice()
+      applyMatrix(mvr, ARRAYCALC_TO_MVR)
+      glb = writeGlb(obj.name, mvr)
     } catch {
       // A plane that reduced to nothing is a fact about the model, not a reason to refuse
       // the export. It is reported instead.
@@ -164,11 +193,16 @@ export function writeMvr(scene: MvrWriteScene): MvrWriteResult {
     const occurrence = seen.get(obj.name) ?? 0
     seen.set(obj.name, occurrence + 1)
 
+    // The uuid key does not include the node type, so switching flavour keeps every id: a
+    // room sent once as `visualiser` and again as `arraycalc` still updates in place.
+    // ArrayCalc does key on these — re-importing showed every plane as modified, kept the
+    // types already chosen, and asked nothing about clearing the venue.
+    const tag = flavour === 'arraycalc' && obj.listening ? 'ListeningPlane' : 'SceneObject'
     body.push(
-      `      <SceneObject uuid="${stableUuid(`object:${obj.name}#${occurrence}`)}" ` +
+      `      <${tag} uuid="${stableUuid(`object:${obj.name}#${occurrence}`)}" ` +
         `name="${escapeXml(obj.name)}">${classing}\n` +
         `        <Geometries><Geometry3D fileName="${fileName}"/></Geometries>\n` +
-        `      </SceneObject>`,
+        `      </${tag}>`,
     )
   })
 
@@ -178,7 +212,8 @@ export function writeMvr(scene: MvrWriteScene): MvrWriteResult {
 
   const xml =
     `<?xml version="1.0" encoding="UTF-8"?>\n` +
-    `<GeneralSceneDescription verMajor="${WRITE_VER_MAJOR}" verMinor="${WRITE_VER_MINOR}" ` +
+    `<GeneralSceneDescription verMajor="${WRITE_VERSION[flavour].major}" ` +
+    `verMinor="${WRITE_VERSION[flavour].minor}" ` +
     `provider="${PROVIDER}" providerVersion="${PROVIDER_VERSION}">\n` +
     `  <Scene>\n` +
     (aux ? `    <AUXData>\n${aux}\n    </AUXData>\n` : '') +

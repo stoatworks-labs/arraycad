@@ -7,7 +7,8 @@ Companion to `docs/dbacv-format.md`, `docs/soundvision-format.md` and
 engineered**. It is an open standard — DIN SPEC 15801:2023-12, "My Virtual Rig",
 maintained by the GDTF group at <https://github.com/mvrdevelopment/spec>. Everything in
 §1–§4 below is quoted from the v1.6 specification. §5 is the one thing the specification
-does not settle, and is labelled as such.
+does not settle, and is labelled as such — ArrayCalc 13's own files have since settled it.
+§9 records what ArrayCalc 13 does with MVR, which is observed, not specified.
 
 ## 1. Why this format and not Capture's or Depence's
 
@@ -88,12 +89,22 @@ of everything else. `read.ts` reads both, since exporters do write both.
 `w` are the images of the x, y and z axes and `o` is the translation, so a point maps to
 `u·x + v·y + w·z + o`. A missing `Matrix` is the identity.
 
-Z-up and right-handed is ArrayCalc's own convention, so `upAxis: 'z'` needs no rotation
-and only the datum and heading are ever left to the user.
+Z-up and right-handed is ArrayCalc's own convention, so `upAxis: 'z'` needs no rotation.
 
-## 5. ⚠️ The unit of embedded glTF is NOT stated
+**The plan orientation is not the same, and is applied once, in code.** An MVR as
+ArrayCalc 13 writes it aims the room down −Y, the way a lighting plot puts the audience at
+the bottom of the sheet; an ArrayCalc venue aims it down +X. Venue (x, y) is MVR (y, −x).
+`import/mvr.ts` turns a finished MVR scene into venue axes with `intoArrayCalcFrame`, after
+`scene.ts` has applied every matrix and never inside that chain; `write.ts` bakes the
+inverse into the vertices it writes. That is ArrayCalc's own *Rotate around z: 90°*
+default, so an MVR from ArrayCalc lands here the way ArrayCalc had it, an ArrayCAD export
+lands in ArrayCalc at the dialog's default, and ArrayCAD → ArrayCAD is unchanged. The two
+matrices are `ARRAYCALC_TO_MVR` and `MVR_TO_ARRAYCALC` in `types.ts`, with the evidence.
+Heading and datum are still the user's, on top.
 
-This is the one open question in the format, and it is a factor-of-1000 one.
+## 5. The unit and axes of embedded glTF — not stated, settled by ArrayCalc
+
+This was the one open question in the format, and it is a factor-of-1000 one.
 
 Spec Table 46 lists the two permitted geometry formats:
 
@@ -118,10 +129,21 @@ the finished scene measures under 1 m or over 1 km across — the shape a metres
 mix-up takes when seen from outside — and names the unit control, so a wrong reading is
 visible rather than a silently wrong room.
 
-> **STATUS: to be confirmed against a real file.** Verify by importing an MVR exported
-> from Capture or Depence and measuring a known dimension. If it comes in 1000× out, the
-> constant to flip is `GLTF_METRES_PER_UNIT` in `src/lib/mvr/types.ts`, and this section
-> should record what the real file proved, with the application and version that wrote it.
+**Confirmed: metres, and Y-up.** ArrayCalc 13.2.1 beta (2026-11-16) writes its default
+venue's 53 × 40 m floor as a glb spanning 1.78..54.78 by −20..20 — its own floor in metres —
+lying in glTF's XZ plane with the height in Y. That is the glTF specification's "+Y is up"
+carried inside a Z-up MVR, not an ArrayCalc habit, so it should hold for any conforming
+producer; ArrayCalc is the one checked.
+
+The axes were the half nobody had asked about. A glb's (x, y, z) is MVR's (x, −z, y)
+(`GLTF_TO_MVR`), applied to glTF only — `.3ds` is MVR's own millimetre Z-up space. ArrayCAD
+used to read **and write** glbs as if they were Z-up. The two errors cancelled, so its own
+round trip passed, while ArrayCalc imported an ArrayCAD room lying on its back: the plan
+view showing the section. A self round trip proves the reader and writer agree and nothing
+else; the tests now carry ArrayCalc's own numbers (`import/mvr.test.ts`, "ArrayCalc 13's
+MVR dialect") so the axes are checked against something outside this repo.
+
+The range check stays: a producer that writes glTF in millimetres would still be caught.
 
 ## 6. What this importer does not read
 
@@ -153,13 +175,27 @@ belongs in the prediction.
 ## 8. Writing MVR
 
 Implemented in `src/lib/mvr/convert.ts`, `write.ts` and `glb.ts`; reached from the
-**Export .mvr** button.
+**Export .mvr** and **Export .mvr 1.4** buttons, and the MCP targets `mvr` and
+`mvr-visualiser`.
 
-**Shape.** One `Layer` named for the project, and **one `SceneObject` per venue plane**,
-each with its own small glb and no `Matrix` at all — the coordinates are already where
-they belong, and the spec reads a missing `Matrix` as the identity. A visualiser therefore
-shows the plane names the user pruned by (`STALLS RAKE`, `BALCONY`) as a readable object
-tree rather than one anonymous lump.
+**Two flavours, the same two ArrayCalc 13's own Export MVR offers.** `arraycalc` (the
+default; "latest MVR audio extensions" in ArrayCalc, "Vectorworks 2027") writes each
+listening plane as a `ListeningPlane` node from the audio proposal, because that node is
+the only thing ArrayCalc's importer types as Listening (§9). `visualiser` ("applications
+that only support earlier MVR versions") writes every plane as a plain `SceneObject`, for
+software that has never heard of the proposal and might drop a node it does not know — for
+a lighting visualiser, that would be the audience areas. Same geometry, same uuids: the
+uuid key leaves the node type out, so switching flavour never turns one room into two.
+
+**Shape.** One `Layer` named for the project, and **one object per venue plane**, each
+with its own small glb and no `Matrix` at all — the coordinates are already where they
+belong, and the spec reads a missing `Matrix` as the identity. The tree therefore shows the
+plane names the user pruned by (`STALLS RAKE`, `BALCONY`) rather than one anonymous lump.
+
+**Orientation is baked into the vertices**, as ArrayCalc bakes its own: `write.ts` turns
+venue space into MVR's plan orientation (`ARRAYCALC_TO_MVR`, §4) and `glb.ts` turns Z-up
+into glTF's Y-up (§5). Written as a `Matrix` instead, a consumer that composes matrices
+wrongly could turn the room; nothing can mis-read a vertex.
 
 **Plane types go out as `Class`es**, which is what a visualiser filters visibility by, so
 the audience planes can be toggled as a set. The class name carries the raw numeric code
@@ -182,10 +218,12 @@ a plane would renumber everything after it and defeat the point. The version nib
 which is the truthful classification: v4 covers random *or pseudo-random* bits, and a hash
 is a pseudo-random source. It is not a name-based v5 and is not claimed to be.
 
-**The version declared is 1.4, not 1.6.** Nothing written postdates 1.4, and 1.4 is the
-floor both Capture and Depence state they accept. A consumer reads `verMajor`/`verMinor` to
-decide how to parse, so promising 1.6 features that are not in the file could turn a
-readable export into a refused one for nothing.
+**The version declared is the oldest each flavour conforms to.** `visualiser` declares
+1.4: nothing in it postdates 1.4, and 1.4 is the floor both Capture and Depence state they
+accept. A consumer reads `verMajor`/`verMinor` to decide how to parse, so promising 1.6
+features that are not in the file could turn a readable export into a refused one for
+nothing. `arraycalc` declares 1.6, because `ListeningPlane` is in no released version and
+the only implementation there is — ArrayCalc's own — writes it under 1.6.
 
 **This is the only target that does not reduce.** ArrayCalc needs parametric planes and
 EASE Focus needs rectangles; glTF wants triangles, which is exactly what `planarize.ts`
@@ -197,17 +235,67 @@ format on the way.
 
 Verified: the archive is a valid MVR that `read.ts` parses; the glbs read back through
 **three.js's own GLTFLoader**, which is the check a hand-rolled binary writer needs; and an
-MVR imported, exported and re-imported produces a byte-for-byte identical venue — a real
-file of seven planes came back with every dimension unchanged (12x6 stage, 20x18 stalls
-with a 3.2 m rake, 18x9 wall, both symbol-instanced boxes).
+MVR imported, exported and re-imported produces an identical venue.
 
-**Not verified: that any visualiser opens one.** Nobody has put an ArrayCAD MVR into
-Capture or Depence. And §5 lands squarely on the writer as well as the reader — the export
-writes glb geometry in metres, which is what this importer reads back, so the round trip
-above proves self-consistency and nothing more. A consumer that treats embedded glTF as
-millimetres would see the room 1000x small. The button's tooltip says so.
+**Verified in ArrayCalc 13.2.1 beta, 2026-11-16**, with exports of `demo/demo-venue.dxf`:
 
-> **TO CONFIRM.** Open an ArrayCAD `.mvr` in Capture or Depence and measure one known
-> dimension. If it arrives 1000x out, `GLTF_METRES_PER_UNIT` in `types.ts` is the constant
-> to flip and it fixes the reader and the writer together. Record the application and
-> version here either way.
+- ArrayCalc parses the file and keeps every object name.
+- With Y-up glbs the room arrives the right way up and the right size. Z-up glbs, which
+  this writer used to produce, arrived on their backs.
+- `ListeningPlane` objects arrive typed Listening. A `SceneObject` arrives as Background,
+  whatever its class is called (`Listening (1)` and ArrayCalc's own `Listening Plane` both
+  tried).
+- A simplified plane is one ArrayCalc element at every *Venue geometry detail* setting.
+- Importing the same file again marks every object modified and keeps the types already
+  chosen: the stable uuids do what they are for.
+
+**Not yet imported: the export with the quarter turn built in.** The turn is read off
+ArrayCalc's own export, and its importer at 90° restored that export exactly; the final
+file is built to the same convention but has not itself been through ArrayCalc.
+
+**Not verified: that any visualiser opens the 1.4 flavour.** Nobody has put an ArrayCAD MVR
+into Capture or Depence. The unit is no longer the risk (§5); orientation is, since
+visualisers have no 90° default to agree with. The button's tooltip says check it.
+
+> **TO CONFIRM.** Import the current `Export .mvr` of the demo venue into ArrayCalc at
+> 90°: the stage should sit on x −12..0, y −9..9 and the stalls on x 1..23, as the
+> `.dbacv` has them. Then open `Export .mvr 1.4` in Capture or Depence and check the size
+> and which way the stage faces. Record the application and version here.
+
+## 9. ArrayCalc 13's MVR
+
+ArrayCalc reads and writes MVR from 13.2 (beta 13.2.1 at the time of writing). Everything
+below is observed in that beta, not specified anywhere; d&b's exported files used to find
+it are not in the repo.
+
+**Import.** MVR is parsed with libMVRgdtf (the GDTF group's reference library) and geometry
+loaded with assimp 5.4.0, so any glb assimp reads will do. The dialog lists every object
+with a **Type**: Listening, Structure, Obstacle or Background.
+
+- Only a `ListeningPlane` node arrives as Listening. Class names are ignored, and anything
+  ArrayCalc does not recognise defaults to Background. That is why the `arraycalc` flavour
+  exists.
+- *Venue geometry detail* is ArrayCalc's own mesh → venue-element reduction. It does not
+  replace this tool's: a plane already reduced here is one element at every setting, where
+  a raw CAD mesh would need the slider and still not get names or plane types.
+- *Rotate around z* defaults to 90° on first use and remembers its last value after that.
+  The export dialog has the same control, and export at 90° then import at 90° is the
+  identity. ArrayCAD writes for 90° (§4). If the room arrives turned, that setting has been
+  changed.
+- ArrayCalc keeps a uuid mapping per project. A re-import lists each object as new (`*`),
+  modified (pencil) or unchanged (`=`), updates in place, and keeps the types chosen last
+  time.
+- A Background object is kept as a mesh, stored in the project with its own 4×4 transform,
+  rather than reduced to venue elements.
+
+**Export.** *Vectorworks 2027* writes each listening plane as a `ListeningPlane` with
+`AudioDescriptionFile` naming a per-plane XML of its SPL heat map, each cabinet as a
+`Speaker` naming a GDTF (`V8.gdtf`) and each flown frame as a `SpeakerBumper`. *Vectorworks
+2026* writes the planes as `SceneObject`s and the cabinets as `Fixture`s. Both declare 1.6,
+provider `ArrayCalc d&b`. Glbs are named by uuid, Y-up, metres, with the geometry baked in
+and no `Matrix` on the planes.
+
+**Importing that here.** Listening planes are tagged `ListeningPlane` and read as seating
+whatever they are called (`Right Corner` says nothing). Loudspeakers have no geometry of
+their own and are counted into one warning, apart from lighting fixtures. Heat maps are
+ignored: a prediction is the output, not the room.

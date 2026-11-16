@@ -22,10 +22,15 @@ import { writeSoundvision } from './lib/soundvision/write.ts'
 import { convertNodesToEaseFocus } from './lib/easefocus/convert.ts'
 import { writeEaseFocus } from './lib/easefocus/write.ts'
 import { convertNodesToMvr } from './lib/mvr/convert.ts'
-import { writeMvr } from './lib/mvr/write.ts'
+import { type MvrFlavour, writeMvr } from './lib/mvr/write.ts'
 import { type VenueInputs, conversionEntries, convertOptions, rationalisedAreas } from './state.ts'
 
-export type Target = 'dbacv' | 'soundvision' | 'fc3' | 'mvr'
+/**
+ * `mvr` is the ArrayCalc 13 flavour (listening planes as `ListeningPlane`, declared 1.6);
+ * `mvr-visualiser` the plain MVR 1.4 one for Capture, Depence and other visualisers. Same
+ * geometry, same ids — see `lib/mvr/write.ts`.
+ */
+export type Target = 'dbacv' | 'soundvision' | 'fc3' | 'mvr' | 'mvr-visualiser'
 
 export interface TargetFile {
   data: string | Uint8Array
@@ -97,7 +102,7 @@ export function easeFocusFile(v: VenueInputs, projectName: string): TargetFile {
   }
 }
 
-export function mvrFile(v: VenueInputs, projectName: string): TargetFile {
+export function mvrFile(v: VenueInputs, projectName: string, flavour: MvrFlavour = 'arraycalc'): TargetFile {
   const { areas, effective } = rationalisedAreas(v.scene, v.rationalisations, v.settings)
   const r = convertNodesToMvr(
     conversionEntries(v.scene, v.decisions, effective),
@@ -106,7 +111,7 @@ export function mvrFile(v: VenueInputs, projectName: string): TargetFile {
     projectName || 'ArrayCAD export',
   )
   return {
-    data: writeMvr(r.scene).bytes,
+    data: writeMvr(r.scene, flavour).bytes,
     extension: '.mvr',
     mime: 'application/octet-stream',
     count: r.scene.objects.length,

@@ -98,7 +98,7 @@ test/fixtures/theatre.dbacv   a real ArrayCalc 12.8.2 export. The ground truth
 test/fixtures/roomdata.txt    a synthetic Soundvision export, in the exact byte format
 docs/dbacv-format.md    everything known about the format, and what is not known
 docs/soundvision-format.md    ditto for Soundvision, incl. why .xmls is not writable
-docs/mvr-format.md      MVR: quoted from the open spec, plus the ONE thing it does not state
+docs/mvr-format.md      MVR: quoted from the open spec, what it does not state, ArrayCalc 13's dialect
 ```
 
 **Every output target shares `geom/outline.ts` and differs only after it.** The reduction is

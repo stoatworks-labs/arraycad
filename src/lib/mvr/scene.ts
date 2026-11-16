@@ -20,7 +20,9 @@ import {
   type MvrObjectType,
   type MvrScene,
   GLTF_METRES_PER_UNIT,
+  GLTF_TO_MVR,
   IDENTITY,
+  MVR_TO_ARRAYCALC,
   MVR_UNITS_PER_METRE,
   TDS_METRES_PER_UNIT,
   applyMatrix,
@@ -47,6 +49,8 @@ export interface BuildResult {
   warnings: string[]
   /** Fixtures whose geometry lives only in a `.gdtf`. Reported, not imported. */
   fixturesSkipped: number
+  /** `Speaker` nodes (MVR audio proposal) left out the same way. Reported, not imported. */
+  speakersSkipped: number
 }
 
 let seq = 0
@@ -102,6 +106,11 @@ function metresPerUnitFor(fileName: string): number | null {
   }
 }
 
+/** glTF is Y-up by its own specification; `.3ds` is already in MVR's Z-up space. */
+function isGltf(fileName: string): boolean {
+  return /\.(glb|gltf)$/i.test(fileName)
+}
+
 /**
  * MVR node types that need a plain-English word before `prepare/vocabulary.ts` can read
  * them.
@@ -119,6 +128,10 @@ function metresPerUnitFor(fileName: string): number | null {
  */
 const VOCABULARY_SYNONYM: Partial<Record<MvrObjectType, string>> = {
   Support: 'rigging',
+  // ArrayCalc's own name for an audience area, from the MVR audio proposal. Neither
+  // "listening" nor "plane" is a seating word on its own, but this node type is never
+  // anything else.
+  ListeningPlane: 'audience',
 }
 
 /** Deep-copy a node tree, so one Symdef can be instanced at several matrices. */
@@ -158,6 +171,7 @@ function tagSubtree(nodes: ImportedNode[], tags: string[]): void {
 class Builder {
   warnings: string[] = []
   fixturesSkipped = 0
+  speakersSkipped = 0
   private missing = new Set<string>()
   private unsupported = new Set<string>()
   /** Decoded once per file, in MVR millimetres, then cloned per reference. */
@@ -196,8 +210,11 @@ class Builder {
     }
 
     // Into MVR millimetres, once, here — so every matrix downstream composes in one unit.
+    // A glTF is turned from its Y-up into MVR's Z-up at the same time: the file's own
+    // axes, like its own unit, stop at this boundary.
     const s = metresPerUnit / MVR_UNITS_PER_METRE
-    if (s !== 1) transformNodes(nodes, scaleMatrix(s))
+    if (isGltf(fileName)) transformNodes(nodes, mul(scaleMatrix(s), GLTF_TO_MVR))
+    else if (s !== 1) transformNodes(nodes, scaleMatrix(s))
     this.decoded.set(key, nodes)
     return nodes
   }
@@ -260,7 +277,10 @@ class Builder {
       // not a loss: ArrayCalc places its own sources, and a venue full of surfaces shaped
       // like lanterns is exactly what `prepare/` spends its time removing. Unzipping a
       // GDTF to import one would be work done in order to throw the result away.
-      if (obj.type === 'Fixture' || obj.gdtfSpec) this.fixturesSkipped++
+      // A loudspeaker from ArrayCalc's export is the same case for the same reason, and is
+      // counted apart so the report does not call a V8 a lantern.
+      if (obj.type === 'Speaker') this.speakersSkipped++
+      else if (obj.type === 'Fixture' || obj.gdtfSpec) this.fixturesSkipped++
       return null
     }
 
@@ -310,6 +330,12 @@ class Builder {
         `Left out ${this.fixturesSkipped} lighting fixture(s) whose shape lives in a GDTF ` +
           'file. ArrayCalc places its own sources, so imported lanterns would only need ' +
           'pruning again.',
+      )
+    }
+    if (this.speakersSkipped > 0) {
+      this.warnings.push(
+        `Left out ${this.speakersSkipped} loudspeaker(s) whose shape lives in a GDTF file. ` +
+          'Only the room comes across; the sources are placed again in the prediction.',
       )
     }
   }
@@ -385,5 +411,22 @@ export async function buildMvrNodes(
     )
   }
 
-  return { nodes, warnings: builder.warnings, fixturesSkipped: builder.fixturesSkipped }
+  return {
+    nodes,
+    warnings: builder.warnings,
+    fixturesSkipped: builder.fixturesSkipped,
+    speakersSkipped: builder.speakersSkipped,
+  }
+}
+
+/**
+ * Turn nodes built in MVR's plan orientation into ArrayCalc's, in place.
+ *
+ * MVR aims a room down -Y the way ArrayCalc writes it; ArrayCAD's venue space aims it down
+ * +X, as ArrayCalc's does. See `ARRAYCALC_TO_MVR` in types.ts for how that was read off
+ * ArrayCalc 13. Kept out of `buildMvrNodes` so the scene stays in the specification's own
+ * frame there, and applied by the importer as one deliberate step.
+ */
+export function intoArrayCalcFrame(nodes: ImportedNode[]): void {
+  transformNodes(nodes, MVR_TO_ARRAYCALC)
 }

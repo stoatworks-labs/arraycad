@@ -105,7 +105,7 @@ see [Preparing a model on import](#preparing-a-model-on-import).
 | **DWG** | AutoCAD's own format, read directly — no export step, no converter. R13 through R2018. Same entity support and the same outline-joining as DXF. 3DSOLIDs (truss) are read from DWG 2004; the DWG reader currently loses most of them from an R2018 file, and the import says so — save as DWG 2004 or DXF 2004. |
 | **glTF / GLB** | Best of the mesh formats — keeps object names and hierarchy, and declares metres and Y-up, so nothing has to be guessed. |
 | **IFC** | The only format carrying real semantics. `IfcSlab`, `IfcCovering`, `IfcWall` etc. are mapped to *suggested* plane types. |
-| **MVR** | A whole show from a lighting visualiser — Capture, Depence, Vectorworks, WYSIWYG, grandMA3. Layers and classes arrive as the tree; truss, fixtures and supports are tagged by their MVR type, so the rig prunes itself whatever it was named. Millimetres and Z-up are stated by the format, so nothing is guessed. See [the format notes](docs/mvr-format.md). |
+| **MVR** | A whole show from a lighting visualiser — Capture, Depence, Vectorworks, WYSIWYG, grandMA3 — or a venue from ArrayCalc 13, whose listening planes arrive as audience areas. Layers and classes arrive as the tree; truss, fixtures and supports are tagged by their MVR type, so the rig prunes itself whatever it was named. Millimetres and Z-up are stated by the format, so nothing is guessed. See [the format notes](docs/mvr-format.md). |
 | **FBX, Collada, 3DS** | Keep names and hierarchy. |
 | **OBJ, PLY, STL** | Geometry only. STL has no names at all, so the whole model arrives as one node. |
 | **Scans** | A LiDAR or photogrammetry scan of a room, in any of the mesh formats above. Read as a scan as it opens: flat to within the scanner's noise, not exactly flat. See [Scans](#scans). |
@@ -131,8 +131,9 @@ ending. Their project formats are closed, but they all read and write MVR, which
 standard, and ArrayCAD reads that directly. Export MVR from whichever one you use and drop it
 in. Capture can also export glTF or DWG, and those work too.
 
-MVR goes the other way as well (see Going back to the visualiser, below), so a room can come
-from a visualiser, get pruned and simplified here, and go back.
+MVR goes the other way as well (see Exporting MVR, below), so a room can come from a
+visualiser, get pruned and simplified here, and go back, or go on into ArrayCalc 13, which
+reads MVR too.
 
 ## Tracing a plan
 
@@ -521,22 +522,33 @@ ArrayCalc theatre export were written as a project, opened, and saved back by th
 identical to what was written. The only change the application made was the 2 m width clamp
 above, which is how I found out about it.
 
-## Going back to the visualiser
+## Exporting MVR
 
-**Export .mvr** writes the room back out as MVR, for Capture, Depence, WYSIWYG, grandMA3 or
-Vectorworks. You get one object per plane, keeping the names you pruned by, with the plane
-types as MVR *classes* so the audience areas can be toggled as a set.
+ArrayCalc reads MVR from 13.2 (in beta as I write this), so there are two buttons.
+
+**Export .mvr** is for ArrayCalc 13 and Vectorworks 2027. Listening planes go out as MVR's
+new `ListeningPlane` objects, which is the only thing ArrayCalc's import dialog types as
+Listening by itself; you pick Obstacle, Structure or Background for the rest. Leave
+*Rotate around z* at its default 90°. Export the same venue again later and ArrayCalc
+updates it in place instead of adding a second room.
+
+**Export .mvr 1.4** is the same room for Capture, Depence, WYSIWYG, grandMA3 or older
+Vectorworks, with every plane a plain scene object, because software that predates MVR's
+audio extensions may drop an object type it doesn't know.
+
+Both give you one object per plane, keeping the names you pruned by, with the plane types as
+MVR *classes* so the audience areas can be toggled as a set.
 
 It's the only export that **doesn't** reduce. ArrayCalc needs parametric planes and EASE Focus
 needs rectangles, but MVR carries glTF, which wants triangles, and the coplanar merge has
 already made those. So what arrives is the simplified room: one clean surface where the source
 had a thousand facets, and nothing more lost to the format.
 
-> **Not yet confirmed in a visualiser.** The file is a valid MVR 1.4 archive, its geometry
-> reads back through three.js's own glTF loader, and an MVR imported → exported →
-> re-imported here reproduces the venue dimension for dimension. But nobody has opened one
-> in Capture or Depence yet, and MVR doesn't state the units of the 3D files inside it
-> (**[docs/mvr-format.md](docs/mvr-format.md)** §5). Check the size after importing.
+> **Checked against ArrayCalc 13.2.1 beta, not yet in a visualiser.** In ArrayCalc the room
+> arrives at the right size and the right way up, listening planes come in already typed,
+> each plane is one ArrayCalc element, and a second import updates in place. Nobody has
+> opened the 1.4 file in Capture or Depence yet, so check the size and which way the stage
+> faces there (**[docs/mvr-format.md](docs/mvr-format.md)** §8–§9).
 
 ## Converting between the prediction tools
 
@@ -552,7 +564,8 @@ ArrayCAD opens all three formats, so converting is just an import and an export:
 | A Soundvision room | 3D room data `.txt` | **Export .dbacv** or **Export .fc3** |
 | An EASE Focus project | `.fc3` | **Export .dbacv** or **Export .txt** |
 | A visualiser show | `.mvr` from Capture, Depence, WYSIWYG, grandMA3 | any of the three |
-| Any of the above | | **Export .mvr**, back into the visualiser |
+| An ArrayCalc 13 venue | `.mvr` from *Export MVR* | any of the three |
+| Any of the above | | **Export .mvr** into ArrayCalc 13, or **Export .mvr 1.4** into a visualiser |
 
 Nothing special happens in between. The venue takes the same road a CAD model does
 (tessellate, weld, merge coplanar regions, recover outlines, write the other format), so you
@@ -607,7 +620,8 @@ page's panels:
 - `set_reduction` and `prepare` set the fit and tolerances and re-run preparation.
 - `add_area`, `edit_area` and `remove_area` rationalise seating.
 - `convert` reports the object count and every warning, and `export` writes `.dbacv`,
-  Soundvision `.txt`, EASE Focus `.fc3` or `.mvr` beside the model. It won't overwrite
+  Soundvision `.txt`, EASE Focus `.fc3` or `.mvr` (`mvr` for ArrayCalc 13, `mvr-visualiser`
+  for MVR 1.4) beside the model. It won't overwrite
   without being told to.
 
 Two things it can't do. It can't trace a PDF or an image, because that's you clicking inside
