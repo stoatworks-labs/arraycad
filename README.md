@@ -528,8 +528,9 @@ ArrayCalc reads MVR from 13.2 (in beta as I write this), so there are two button
 
 **Export .mvr** is for ArrayCalc 13 and Vectorworks 2027. Listening planes go out as MVR's
 new `ListeningPlane` objects, which is the only thing ArrayCalc's import dialog types as
-Listening by itself; you pick Obstacle, Structure or Background for the rest. Leave
-*Rotate around z* at its default 90°. Export the same venue again later and ArrayCalc
+Listening by itself; you pick Obstacle, Structure or Background for the rest. Bring it in
+with *Import MVR file* from ArrayCalc's main menu (the ☰ button; *File → Import* only takes
+`.dbacv`) and leave *Rotate around z* at its default 90°. Export the same venue again later and ArrayCalc
 updates it in place instead of adding a second room.
 
 **Export .mvr 1.4** is the same room for Capture, Depence, WYSIWYG, grandMA3 or older
@@ -545,10 +546,11 @@ already made those. So what arrives is the simplified room: one clean surface wh
 had a thousand facets, and nothing more lost to the format.
 
 > **Checked against ArrayCalc 13.2.1 beta, not yet in a visualiser.** In ArrayCalc the room
-> arrives at the right size and the right way up, listening planes come in already typed,
-> each plane is one ArrayCalc element, and a second import updates in place. Nobody has
-> opened the 1.4 file in Capture or Depence yet, so check the size and which way the stage
-> faces there (**[docs/mvr-format.md](docs/mvr-format.md)** §8–§9).
+> arrives at the right size, the right way up and where the `.dbacv` puts it, listening
+> planes come in already typed, each plane is one ArrayCalc element, and a second import
+> updates in place. Nobody has opened the 1.4 file in Capture or Depence yet, so check the
+> size and which way the stage faces there (**[docs/mvr-format.md](docs/mvr-format.md)**
+> §8–§9).
 
 ## Converting between the prediction tools
 

@@ -249,18 +249,25 @@ MVR imported, exported and re-imported produces an identical venue.
 - Importing the same file again marks every object modified and keeps the types already
   chosen: the stable uuids do what they are for.
 
-**Not yet imported: the export with the quarter turn built in.** The turn is read off
-ArrayCalc's own export, and its importer at 90° restored that export exactly; the final
-file is built to the same convention but has not itself been through ArrayCalc.
+**The export as written, quarter turn and all, lands where the `.dbacv` puts it.** At the
+dialog's default 90°, `Export .mvr` of the demo venue gave:
+
+- STAGE, typed Structure: five elements, the deck's front centre at x −12, 12 m deep,
+  18 m wide, 1 m up, turned 0°. That is x −12..0, y −9..9.
+- SEATING - STALLS, pre-typed Listening: one element, its high edge at x 23 (26 m wide,
+  1.83 m up) and its low edge 22 m away (16 m wide, at 0). Those are the export's own
+  vertices, exactly.
+
+The same import matched both seating planes to an earlier import of the same venue made
+under another project name, and updated them in place: `arraycad-demo/…` became
+`arraycad-final/…`. The uuid key is the object name, not the layer.
 
 **Not verified: that any visualiser opens the 1.4 flavour.** Nobody has put an ArrayCAD MVR
 into Capture or Depence. The unit is no longer the risk (§5); orientation is, since
 visualisers have no 90° default to agree with. The button's tooltip says check it.
 
-> **TO CONFIRM.** Import the current `Export .mvr` of the demo venue into ArrayCalc at
-> 90°: the stage should sit on x −12..0, y −9..9 and the stalls on x 1..23, as the
-> `.dbacv` has them. Then open `Export .mvr 1.4` in Capture or Depence and check the size
-> and which way the stage faces. Record the application and version here.
+> **TO CONFIRM.** Open `Export .mvr 1.4` in Capture or Depence and check the size and
+> which way the stage faces. Record the application and version here.
 
 ## 9. ArrayCalc 13's MVR
 
@@ -268,9 +275,12 @@ ArrayCalc reads and writes MVR from 13.2 (beta 13.2.1 at the time of writing). E
 below is observed in that beta, not specified anywhere; d&b's exported files used to find
 it are not in the repo.
 
-**Import.** MVR is parsed with libMVRgdtf (the GDTF group's reference library) and geometry
-loaded with assimp 5.4.0, so any glb assimp reads will do. The dialog lists every object
-with a **Type**: Listening, Structure, Obstacle or Background.
+**Import.** MVR comes in through *Import MVR file* in the in-window main menu (the ☰
+button). The macOS *File → Import* items take `.dbacv` only, and refuse an `.mvr` with a
+save-dialog error about its extension. MVR is parsed with libMVRgdtf (the GDTF group's
+reference library) and geometry loaded with assimp 5.4.0, so any glb assimp reads will do.
+The dialog lists every object with a **Type**: Listening, Structure, Obstacle or
+Background. Imported elements are named `<layer>/<object>`.
 
 - Only a `ListeningPlane` node arrives as Listening. Class names are ignored, and anything
   ArrayCalc does not recognise defaults to Background. That is why the `arraycalc` flavour

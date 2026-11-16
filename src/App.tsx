@@ -719,9 +719,9 @@ export default function App() {
           Checked against ArrayCalc 13.2.1 beta on 2026-11-16 (docs/mvr-format.md §8, §9):
           the room arrives at the right size and the right way up, ListeningPlane nodes come
           in typed Listening, each simplified plane is one venue element at every detail
-          level, and a second import updates every object in place by uuid. The quarter
-          turn for its 90° default is read off ArrayCalc's own export and round trip; the
-          export with that turn built in has not itself been imported yet.
+          level, a second import updates every object in place by uuid, and the export as
+          written here, quarter turn and all, lands at the dialog's default 90° with the
+          demo venue's stage and stalls exactly where the .dbacv has them.
 
           Still NOT opened in a lighting visualiser — the 1.4 flavour is the same geometry
           and ids under plain SceneObjects, which is what Capture and Depence read, but
@@ -737,8 +737,8 @@ export default function App() {
             'Listening, the rest for you to type as Obstacle, Structure or Background.\n\n' +
             'The only export that keeps the room as surfaces rather than reducing it. ' +
             'Re-exporting the same venue updates it in ArrayCalc instead of duplicating it.\n\n' +
-            'Checked against ArrayCalc 13.2.1 beta. Look at where the room lands the first ' +
-            'time, and leave Rotate around z at 90°.'
+            'Verified in ArrayCalc 13.2.1 beta. Bring it in with Import MVR file from ' +
+            'ArrayCalc\'s main menu, and leave Rotate around z at 90°.'
           }
         >
           Export .mvr
