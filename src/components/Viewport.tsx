@@ -159,7 +159,8 @@ export function Viewport(props: Props) {
     el.appendChild(renderer.domElement)
 
     const scene = new THREE.Scene()
-    scene.background = new THREE.Color(0x0a1420)
+    // The theme's stage colour: the 3D view is an output surface, dark in both modes.
+    scene.background = new THREE.Color(getComputedStyle(el).getPropertyValue('--sw-stage').trim() || '#060e16')
 
     const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 5000)
     // Z-up, to match ArrayCalc. Without this the orbit controls gimbal around the wrong

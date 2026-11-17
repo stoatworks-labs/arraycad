@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
+// Vendored from stoatworks-backend/theme by scripts/sync-theme.sh: loaded first so the tool's own CSS layers over it.
+import './stoatworks-theme.css'
 import './styles.css'
 import { registerServiceWorker } from './register-sw.ts'
 

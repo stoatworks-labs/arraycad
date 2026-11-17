@@ -1325,20 +1325,23 @@ function placementOf(t: Settings['transform']): Pick<Settings['transform'], 'hea
 
 function Topbar({ children }: { children?: React.ReactNode }) {
   return (
-    <header className="topbar">
-      <span className="brand">
-        ArrayCAD <em>CAD → ArrayCalc</em>
+    <header className="topbar sw-bar">
+      <span className="brand sw-brand">
+        <span className="sw-mark" aria-hidden="true">⌖</span>
+        <span>
+          ArrayCAD <em>CAD → ArrayCalc</em>
+        </span>
       </span>
       {children}
+      <a className="topbar-link" href="https://stoatworks-labs.com/web-tools/arraycad/" target="_blank" rel="noopener">
+        stoatworks-labs.com
+      </a>
       {/* Opens the shared About dialog — see public/about.js, which delegates
           this attribute from the document, so nothing needs importing here.
           Inside Topbar rather than at each call site, so it is on both screens. */}
       <button type="button" className="topbar-about" data-stoatworks-about>
         About
       </button>
-      <a className="topbar-link" href="https://stoatworks-labs.com/web-tools/arraycad/" target="_blank" rel="noopener">
-        stoatworks-labs.com
-      </a>
     </header>
   )
 }

@@ -598,8 +598,11 @@ interface PaintState {
 
 function paint(ctx: CanvasRenderingContext2D, s: PaintState) {
   const { view, doc, size } = s
+  // The theme's stage colour: the drawing is an output surface, dark in both modes,
+  // so everything painted over it keeps its dark-ground colours.
+  const ground = getComputedStyle(ctx.canvas).getPropertyValue('--sw-stage').trim() || '#060e16'
   ctx.clearRect(0, 0, size.w, size.h)
-  ctx.fillStyle = '#0a1420'
+  ctx.fillStyle = ground
   ctx.fillRect(0, 0, size.w, size.h)
 
   // Device pixels per sheet pixel: the zoom times the backing store's own scale.
@@ -673,7 +676,7 @@ function paint(ctx: CanvasRenderingContext2D, s: PaintState) {
     if (isSel) {
       for (const v of r.vertices) {
         const [x, y] = S(v.p)
-        ctx.fillStyle = '#0a1420'
+        ctx.fillStyle = ground
         ctx.strokeStyle = colour
         ctx.lineWidth = 2
         ctx.beginPath()

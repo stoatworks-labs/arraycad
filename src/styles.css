@@ -1,27 +1,24 @@
-/* Fleet palette, same tokens as blend-calc, pixel-peeker and aspect-calc. */
+/* Colours come from the shared Stoatworks theme (stoatworks-theme.css, imported
+   first), so the page follows the system's light or dark setting like every fleet
+   tool. These are the tool's own names for its tokens. The theme also sets
+   --sw-support-accent, which the vendored support footer reads for its links. */
 :root {
-  --navy-900: #0a1420;
-  --navy-800: #0d1b2a;
-  --navy-700: #132437;
-  --navy-600: #1b3047;
-  --line: #223c56;
-  --line-soft: #1a2e44;
-  --text: #e8eef5;
-  --text-dim: #93a8bd;
-  --text-faint: #64798f;
-  --accent: #4cc9f0;
-  --accent-dim: #2d8fb3;
-  --danger: #ef5d5d;
-  --warn: #f2b134;
-  --ok: #5ec98a;
-  --radius: 8px;
-  --mono: ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, monospace;
-  color-scheme: dark;
-
-  /* Read by the vendored support footer, which otherwise draws its links in
-     plain body text and reads as prose rather than as links. Same token, same
-     reason, as pixel-peeker. */
-  --sw-support-accent: var(--accent);
+  --navy-900: var(--sw-paper);
+  --navy-800: var(--sw-card);
+  --navy-700: var(--sw-tint);
+  --navy-600: color-mix(in srgb, var(--sw-ink) 6%, var(--sw-tint));
+  --line: var(--sw-line);
+  --line-soft: var(--sw-line);
+  --text: var(--sw-ink);
+  --text-dim: var(--sw-muted);
+  --text-faint: var(--sw-faint);
+  --accent: var(--sw-accent);
+  --accent-dim: color-mix(in srgb, var(--sw-accent) 70%, var(--sw-card));
+  --danger: var(--sw-bad);
+  --warn: var(--sw-warn);
+  --ok: var(--sw-ok);
+  --radius: var(--sw-radius);
+  --mono: var(--sw-mono);
 }
 
 * {
@@ -61,7 +58,7 @@ body {
   flex-direction: column;
   background: var(--navy-900);
   color: var(--text);
-  font: 14px/1.5 -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  font: 14px/1.5 var(--sw-font);
   -webkit-font-smoothing: antialiased;
 }
 
@@ -97,48 +94,49 @@ code {
 
 /* ---------------------------------------------------------------- topbar */
 
+/* The navy bar (sw-bar) gives the ground and text colour; this keeps the tool's
+   own one-row density. Its buttons and fields are restated after the controls
+   section, because the tool's bare button and input rules beat the theme's
+   layered bar rules. */
 .topbar {
   display: flex;
   align-items: center;
   gap: 10px;
   padding: 9px 16px;
-  background: var(--navy-800);
-  border-bottom: 1px solid var(--line);
   flex: 0 0 auto;
+  /* One row, as before the theme: the bar's own default is to wrap. */
+  flex-wrap: nowrap;
 }
 
-/* Pushed to the far right of the topbar on both screens — the landing screen has
-   no other topbar content, so `margin-left: auto` does the work of a spacer. */
-.topbar-about {
-  margin-left: auto;
-}
-
-/* The link to the tool's page on stoatworks-labs.com, after About. */
+/* The link to the tool's page on stoatworks-labs.com, then About, pushed to the
+   far right of the topbar on both screens — the landing screen has no other
+   topbar content, so `margin-left: auto` does the work of a spacer. */
 .topbar-link {
+  margin-left: auto;
   font-size: 12px;
-  color: var(--text-faint);
+  color: var(--sw-navy-ink-2);
 }
 
+/* The tool's own 15px rather than the theme's 1.05rem: with a file open the bar
+   is full, and the mark tile already takes some of the room it had. */
 .brand {
-  font-weight: 650;
-  letter-spacing: -0.01em;
   font-size: 15px;
-  white-space: nowrap;
 }
 
 .brand em {
   font-style: normal;
   font-weight: 400;
-  color: var(--text-faint);
+  letter-spacing: 0;
+  color: var(--sw-navy-ink-2);
   font-size: 12px;
   margin-left: 6px;
 }
 
 .file-chip {
   font-size: 12px;
-  color: var(--text-dim);
-  background: var(--navy-700);
-  border: 1px solid var(--line);
+  color: var(--sw-navy-ink-2);
+  background: var(--sw-navy-tint);
+  border: 1px solid var(--sw-navy-line);
   border-radius: 999px;
   padding: 3px 11px;
   max-width: 340px;
@@ -149,6 +147,9 @@ code {
 
 .project-name {
   width: 190px;
+  /* Lets the field give up some width before About is pushed off the bar on a
+     narrow window. */
+  min-width: 120px;
   text-align: right;
 }
 
@@ -162,17 +163,16 @@ select {
 }
 
 button {
-  background: var(--navy-700);
+  background: var(--sw-card);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-sm);
   padding: 5px 11px;
   cursor: pointer;
   white-space: nowrap;
 }
 
 button:hover:not(:disabled) {
-  background: var(--navy-600);
-  border-color: var(--accent-dim);
+  border-color: var(--accent);
 }
 
 button:disabled {
@@ -181,14 +181,14 @@ button:disabled {
 }
 
 button.primary {
-  background: var(--accent-dim);
+  background: var(--accent);
   border-color: var(--accent);
-  color: #04222e;
+  color: var(--sw-on-accent);
   font-weight: 620;
 }
 
 button.primary:hover:not(:disabled) {
-  background: var(--accent);
+  filter: brightness(1.08);
 }
 
 button.linkbtn {
@@ -203,9 +203,9 @@ input[type='text'],
 input[type='search'],
 input[type='number'],
 select {
-  background: var(--navy-900);
+  background: var(--sw-card);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-sm);
   padding: 5px 8px;
   width: 100%;
   min-width: 0;
@@ -221,7 +221,7 @@ button:focus-visible {
 .segmented {
   display: inline-flex;
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-sm);
   overflow: hidden;
 }
 
@@ -238,9 +238,37 @@ button:focus-visible {
 }
 
 .segmented button.on {
-  background: var(--accent-dim);
-  color: #04222e;
+  background: var(--accent);
+  color: var(--sw-on-accent);
   font-weight: 600;
+}
+
+/* On the navy bar: outlined light buttons, the main action filled with the soft
+   accent, and translucent fields, as the theme draws them. */
+.topbar button {
+  background: transparent;
+  color: var(--sw-navy-ink);
+  border-color: var(--sw-navy-line);
+}
+
+.topbar button:hover:not(:disabled) {
+  background: transparent;
+  border-color: var(--sw-accent-soft);
+}
+
+.topbar button.primary,
+.topbar button.primary:hover:not(:disabled) {
+  background: var(--sw-accent-soft);
+  border-color: var(--sw-accent-soft);
+  color: var(--sw-navy);
+}
+
+.topbar input[type='text'],
+.topbar input:not([type]),
+.topbar select {
+  background: var(--sw-navy-tint);
+  color: var(--sw-navy-ink);
+  border-color: var(--sw-navy-line);
 }
 
 /* ---------------------------------------------------------------- dropzone */
@@ -299,7 +327,7 @@ button:focus-visible {
   margin-top: 20px;
   text-align: left;
   border: 1px solid var(--danger);
-  background: #2a1116;
+  background: color-mix(in srgb, var(--danger) 10%, var(--navy-900));
   border-radius: var(--radius);
   padding: 12px 14px;
   font-size: 13px;
@@ -365,6 +393,11 @@ button:focus-visible {
   height: 100%;
 }
 
+/* The 3D view is an output surface: dark in both modes, on the theme's stage. */
+.viewport {
+  background: var(--sw-stage);
+}
+
 /* An armed tool takes the click away from selection, so the cursor has to say so. */
 .viewport.tool-origin canvas,
 .viewport.tool-area canvas,
@@ -382,8 +415,8 @@ button:focus-visible {
 .marquee {
   position: absolute;
   pointer-events: none;
-  border: 1px solid var(--accent);
-  background: rgb(76 201 240 / 14%);
+  border: 1px solid var(--sw-accent-soft);
+  background: color-mix(in srgb, var(--sw-accent-soft) 14%, transparent);
   border-radius: 2px;
   z-index: 2;
 }
@@ -412,10 +445,8 @@ button:focus-visible {
 
 .panel-head h2 {
   margin: 0;
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--text-faint);
+  font-size: 13px;
+  color: var(--text);
   font-weight: 650;
 }
 
@@ -531,7 +562,7 @@ button.wide {
 /* A flat CAD plan: the finding, and the offer to trace it. */
 .flat-plan {
   border: 1px solid var(--accent);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-sm);
   padding: 8px 10px 10px;
   margin: 4px 0 10px;
 }
@@ -584,7 +615,7 @@ button.wide {
 }
 
 .tree-row.selected {
-  background: var(--navy-600);
+  background: color-mix(in srgb, var(--accent) 12%, var(--navy-800));
   border-left-color: var(--accent);
 }
 
@@ -691,9 +722,9 @@ button.wide {
 
 .name-input {
   font-weight: 600;
-  background: var(--navy-900);
+  background: var(--sw-card);
   border: 1px solid var(--line);
-  border-radius: 6px;
+  border-radius: var(--sw-radius-sm);
   padding: 4px 7px;
   flex: 1;
   min-width: 0;
@@ -844,7 +875,7 @@ button.tag {
 }
 
 button.tool {
-  background: var(--navy-700);
+  background: var(--sw-card);
   color: var(--text-dim);
   border: 1px solid var(--line);
   border-radius: var(--radius);
@@ -863,9 +894,9 @@ button.tool:disabled {
 }
 
 button.tool.on {
-  background: var(--accent-dim);
+  background: var(--accent);
   border-color: var(--accent);
-  color: #04121b;
+  color: var(--sw-on-accent);
   font-weight: 600;
 }
 
@@ -875,7 +906,9 @@ button.tool.urgent:not(.on) {
   color: var(--warn);
 }
 
+/* The tracer's drawing is an output surface too: dark in both modes, on the stage. */
 .trace-canvas-wrap {
+  background: var(--sw-stage);
   position: relative;
   flex: 1;
   min-height: 0;
@@ -909,9 +942,10 @@ button.tool.urgent:not(.on) {
   max-width: 62ch;
   font-size: 11.5px;
   line-height: 1.45;
-  color: var(--text-dim);
-  background: rgba(10, 20, 32, 0.82);
-  border: 1px solid var(--line-soft);
+  /* Over the drawing, so it reads the stage's colours rather than the page's. */
+  color: color-mix(in srgb, var(--sw-stage-ink) 72%, var(--sw-stage));
+  background: color-mix(in srgb, var(--sw-stage) 82%, transparent);
+  border: 1px solid var(--sw-stage-line);
   border-radius: var(--radius);
   padding: 6px 9px;
   pointer-events: none;
@@ -925,11 +959,12 @@ button.tool.urgent:not(.on) {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--navy-700);
+  background: var(--navy-800);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 8px 11px;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
+  /* Floats over the dark drawing, so its shadow stays a dark one in both modes. */
+  box-shadow: 0 6px 24px rgb(0 0 0 / 45%);
 }
 
 .trace-dialog input {
